@@ -43,18 +43,19 @@ godot --headless -s tests/ui_interact.gd
 Constants live in `scripts/core/rules.gd`.
 - **Decks**: the decks as listed have 7 Super Berries (the rules text says 6); the lists are used as written.
 - **Board**: 5 creature spaces per player; Tier 2/3 creatures still use one space.
-- **Ability limit**: 2 ability uses per turn for the whole player (not per creature).
+- **Ability limit**: 2 ability uses per turn for the whole player, and each creature can use only one ability per turn.
 - **Ability costs are requirements, not payments**: berries stay attached. An element cost accepts that element or
   Super Berries; a "Super Berry" cost needs actual Super Berries.
 - **First player draws** on turn 1, but neither player can use abilities on their own first turn (`FIRST_TURN_NO_ABILITIES`).
-- **Evolving** keeps attached berries and stun; a creature may evolve the turn it was played (still 1 play/evolve per turn).
+- **Evolving** keeps attached berries (and removes any stun); a creature may evolve the turn it was played (still 1 play/evolve per turn).
 - **Stun X** can target any creatures (up to X); it ends at the end of the stunned creature's controller's next turn. Active abilities keep working.
 - **Exhausted (sideways) berries**: you may attach a berry from your discard instead of from hand; it counts as your berry for the turn and
   enters exhausted. Any exhausted berry that would be discarded (spell payment, Removal, Berry Trade) is exiled instead. Exhausted berries still
   count toward ability costs and never untap (not specified).
 - **Spell payment**: pay with attached berries (upright or exhausted) or exile berries from your discard. Upright ones go to the discard,
   exhausted ones to exile. Colorless = any berry; element cost = that element or Super.
-- **Stolen Super Berries** (discarded from an opponent's deck by Plunder) attach to the thief's best creature, or go to the thief's hand if they have none.
+- **Revealed Super Berries** (from Plunder or Pillage) go onto a creature of the acting player's choice (the game pauses for the choice), or into their hand if they have no creature.
+- **Evolving** a stunned creature removes the stun.
 - **Reinforce** ignores (and doesn't use up) the once-per-turn creature play, and only works on a creature pillaged this turn.
 - **Firewolf's recycle** picks cards automatically (newest first, keeping creatures in the discard when possible).
 - **Berry Trade** (Water Ruler) discards berries from the Ruler itself and from one enemy creature.

@@ -17,6 +17,12 @@ func _init() -> void:
 		var v: Dictionary = screen.view
 		if v.phase == "over":
 			break
+		if not v.pending.is_empty() and v.pending.player == 0:
+			for s in Rules.BOARD_SLOTS:
+				if v.you.board[s] != null:
+					screen._on_slot_clicked(0, s)
+					break
+			continue
 		if v.phase != "main" or v.active != 0 or screen.get_children().any(func(c): return c is ConfirmationDialog):
 			continue
 		var you: Dictionary = v.you

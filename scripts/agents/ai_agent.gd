@@ -9,6 +9,8 @@ func _init(p_seat: int = 1) -> void:
 
 
 func decide(view: Dictionary) -> Dictionary:
+	if not view.pending.is_empty():
+		return {"type": "place_super", "slot": Rules.best_attach_slot(view.you.board, "super_berry")}
 	if view.phase == "mulligan":
 		return _mulligan(view)
 	return _main_phase(view)
@@ -211,7 +213,7 @@ func _ability(view: Dictionary) -> Dictionary:
 	var best_value := 0.0
 	for slot in me.board.size():
 		var c = me.board[slot]
-		if c == null or Rules.is_stunned(c, view.turn):
+		if c == null or Rules.is_stunned(c, view.turn) or Rules.used_ability_this_turn(c, view.turn):
 			continue
 		var abilities: Array = Rules.top_card(c).abilities
 		for ai in abilities.size():

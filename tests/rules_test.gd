@@ -47,5 +47,36 @@ func _init() -> void:
 	r = e.submit(a, {"type": "play_spell", "hand": 0, "payment": pay, "params": {"card_id": "firepup", "slot": 2}})
 	check(r.ok, "reinforce despite creature already played: %s" % r.get("error", ""))
 	check(pl.board[2] != null and pl.board[2].cards == ["firepup"], "reinforced creature in play")
+	# One ability per creature per turn (turn 3+ so abilities are unlocked).
+	e.state.turn = 5
+	e.state.active = a
+	pl.abilities_used = 0
+	pl.board[3] = {"cards": ["firespore"], "berries": ["fire_berry", "fire_berry"], "exhausted": [false, false], "stun_until": -1}
+	check(e.submit(a, {"type": "use_ability", "slot": 3, "ability": 0}).ok, "first ability use")
+	check(not e.submit(a, {"type": "use_ability", "slot": 3, "ability": 0}).ok, "second use by same creature rejected")
+	# Evolving removes a stun.
+	pl.board[3].stun_until = 99
+	pl.hand = ["firespitter"]
+	pl.creature_played = false
+	check(e.submit(a, {"type": "play_creature", "hand": 0, "slot": 3}).ok, "evolve")
+	check(not Rules.is_stunned(pl.board[3], e.state.turn), "evolving cleared the stun")
+	# Revealed Super Berries are placed by the player's choice (plunder and pillage).
+	e.state.players[opp].deck = ["super_berry", "fire_berry"]
+	e.state.players[opp].board[0] = null
+	pl.board[3].berries = ["fire_berry", "fire_berry"]
+	pl.board[3].exhausted = [false, false]
+	pl.board[4] = {"cards": ["firespore"], "berries": [], "exhausted": [], "stun_until": -1, "ability_used_turn": -1}
+	pl.board[4].ability_used_turn = -1
+	pl.board[3].ability_used_turn = -1
+	pl.abilities_used = 0
+	check(e.submit(a, {"type": "use_ability", "slot": 3, "ability": 0}).ok, "plunder")
+	check(e.awaiting() == [a] and not e.state.pending.is_empty(), "pending super berry placement")
+	check(not e.submit(a, {"type": "end_turn"}).ok, "must place the berry first")
+	check(e.submit(a, {"type": "place_super", "slot": 4}).ok, "place super berry")
+	check(pl.board[4].berries == ["super_berry"] and e.state.pending.is_empty(), "berry on chosen creature")
+	pl.deck = ["super_berry", "fire_berry", "fire_berry"]
+	pl.board[0] = {"cards": ["firepup"], "berries": ["fire_berry", "fire_berry"], "exhausted": [false, false], "stun_until": -1, "ability_used_turn": -1}
+	check(e.submit(a, {"type": "use_ability", "slot": 0, "ability": 0}).ok, "pillage")
+	check(not e.state.pending.is_empty() and e.state.pending.player == a, "pillaged super berry placed by choice")
 	print("rules_test failures=%d" % fails)
 	quit(1 if fails > 0 else 0)

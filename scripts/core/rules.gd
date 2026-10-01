@@ -4,7 +4,8 @@ extends RefCounted
 ## (creature / board dictionaries). Shared by the engine, the AI and the UI.
 ##
 ## A creature on the board is: {"cards": [ids, base first], "berries": [ids],
-## "exhausted": [bool per berry, true = sideways], "stun_until": int}
+## "exhausted": [bool per berry, true = sideways], "stun_until": int,
+## "ability_used_turn": int}
 
 # --- Tunable rules (the rules document leaves these open) -------------------
 const BOARD_SLOTS := 5  # a Tier 2/3 creature still occupies just one space
@@ -69,6 +70,11 @@ static func creature_name(creature: Dictionary) -> String:
 
 static func is_stunned(creature: Dictionary, turn: int) -> bool:
 	return int(creature.stun_until) >= turn
+
+
+## Each creature may use only one ability per turn.
+static func used_ability_this_turn(creature: Dictionary, turn: int) -> bool:
+	return int(creature.get("ability_used_turn", -1)) == turn
 
 
 static func berry_matches(berry_id: String, needed: String) -> bool:

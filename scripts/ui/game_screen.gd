@@ -179,6 +179,10 @@ func _refresh() -> void:
 		"over": _turn_label.text = "Game over"
 		_: _turn_label.text = "Turn %d - %s" % [view.turn, "YOUR TURN" if acting else "Opponent's turn"]
 	_update_banner()
+	if not view.pending.is_empty() and view.pending.player == ME and _pending.is_empty():
+		_begin_targeting("Choose a creature to receive the revealed Super Berry (%d left)." % view.pending.berries.size(),
+			func(p, s): return p == ME and view.you.board[s] != null, 1,
+			func(t): _submit({"type": "place_super", "slot": t[0].slot}), true)
 
 
 func _turn_flags(you: Dictionary) -> String:
@@ -207,11 +211,11 @@ func _update_banner() -> void:
 		text = (text + "\n" if text != "" else "") + _status
 	_banner.text = text
 	_confirm_btn.visible = show_confirm
-	_cancel_btn.visible = not _pending.is_empty()
+	_cancel_btn.visible = not _pending.is_empty() and not _pending.get("locked", false)
 
 
 func _can_act() -> bool:
-	return view.phase == "main" and view.active == ME
+	return view.phase == "main" and view.active == ME and view.pending.is_empty()
 
 
 func _rebuild_board(row: HBoxContainer, seat: int) -> void:
@@ -305,7 +309,7 @@ func _make_slot(seat: int, slot: int) -> Control:
 			btn.clip_text = false
 			btn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 			btn.add_theme_font_size_override("font_size", 13)
-			btn.disabled = not (_can_act() and _pending.is_empty() and met and not Rules.abilities_locked(view.turn)
+			btn.disabled = not (_can_act() and _pending.is_empty() and met and not Rules.abilities_locked(view.turn) and not Rules.used_ability_this_turn(creature, view.turn)
 				and not Rules.is_stunned(creature, view.turn) and view.you.abilities_used < Rules.ABILITIES_PER_TURN)
 			btn.pressed.connect(_on_ability_pressed.bind(slot, ai))
 			box.add_child(btn)
@@ -416,9 +420,9 @@ func _confirm(title: String, text: String, on_ok: Callable) -> void:
 
 
 # --- Targeting ----------------------------------------------------------------------------------
-func _begin_targeting(prompt: String, valid: Callable, max_targets: int, done: Callable) -> void:
+func _begin_targeting(prompt: String, valid: Callable, max_targets: int, done: Callable, locked := false) -> void:
 	_status = ""
-	_pending = {"prompt": prompt, "valid": valid, "max": max_targets, "targets": [], "done": done}
+	_pending = {"prompt": prompt, "valid": valid, "max": max_targets, "targets": [], "done": done, "locked": locked}
 	_refresh()
 
 

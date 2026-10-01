@@ -11,6 +11,7 @@ extends RefCounted
 ##   {"type":"use_ability",  "slot":s, "ability":a, "params":{}}
 ##   {"type":"play_spell",   "hand":i, "payment":[...], "params":{}}
 ##   {"type":"swap",         "hand":i, "discard":j}             (once per game)
+##   {"type":"place_super",  "slot":s}                        (only while state.pending: choose where a revealed Super Berry goes)
 ##   {"type":"end_turn"}
 ## Results are {"ok":true} or {"ok":false,"error":"..."}.
 
@@ -36,6 +37,7 @@ func setup(deck_ids: Array, seed_val: int = -1) -> void:
 		"active": -1,
 		"first_player": rng.randi_range(0, 1),
 		"winner": -1,
+		"pending": {},  # {"player": p, "berries": [ids]} while a player must place revealed Super Berries
 		"names": ["Player 1", "Player 2"],
 		"players": [_new_player(deck_ids[0]), _new_player(deck_ids[1])],
 	}
@@ -53,6 +55,8 @@ func is_over() -> bool:
 
 ## Seats the engine is currently waiting on.
 func awaiting() -> Array:
+	if not state.pending.is_empty():
+		return [state.pending.player]
 	match state.phase:
 		"mulligan":
 			var out: Array = []
@@ -70,7 +74,11 @@ func submit(player: int, action: Dictionary) -> Dictionary:
 		return _err("The game is over")
 	var t: String = action.get("type", "")
 	var res: Dictionary
-	if state.phase == "mulligan":
+	if not state.pending.is_empty():
+		if player != state.pending.player or t != "place_super":
+			return _err("Choose a creature for the Super Berry first")
+		res = _do_place_super(player, action)
+	elif state.phase == "mulligan":
 		if t != "mulligan":
 			return _err("Mulligan first")
 		res = _do_mulligan(player, action)
@@ -101,6 +109,7 @@ func get_view(player: int) -> Dictionary:
 		"active": state.active,
 		"first_player": state.first_player,
 		"winner": state.winner,
+		"pending": state.pending.duplicate(true),
 		"awaiting": awaiting(),
 		"you": _public_player(me).merged({"hand": me.hand.duplicate(), "pillaged": me.pillaged.duplicate()}),
 		"opponent": _public_player(opp).merged({"hand_count": opp.hand.size()}),
@@ -268,12 +277,14 @@ func _place_creature(player: int, id: String, slot: int, counts_as_play: bool) -
 	var pl := _P(player)
 	var c := CardDB.card(id)
 	if pl.board[slot] == null:
-		pl.board[slot] = {"cards": [id], "berries": [], "exhausted": [], "stun_until": -1}
+		pl.board[slot] = {"cards": [id], "berries": [], "exhausted": [], "stun_until": -1, "ability_used_turn": -1}
 		_say("%s plays %s." % [_pname(player), c.name], player)
 	else:
 		var prev := Rules.creature_name(pl.board[slot])
 		pl.board[slot].cards.append(id)
-		_say("%s evolves %s into %s." % [_pname(player), prev, c.name], player)
+		var was_stunned: bool = Rules.is_stunned(pl.board[slot], state.turn)
+		pl.board[slot].stun_until = -1  # evolving removes a stun
+		_say("%s evolves %s into %s%s." % [_pname(player), prev, c.name, " (the stun is removed)" if was_stunned else ""], player)
 	if counts_as_play:
 		pl.creature_played = true
 
@@ -316,6 +327,8 @@ func _do_ability(player: int, action: Dictionary) -> Dictionary:
 		return _err("Abilities can't be used on a player's first turn")
 	if Rules.is_stunned(creature, state.turn):
 		return _err("This creature is stunned")
+	if Rules.used_ability_this_turn(creature, state.turn):
+		return _err("Each creature can use only one ability per turn")
 	if pl.abilities_used >= Rules.ABILITIES_PER_TURN:
 		return _err("You can only use %d abilities per turn" % Rules.ABILITIES_PER_TURN)
 	if not Rules.meets_cost(creature.berries, ab.cost):
@@ -325,6 +338,7 @@ func _do_ability(player: int, action: Dictionary) -> Dictionary:
 		if why != "":
 			return _err(why)
 	pl.abilities_used += 1
+	creature.ability_used_turn = state.turn
 	_say("%s uses %s's %s." % [_pname(player), Rules.creature_name(creature), Rules.ability_text(ab)], player, "ability")
 	for e in ab.effects:
 		_apply_effect(e, player, slot, params)
@@ -488,21 +502,36 @@ func _plunder(initiator: int, target: int, n: int) -> void:
 		count += 1
 		if CardDB.element_of(id) == Rules.SUPER:
 			stolen += 1
-			_steal_super(initiator, id)
+			_reveal_super(initiator, id)
 		else:
 			tp.discard.append(id)
 	_say("%s discards %d card(s) from the top of the deck%s." % [_pname(target), count, " (%d Super Berry stolen)" % stolen if stolen > 0 else ""], target)
 
 
-## A Super Berry discarded by an opponent's effect goes onto one of the initiator's
-## creatures, or into the initiator's hand if they have none.
-func _steal_super(initiator: int, id: String) -> void:
+## A Super Berry revealed by Plunder or Pillage goes onto a creature of the initiating
+## player's choice (resolved through a pending place_super action), or into their hand
+## if they have no creature.
+func _reveal_super(initiator: int, id: String) -> void:
 	var pl := _P(initiator)
-	var slot := Rules.best_attach_slot(pl.board, id)
-	if slot >= 0:
-		_add_berry(pl.board[slot], id, false)
-	else:
+	if pl.board.all(func(c): return c == null):
 		pl.hand.append(id)
+		return
+	if state.pending.is_empty():
+		state.pending = {"player": initiator, "berries": []}
+	state.pending.berries.append(id)
+
+
+func _do_place_super(player: int, action: Dictionary) -> Dictionary:
+	var pl := _P(player)
+	var slot := int(action.get("slot", -1))
+	if slot < 0 or slot >= pl.board.size() or pl.board[slot] == null:
+		return _err("Choose a creature")
+	var id: String = state.pending.berries.pop_back()
+	_add_berry(pl.board[slot], id, false)
+	_say("%s attaches the Super Berry to %s." % [_pname(player), Rules.creature_name(pl.board[slot])], player)
+	if state.pending.berries.is_empty():
+		state.pending = {}
+	return _ok()
 
 
 func _pillage(p: int, n: int) -> void:
@@ -515,6 +544,9 @@ func _pillage(p: int, n: int) -> void:
 			break
 		var id: String = pl.deck.pop_front()
 		taken += 1
+		if CardDB.element_of(id) == Rules.SUPER:
+			_reveal_super(p, id)
+			continue
 		if attach_berries and CardDB.is_berry(id):
 			var slot := Rules.best_attach_slot(pl.board, id)
 			if slot >= 0:
