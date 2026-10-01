@@ -3,13 +3,15 @@ extends RefCounted
 ## Rule constants and pure helper functions that operate on plain data
 ## (creature / board dictionaries). Shared by the engine, the AI and the UI.
 ##
-## A creature on the board is: {"cards": [ids, base first], "berries": [ids], "stun_until": int}
+## A creature on the board is: {"cards": [ids, base first], "berries": [ids],
+## "exhausted": [bool per berry, true = sideways], "stun_until": int}
 
 # --- Tunable rules (the rules document leaves these open) -------------------
-const BOARD_SLOTS := 3
+const BOARD_SLOTS := 5  # a Tier 2/3 creature still occupies just one space
 const HAND_SIZE := 7
 const ABILITIES_PER_TURN := 2  # total per player per turn
 const FIRST_PLAYER_SKIPS_FIRST_DRAW := false
+const FIRST_TURN_NO_ABILITIES := true  # neither player may use abilities on their first turn
 
 const SUPER := "super"
 const COLORLESS := "colorless"
@@ -29,6 +31,11 @@ static func element_color(element: String) -> Color:
 		"electric": return Color(0.95, 0.69, 0.12)
 		"super": return Color(0.88, 0.38, 0.75)
 	return Color(0.79, 0.76, 0.69)
+
+
+## Abilities can't be used on either player's first turn (turns 1 and 2 overall).
+static func abilities_locked(turn: int) -> bool:
+	return FIRST_TURN_NO_ABILITIES and turn <= 2
 
 
 # --- Text -------------------------------------------------------------------

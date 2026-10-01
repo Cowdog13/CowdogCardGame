@@ -7,7 +7,7 @@ signal exit_requested
 signal rematch_requested
 
 const ME := 0
-const SLOT_SIZE := Vector2(300, 215)
+const SLOT_SIZE := Vector2(232, 215)
 
 var controller: GameController
 var view: Dictionary = {}
@@ -28,6 +28,7 @@ var _confirm_btn: Button
 var _cancel_btn: Button
 var _end_btn: Button
 var _swap_btn: Button
+var _attach_discard_btn: Button
 var _log: RichTextLabel
 var _detail: RichTextLabel
 var _opp_discard_btn: Button
@@ -106,6 +107,10 @@ func _build_ui() -> void:
 	_my_discard_btn = Button.new()
 	_my_discard_btn.pressed.connect(func(): _show_pile("Your discard", view.you.discard))
 	my_row.add_child(_my_discard_btn)
+	_attach_discard_btn = Button.new()
+	_attach_discard_btn.text = "Attach berry from discard"
+	_attach_discard_btn.pressed.connect(_on_attach_from_discard)
+	my_row.add_child(_attach_discard_btn)
 	_swap_btn = Button.new()
 	_swap_btn.text = "Swap (once per game)"
 	_swap_btn.pressed.connect(_on_swap)
@@ -168,6 +173,7 @@ func _refresh() -> void:
 	var acting := _can_act()
 	_end_btn.disabled = not acting or not _pending.is_empty()
 	_swap_btn.disabled = not acting or you.swap_used
+	_attach_discard_btn.disabled = not acting or you.berry_attached or not you.discard.any(func(id): return CardDB.is_berry(id))
 	match view.phase:
 		"mulligan": _turn_label.text = "Mulligan"
 		"over": _turn_label.text = "Game over"
@@ -268,11 +274,13 @@ func _make_slot(seat: int, slot: int) -> Control:
 	var chips := HFlowContainer.new()
 	chips.add_theme_constant_override("h_separation", 3)
 	chips.add_theme_constant_override("v_separation", 3)
-	for b in creature.berries:
+	for bi in creature.berries.size():
+		var b: String = creature.berries[bi]
+		var sideways: bool = creature.exhausted[bi]
 		var chip := ColorRect.new()
-		chip.custom_minimum_size = Vector2(20, 20)
+		chip.custom_minimum_size = Vector2(26, 14) if sideways else Vector2(16, 24)  # sideways = exhausted
 		chip.color = Rules.element_color(CardDB.element_of(b))
-		chip.tooltip_text = CardDB.card_name(b)
+		chip.tooltip_text = CardDB.card_name(b) + (" (exhausted: exiled when discarded)" if sideways else "")
 		chip.mouse_filter = Control.MOUSE_FILTER_PASS
 		chips.add_child(chip)
 	if creature.berries.is_empty():
@@ -297,7 +305,7 @@ func _make_slot(seat: int, slot: int) -> Control:
 			btn.clip_text = false
 			btn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 			btn.add_theme_font_size_override("font_size", 13)
-			btn.disabled = not (_can_act() and _pending.is_empty() and met
+			btn.disabled = not (_can_act() and _pending.is_empty() and met and not Rules.abilities_locked(view.turn)
 				and not Rules.is_stunned(creature, view.turn) and view.you.abilities_used < Rules.ABILITIES_PER_TURN)
 			btn.pressed.connect(_on_ability_pressed.bind(slot, ai))
 			box.add_child(btn)
@@ -596,6 +604,21 @@ func _ask_trade_amount(slot: int, ai: int, target: Dictionary) -> void:
 			"source_slot": slot, "target": target, "own": plan.own, "theirs": plan.theirs}}))
 	d.canceled.connect(d.queue_free)
 	_popup(d)
+
+
+func _on_attach_from_discard() -> void:
+	var idx: Array = []
+	var labels: Array = []
+	for i in view.you.discard.size():
+		if CardDB.is_berry(view.you.discard[i]):
+			idx.append(i)
+			labels.append(CardDB.card_name(view.you.discard[i]))
+	if idx.is_empty() or view.you.berry_attached:
+		return _toast("You need a berry in your discard and your berry attachment for the turn.")
+	_pick_from_list("Attach which berry from your discard? (enters exhausted)", labels, func(k):
+		_begin_targeting("Attach to which of your creatures? (exhausted)",
+			func(p, s): return p == ME and view.you.board[s] != null, 1,
+			func(t): _submit({"type": "attach_berry", "from": "discard", "discard": idx[k], "slot": t[0].slot})))
 
 
 func _on_swap() -> void:

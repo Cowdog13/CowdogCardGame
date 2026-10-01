@@ -6,7 +6,7 @@ extends RefCounted
 ##
 ## Actions ("type" selects the action):
 ##   {"type":"mulligan",     "cards":[hand indices]}            (mulligan phase; [] keeps the hand)
-##   {"type":"attach_berry", "hand":i, "slot":s}
+##   {"type":"attach_berry", "hand":i, "slot":s}           (or "from":"discard", "discard":j: berry enters exhausted)
 ##   {"type":"play_creature","hand":i, "slot":s}                (places tier 1 / evolves tier 2+)
 ##   {"type":"use_ability",  "slot":s, "ability":a, "params":{}}
 ##   {"type":"play_spell",   "hand":i, "payment":[...], "params":{}}
@@ -229,19 +229,21 @@ func _win(winner: int, reason: String) -> void:
 # --- Simple actions -------------------------------------------------------------
 func _do_attach(player: int, action: Dictionary) -> Dictionary:
 	var pl := _P(player)
-	var hi := int(action.get("hand", -1))
+	var from_discard: bool = action.get("from", "hand") == "discard"
+	var hi := int(action.get("discard" if from_discard else "hand", -1))
 	var slot := int(action.get("slot", -1))
-	if hi < 0 or hi >= pl.hand.size() or not CardDB.is_berry(pl.hand[hi]):
-		return _err("Choose a berry from your hand")
+	var source: Array = pl.discard if from_discard else pl.hand
+	if hi < 0 or hi >= source.size() or not CardDB.is_berry(source[hi]):
+		return _err("Choose a berry from your %s" % ("discard" if from_discard else "hand"))
 	if pl.berry_attached:
 		return _err("You already attached a berry this turn")
 	if slot < 0 or slot >= pl.board.size() or pl.board[slot] == null:
 		return _err("Choose a creature")
-	var id: String = pl.hand[hi]
-	pl.hand.remove_at(hi)
-	pl.board[slot].berries.append(id)
+	var id: String = source[hi]
+	source.remove_at(hi)
+	_add_berry(pl.board[slot], id, from_discard)  # berries from the discard enter sideways
 	pl.berry_attached = true
-	_say("%s attaches %s to %s." % [_pname(player), CardDB.card_name(id), Rules.creature_name(pl.board[slot])], player)
+	_say("%s attaches %s%s to %s." % [_pname(player), CardDB.card_name(id), " from the discard (exhausted)" if from_discard else "", Rules.creature_name(pl.board[slot])], player)
 	return _ok()
 
 
@@ -258,21 +260,22 @@ func _do_play_creature(player: int, action: Dictionary) -> Dictionary:
 	if why != "":
 		return _err(why)
 	pl.hand.remove_at(hi)
-	_place_creature(player, id, slot)
+	_place_creature(player, id, slot, true)
 	return _ok()
 
 
-func _place_creature(player: int, id: String, slot: int) -> void:
+func _place_creature(player: int, id: String, slot: int, counts_as_play: bool) -> void:
 	var pl := _P(player)
 	var c := CardDB.card(id)
 	if pl.board[slot] == null:
-		pl.board[slot] = {"cards": [id], "berries": [], "stun_until": -1}
+		pl.board[slot] = {"cards": [id], "berries": [], "exhausted": [], "stun_until": -1}
 		_say("%s plays %s." % [_pname(player), c.name], player)
 	else:
 		var prev := Rules.creature_name(pl.board[slot])
 		pl.board[slot].cards.append(id)
 		_say("%s evolves %s into %s." % [_pname(player), prev, c.name], player)
-	pl.creature_played = true
+	if counts_as_play:
+		pl.creature_played = true
 
 
 func _do_swap(player: int, action: Dictionary) -> Dictionary:
@@ -309,6 +312,8 @@ func _do_ability(player: int, action: Dictionary) -> Dictionary:
 	var ab: Dictionary = abilities[ai]
 	if ab.get("active", false):
 		return _err("That ability is always on")
+	if Rules.abilities_locked(state.turn):
+		return _err("Abilities can't be used on a player's first turn")
 	if Rules.is_stunned(creature, state.turn):
 		return _err("This creature is stunned")
 	if pl.abilities_used >= Rules.ABILITIES_PER_TURN:
@@ -374,8 +379,6 @@ func _check_effect(e: Dictionary, player: int, params: Dictionary) -> String:
 			var id: String = params.get("card_id", "")
 			if id == "" or not pl.pillaged.has(id) or not pl.discard.has(id):
 				return "That creature was not pillaged this turn"
-			if pl.creature_played:
-				return "You already played a creature this turn"
 			return Rules.place_error(pl.board, id, int(params.get("slot", -1)))
 	return ""
 
@@ -412,38 +415,48 @@ func _apply_effect(e: Dictionary, player: int, slot: int, params: Dictionary) ->
 			var mine: Dictionary = _P(player).board[int(params.source_slot)]
 			var tp := int(params.target.player)
 			var enemy: Dictionary = _P(tp).board[int(params.target.slot)]
-			var own := _take_indices(mine.berries, params.own)
-			var theirs := _take_indices(enemy.berries, params.theirs)
-			_P(player).discard.append_array(own)
-			_P(tp).discard.append_array(theirs)
-			_say("%d berr%s traded away from each side." % [own.size(), "y" if own.size() == 1 else "ies"], player)
+			_release_berries(player, mine, params.own)
+			_release_berries(tp, enemy, params.theirs)
+			_say("%d berr%s discarded from each side." % [params.own.size(), "y" if params.own.size() == 1 else "ies"], player)
 		"play_pillaged_creature":
 			var pl := _P(player)
 			var id: String = params.card_id
 			pl.discard.remove_at(pl.discard.find(id))
 			pl.pillaged.remove_at(pl.pillaged.find(id))
-			_place_creature(player, id, int(params.slot))
+			_place_creature(player, id, int(params.slot), false)  # Reinforce ignores the once-per-turn limit
 		_:
 			pass  # "Active" effects are resolved where they trigger (see _pillage).
 
 
-## Removes the berries at `indices` from `list` and returns them.
-func _take_indices(list: Array, indices: Array) -> Array:
+func _add_berry(creature: Dictionary, id: String, exhausted: bool) -> void:
+	creature.berries.append(id)
+	creature.exhausted.append(exhausted)
+
+
+## Detaches the berry at `index`. Upright berries go to the owner's discard; sideways
+## (exhausted) berries are exiled instead.
+func _release_berry(owner: int, creature: Dictionary, index: int) -> void:
+	var id: String = creature.berries[index]
+	var pl := _P(owner)
+	(pl.exile if creature.exhausted[index] else pl.discard).append(id)
+	creature.berries.remove_at(index)
+	creature.exhausted.remove_at(index)
+
+
+func _release_berries(owner: int, creature: Dictionary, indices: Array) -> void:
 	var sorted := indices.map(func(i): return int(i))
 	sorted.sort()
 	sorted.reverse()
-	var out: Array = []
 	for i in sorted:
-		out.append(list[i])
-		list.remove_at(i)
-	return out
+		_release_berry(owner, creature, i)
 
 
 func _destroy_creature(owner: int, slot: int) -> void:
 	var pl := _P(owner)
 	var c: Dictionary = pl.board[slot]
 	pl.discard.append_array(c.cards)
-	pl.discard.append_array(c.berries)
+	while not c.berries.is_empty():
+		_release_berry(owner, c, c.berries.size() - 1)
 	pl.board[slot] = null
 	_say("%s and its attached berries go to the discard." % Rules.creature_name(c), owner)
 
@@ -487,7 +500,7 @@ func _steal_super(initiator: int, id: String) -> void:
 	var pl := _P(initiator)
 	var slot := Rules.best_attach_slot(pl.board, id)
 	if slot >= 0:
-		pl.board[slot].berries.append(id)
+		_add_berry(pl.board[slot], id, false)
 	else:
 		pl.hand.append(id)
 
@@ -505,7 +518,7 @@ func _pillage(p: int, n: int) -> void:
 		if attach_berries and CardDB.is_berry(id):
 			var slot := Rules.best_attach_slot(pl.board, id)
 			if slot >= 0:
-				pl.board[slot].berries.append(id)
+				_add_berry(pl.board[slot], id, false)
 				continue
 		pl.discard.append(id)
 		pl.pillaged.append(id)
@@ -565,7 +578,8 @@ func _do_spell(player: int, action: Dictionary) -> Dictionary:
 
 
 ## Payment entries: {"src":"discard","index":i} (exiled) or
-## {"src":"attached","slot":s,"index":i} (discarded). Exactly cost.amount berries.
+## {"src":"attached","slot":s,"index":i} (discarded; exiled if the berry is exhausted).
+## Exactly cost.amount berries.
 func _payment_error(player: int, cost: Dictionary, payment: Array) -> String:
 	var pl := _P(player)
 	if payment.size() != int(cost.amount):
@@ -607,9 +621,7 @@ func _pay(player: int, payment: Array) -> void:
 			attached.append(entry)
 	attached.sort_custom(func(a, b): return int(a.index) > int(b.index))
 	for entry in attached:
-		var berries: Array = pl.board[int(entry.slot)].berries
-		pl.discard.append(berries[int(entry.index)])
-		berries.remove_at(int(entry.index))
+		_release_berry(player, pl.board[int(entry.slot)], int(entry.index))
 	from_discard.sort()
 	from_discard.reverse()
 	for i in from_discard:

@@ -50,7 +50,7 @@ func _main_phase(view: Dictionary) -> Dictionary:
 	a = _spell(view)
 	if not a.is_empty():
 		return a
-	if me.abilities_used < Rules.ABILITIES_PER_TURN:
+	if me.abilities_used < Rules.ABILITIES_PER_TURN and not Rules.abilities_locked(view.turn):
 		a = _ability(view)
 		if not a.is_empty():
 			return a
@@ -115,6 +115,14 @@ func _berry_attach(view: Dictionary) -> Dictionary:
 		if score > best_score:
 			best_score = score
 			best = {"type": "attach_berry", "hand": hi, "slot": slot}
+	if best.is_empty():
+		# No berry in hand: reuse one from the discard (it enters exhausted).
+		for di in me.discard.size():
+			var id: String = me.discard[di]
+			if CardDB.is_berry(id):
+				var slot := Rules.best_attach_slot(me.board, id)
+				if slot >= 0:
+					return {"type": "attach_berry", "from": "discard", "discard": di, "slot": slot}
 	return best
 
 
@@ -152,7 +160,7 @@ func _spell(view: Dictionary) -> Dictionary:
 					continue
 			"play_pillaged_creature":
 				var pick := _reinforce_pick(me)
-				if pick.is_empty() or me.creature_played:
+				if pick.is_empty():
 					continue
 				worth = 6.0
 				params = pick
