@@ -1,0 +1,431 @@
+{
+ "fire_berry": {
+  "name": "Fire Berry",
+  "kind": "berry",
+  "element": "fire"
+ },
+ "water_berry": {
+  "name": "Water Berry",
+  "kind": "berry",
+  "element": "water"
+ },
+ "super_berry": {
+  "name": "Super Berry",
+  "kind": "berry",
+  "element": "super"
+ },
+ "firespore": {
+  "name": "Firespore",
+  "kind": "creature",
+  "tier": 1,
+  "evolves_from": "",
+  "element": "fire",
+  "abilities": [
+   {
+    "name": "Plunder 2",
+    "cost": {
+     "element": "fire",
+     "amount": 1
+    },
+    "effects": [
+     {
+      "type": "plunder",
+      "amount": 2
+     }
+    ]
+   }
+  ]
+ },
+ "firespitter": {
+  "name": "Firespitter",
+  "kind": "creature",
+  "tier": 2,
+  "evolves_from": "firespore",
+  "element": "fire",
+  "abilities": [
+   {
+    "name": "Plunder 3",
+    "cost": {
+     "element": "fire",
+     "amount": 2
+    },
+    "effects": [
+     {
+      "type": "plunder",
+      "amount": 3
+     }
+    ]
+   }
+  ]
+ },
+ "fireking": {
+  "name": "Fireking",
+  "kind": "creature",
+  "tier": 3,
+  "evolves_from": "firespitter",
+  "element": "fire",
+  "abilities": [
+   {
+    "name": "Plunder 5",
+    "cost": {
+     "element": "fire",
+     "amount": 3
+    },
+    "effects": [
+     {
+      "type": "plunder",
+      "amount": 5
+     }
+    ]
+   },
+   {
+    "name": "Inferno",
+    "cost": {
+     "element": "super",
+     "amount": 2
+    },
+    "effects": [
+     {
+      "type": "plunder",
+      "per_attached_berry": 1
+     }
+    ],
+    "text": "Plunder 1 for each berry attached to this creature"
+   }
+  ]
+ },
+ "firepup": {
+  "name": "Firepup",
+  "kind": "creature",
+  "tier": 1,
+  "evolves_from": "",
+  "element": "fire",
+  "abilities": [
+   {
+    "name": "Pillage 2",
+    "cost": {
+     "element": "fire",
+     "amount": 2
+    },
+    "effects": [
+     {
+      "type": "pillage",
+      "amount": 2
+     }
+    ]
+   },
+   {
+    "name": "Plunder 1",
+    "cost": {
+     "element": "fire",
+     "amount": 1
+    },
+    "effects": [
+     {
+      "type": "plunder",
+      "amount": 1
+     }
+    ]
+   }
+  ]
+ },
+ "firewolf": {
+  "name": "Firewolf",
+  "kind": "creature",
+  "tier": 2,
+  "evolves_from": "firepup",
+  "element": "fire",
+  "abilities": [
+   {
+    "name": "Recycler",
+    "cost": {
+     "element": "super",
+     "amount": 2
+    },
+    "effects": [
+     {
+      "type": "recycle_on_pillage"
+     }
+    ],
+    "active": true,
+    "text": "Active: When pillaging, recycle an equal amount"
+   },
+   {
+    "name": "Pillage 3",
+    "cost": {
+     "element": "fire",
+     "amount": 2
+    },
+    "effects": [
+     {
+      "type": "pillage",
+      "amount": 3
+     }
+    ]
+   }
+  ]
+ },
+ "fire_famine": {
+  "name": "Fire Famine",
+  "kind": "creature",
+  "tier": 1,
+  "evolves_from": "",
+  "element": "fire",
+  "abilities": [
+   {
+    "name": "Scavenger",
+    "cost": {
+     "element": "super",
+     "amount": 1
+    },
+    "effects": [
+     {
+      "type": "attach_pillaged_berries"
+     }
+    ],
+    "active": true,
+    "text": "Active: When pillaging a berry, attach it to a creature"
+   },
+   {
+    "name": "Pillage 4",
+    "cost": {
+     "element": "fire",
+     "amount": 2
+    },
+    "effects": [
+     {
+      "type": "pillage",
+      "amount": 4
+     }
+    ]
+   }
+  ]
+ },
+ "water_spirit": {
+  "name": "Water Spirit",
+  "kind": "creature",
+  "tier": 1,
+  "evolves_from": "",
+  "element": "water",
+  "abilities": [
+   {
+    "name": "Plunder 2",
+    "cost": {
+     "element": "water",
+     "amount": 1
+    },
+    "effects": [
+     {
+      "type": "plunder",
+      "amount": 2
+     }
+    ]
+   }
+  ]
+ },
+ "water_sprite": {
+  "name": "Water Sprite",
+  "kind": "creature",
+  "tier": 2,
+  "evolves_from": "water_spirit",
+  "element": "water",
+  "abilities": [
+   {
+    "name": "Plunder 3",
+    "cost": {
+     "element": "water",
+     "amount": 2
+    },
+    "effects": [
+     {
+      "type": "plunder",
+      "amount": 3
+     }
+    ]
+   },
+   {
+    "name": "Stun 1",
+    "cost": {
+     "element": "water",
+     "amount": 2
+    },
+    "effects": [
+     {
+      "type": "stun",
+      "count": 1
+     }
+    ]
+   }
+  ]
+ },
+ "water_ruler": {
+  "name": "Water Ruler",
+  "kind": "creature",
+  "tier": 3,
+  "evolves_from": "water_sprite",
+  "element": "water",
+  "abilities": [
+   {
+    "name": "Berry Trade",
+    "cost": {
+     "element": "super",
+     "amount": 1
+    },
+    "effects": [
+     {
+      "type": "berry_trade"
+     }
+    ],
+    "text": "Discard any number of attached berries to discard an equal amount of your choice of attached berries from an enemy"
+   },
+   {
+    "name": "Plunder 3",
+    "cost": {
+     "element": "water",
+     "amount": 2
+    },
+    "effects": [
+     {
+      "type": "plunder",
+      "amount": 3
+     }
+    ]
+   }
+  ]
+ },
+ "water_constrictor": {
+  "name": "Water Constrictor",
+  "kind": "creature",
+  "tier": 1,
+  "evolves_from": "",
+  "element": "water",
+  "abilities": [
+   {
+    "name": "Stun 1",
+    "cost": {
+     "element": "water",
+     "amount": 1
+    },
+    "effects": [
+     {
+      "type": "stun",
+      "count": 1
+     }
+    ]
+   },
+   {
+    "name": "Plunder 2",
+    "cost": {
+     "element": "water",
+     "amount": 1
+    },
+    "effects": [
+     {
+      "type": "plunder",
+      "amount": 2
+     }
+    ]
+   }
+  ]
+ },
+ "water_binder": {
+  "name": "Water Binder",
+  "kind": "creature",
+  "tier": 2,
+  "evolves_from": "water_constrictor",
+  "element": "water",
+  "abilities": [
+   {
+    "name": "Stun 2",
+    "cost": {
+     "element": "water",
+     "amount": 2
+    },
+    "effects": [
+     {
+      "type": "stun",
+      "count": 2
+     }
+    ]
+   },
+   {
+    "name": "Plunder 3",
+    "cost": {
+     "element": "water",
+     "amount": 2
+    },
+    "effects": [
+     {
+      "type": "plunder",
+      "amount": 3
+     }
+    ]
+   }
+  ]
+ },
+ "water_crash": {
+  "name": "Water Crash",
+  "kind": "creature",
+  "tier": 1,
+  "evolves_from": "",
+  "element": "water",
+  "abilities": [
+   {
+    "name": "Plunder 5",
+    "cost": {
+     "element": "super",
+     "amount": 3
+    },
+    "effects": [
+     {
+      "type": "plunder",
+      "amount": 5
+     }
+    ]
+   }
+  ]
+ },
+ "removal": {
+  "name": "Removal",
+  "kind": "spell",
+  "cost": {
+   "element": "colorless",
+   "amount": 3
+  },
+  "text": "Send a creature and all attached berries to the discard",
+  "effects": [
+   {
+    "type": "destroy"
+   }
+  ]
+ },
+ "reinforce": {
+  "name": "Reinforce",
+  "kind": "spell",
+  "cost": {
+   "element": "fire",
+   "amount": 2
+  },
+  "text": "Play a creature you would normally be able to play that was pillaged this turn",
+  "effects": [
+   {
+    "type": "play_pillaged_creature"
+   }
+  ]
+ },
+ "disable": {
+  "name": "Disable",
+  "kind": "spell",
+  "cost": {
+   "element": "colorless",
+   "amount": 1
+  },
+  "text": "Stun 1",
+  "effects": [
+   {
+    "type": "stun",
+    "count": 1
+   }
+  ]
+ }
+}

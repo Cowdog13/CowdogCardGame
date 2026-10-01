@@ -1,0 +1,94 @@
+{
+ "scorching_fire": {
+  "name": "Scorching Fire",
+  "format": "preconstructed",
+  "cards": [
+   [
+    "super_berry",
+    7
+   ],
+   [
+    "fire_berry",
+    16
+   ],
+   [
+    "firespore",
+    4
+   ],
+   [
+    "firespitter",
+    4
+   ],
+   [
+    "fireking",
+    4
+   ],
+   [
+    "firepup",
+    4
+   ],
+   [
+    "firewolf",
+    4
+   ],
+   [
+    "fire_famine",
+    2
+   ],
+   [
+    "removal",
+    3
+   ],
+   [
+    "reinforce",
+    2
+   ]
+  ]
+ },
+ "crashing_wave": {
+  "name": "Crashing Wave",
+  "format": "preconstructed",
+  "cards": [
+   [
+    "super_berry",
+    7
+   ],
+   [
+    "water_berry",
+    16
+   ],
+   [
+    "water_spirit",
+    4
+   ],
+   [
+    "water_sprite",
+    4
+   ],
+   [
+    "water_ruler",
+    4
+   ],
+   [
+    "water_constrictor",
+    4
+   ],
+   [
+    "water_binder",
+    4
+   ],
+   [
+    "water_crash",
+    2
+   ],
+   [
+    "removal",
+    3
+   ],
+   [
+    "disable",
+    2
+   ]
+  ]
+ }
+}
