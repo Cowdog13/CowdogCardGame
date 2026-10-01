@@ -154,8 +154,11 @@ func _P(p: int) -> Dictionary:
 	return state.players[p]
 
 
-func _say(text: String, player: int = -1, kind := "info") -> void:
+## `fx` (optional) is presentation data for clients, e.g. {"fx": "attach", "card": id, ...}.
+## Cards in fx events were just played face-up, so they are public information.
+func _say(text: String, player: int = -1, kind := "info", fx := {}) -> void:
 	var ev := {"text": text, "player": player, "kind": kind, "turn": state.turn}
+	ev.merge(fx)
 	log.append(ev)
 	event_logged.emit(ev)
 
@@ -253,7 +256,8 @@ func _do_attach(player: int, action: Dictionary) -> Dictionary:
 	source.remove_at(hi)
 	_add_berry(pl.board[slot], id, from_discard)  # berries from the discard enter sideways
 	pl.berry_attached = true
-	_say("%s attaches %s%s to %s." % [_pname(player), CardDB.card_name(id), " from the discard (exhausted)" if from_discard else "", Rules.creature_name(pl.board[slot])], player)
+	_say("%s attaches %s%s to %s." % [_pname(player), CardDB.card_name(id), " from the discard (exhausted)" if from_discard else "", Rules.creature_name(pl.board[slot])], player, "info",
+		{"fx": "attach", "card": id, "slot": slot, "from": "discard" if from_discard else "hand", "hand": hi})
 	return _ok()
 
 
@@ -270,22 +274,23 @@ func _do_play_creature(player: int, action: Dictionary) -> Dictionary:
 	if why != "":
 		return _err(why)
 	pl.hand.remove_at(hi)
-	_place_creature(player, id, slot, true)
+	_place_creature(player, id, slot, true, hi)
 	return _ok()
 
 
-func _place_creature(player: int, id: String, slot: int, counts_as_play: bool) -> void:
+func _place_creature(player: int, id: String, slot: int, counts_as_play: bool, hand_index := -1) -> void:
 	var pl := _P(player)
 	var c := CardDB.card(id)
 	if pl.board[slot] == null:
 		pl.board[slot] = {"cards": [id], "berries": [], "exhausted": [], "stun_until": -1, "ability_used_turn": -1}
-		_say("%s plays %s." % [_pname(player), c.name], player)
+		_say("%s plays %s." % [_pname(player), c.name], player, "info", {"fx": "play_creature", "card": id, "slot": slot, "hand": hand_index})
 	else:
 		var prev := Rules.creature_name(pl.board[slot])
 		pl.board[slot].cards.append(id)
 		var was_stunned: bool = Rules.is_stunned(pl.board[slot], state.turn)
 		pl.board[slot].stun_until = -1  # evolving removes a stun
-		_say("%s evolves %s into %s%s." % [_pname(player), prev, c.name, " (the stun is removed)" if was_stunned else ""], player)
+		_say("%s evolves %s into %s%s." % [_pname(player), prev, c.name, " (the stun is removed)" if was_stunned else ""], player, "info",
+			{"fx": "play_creature", "card": id, "slot": slot, "hand": hand_index})
 	if counts_as_play:
 		pl.creature_played = true
 
@@ -305,7 +310,8 @@ func _do_swap(player: int, action: Dictionary) -> Dictionary:
 	pl.hand[hi] = from_discard
 	pl.discard[di] = from_hand
 	pl.swap_used = true
-	_say("%s swaps %s from hand with %s from the discard." % [_pname(player), CardDB.card_name(from_hand), CardDB.card_name(from_discard)], player)
+	_say("%s swaps %s from hand with %s from the discard." % [_pname(player), CardDB.card_name(from_hand), CardDB.card_name(from_discard)], player, "info",
+		{"fx": "swap", "hand_card": from_hand, "discard_card": from_discard})
 	return _ok()
 
 
@@ -586,6 +592,16 @@ func _recycle(p: int, n: int) -> void:
 
 
 # --- Spells ---------------------------------------------------------------------------
+## Board spaces a spell affects, for presentation: [{"player": p, "slot": s}].
+func _spell_targets(spell: Dictionary, params: Dictionary) -> Array:
+	var out: Array = []
+	match spell.effects[0].type:
+		"destroy": out.append(params.target)
+		"stun": out.append_array(params.targets)
+		"play_pillaged_creature": out.append({"player": state.active, "slot": int(params.slot)})
+	return out
+
+
 func _do_spell(player: int, action: Dictionary) -> Dictionary:
 	var pl := _P(player)
 	var hi := int(action.get("hand", -1))
@@ -604,7 +620,8 @@ func _do_spell(player: int, action: Dictionary) -> Dictionary:
 	_pay(player, action.payment)
 	pl.hand.remove_at(hi)
 	pl.discard.append(id)
-	_say("%s plays %s." % [_pname(player), spell.name], player, "spell")
+	_say("%s plays %s." % [_pname(player), spell.name], player, "spell",
+		{"fx": "spell", "card": id, "hand": hi, "targets": _spell_targets(spell, params)})
 	for e in spell.effects:
 		_apply_effect(e, player, -1, params)
 	return _ok()

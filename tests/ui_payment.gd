@@ -4,7 +4,7 @@ extends SceneTree
 func _init() -> void:
 	var screen := GameScreen.new()
 	root.add_child(screen)
-	screen.start(["scorching_fire", "crashing_wave"], [HumanAgent.new(0), HumanAgent.new(1)], 0.0)
+	screen.start(["scorching_fire", "crashing_wave"], [HumanAgent.new(0), HumanAgent.new(1)], 0.0, false)
 	await process_frame
 	var e: GameEngine = screen.controller.engine
 	for p in 2:

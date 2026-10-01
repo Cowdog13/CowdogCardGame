@@ -6,7 +6,7 @@ func _init() -> void:
 	var screen := GameScreen.new()
 	root.add_child(screen)
 	screen.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	screen.start(["crashing_wave", "scorching_fire"], [HumanAgent.new(0), HumanAgent.new(1)], 0.0)
+	screen.start(["crashing_wave", "scorching_fire"], [HumanAgent.new(0), HumanAgent.new(1)], 0.0, false)
 	await process_frame
 	var e: GameEngine = screen.controller.engine
 	for p in 2:

@@ -17,6 +17,7 @@ const MAX_FAILURES := 5
 var engine := GameEngine.new()
 var agents: Array = []
 var ai_delay := 0.7
+var hold_ai := false  # the UI sets this while it is still playing effects
 
 var _busy := {}
 var _failures := {}
@@ -63,6 +64,8 @@ func _pump() -> void:
 func _run_agent(seat: int) -> void:
 	_busy[seat] = true
 	await get_tree().create_timer(ai_delay).timeout
+	while hold_ai and is_inside_tree():
+		await get_tree().process_frame
 	if is_inside_tree() and not engine.is_over() and engine.awaiting().has(seat):
 		var view := engine.get_view(seat)
 		var action: Dictionary = await agents[seat].decide(view)

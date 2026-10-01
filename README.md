@@ -12,6 +12,10 @@ Open the folder in Godot 4.7 and press Play (main scene `scenes/main.tscn`).
 - Click an ability button on one of your creatures to use it (2 per turn). Stun/Removal/Berry Trade ask for targets.
 - Spells ask which berries pay the cost (the cheapest choice is pre-selected; discard-pile berries are exiled).
 - **Discard** and **Exile** buttons show both players' piles.
+- Visual effects (toggle on the main menu): the opponent's hand shows as blank cards at the top; their played cards fly to the centre, flip and
+  stay 2s before landing (berries 0.7s); your cards fly straight to their target; attached berries pop and blink the creature; berries from
+  the discard get a firework and a line to the creature; swaps and spells are shown large in the middle for 2s (spells then fly to their targets).
+  The computer waits for effects to finish before acting.
 - Hover anything for card text. **Swap** is the once-per-game hand/discard creature swap.
 
 ## Layout
@@ -19,8 +23,8 @@ Open the folder in Godot 4.7 and press Play (main scene `scenes/main.tscn`).
 - `scripts/core/` - `GameEngine` (authoritative rules), `Rules` (helpers/constants), `CardDB`.
 - `scripts/agents/` - `PlayerAgent` interface, `AIAgent` (computer), `HumanAgent`.
 - `scripts/game_controller.gd` - connects the engine to one agent per seat.
-- `scripts/ui/`, `scripts/main.gd` - menu and table UI.
-- `tests/` - `run_sim.gd` (AI vs AI, rule invariants), `ui_smoke.gd`, `ui_interact.gd`, `screenshot.gd`.
+- `scripts/ui/`, `scripts/main.gd` - menu and table UI; `fx_layer.gd` holds the visual effects. The engine's log events carry an optional `fx` payload that the UI plays.
+- `tests/` - `fx_demo.gd` (screenshots of every effect), `run_sim.gd` (AI vs AI, rule invariants), `ui_smoke.gd`, `ui_interact.gd`, `screenshot.gd`.
 
 ## Networking later
 The engine is already shaped for it:

@@ -7,7 +7,7 @@ func _init() -> void:
 	root.add_child(main)
 	await create_timer(0.5).timeout
 	root.get_texture().get_image().save_png(out + "/menu.png")
-	main._start_game("crashing_wave", "scorching_fire", 0.2)
+	main._start_game("crashing_wave", "scorching_fire", 0.2, false)
 	await create_timer(0.5).timeout
 	root.get_texture().get_image().save_png(out + "/mulligan.png")
 	var screen: GameScreen = main._game

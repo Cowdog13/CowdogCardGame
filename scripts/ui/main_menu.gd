@@ -1,11 +1,12 @@
 class_name MainMenu
 extends Control
 
-signal start_requested(deck0: String, deck1: String, ai_delay: float)
+signal start_requested(deck0: String, deck1: String, ai_delay: float, effects: bool)
 
 var _you: OptionButton
 var _opp: OptionButton
 var _speed: HSlider
+var _effects: CheckBox
 
 
 func _ready() -> void:
@@ -40,11 +41,15 @@ func _ready() -> void:
 	_speed.step = 0.1
 	_speed.value = 0.7
 	box.add_child(_speed)
+	_effects = CheckBox.new()
+	_effects.text = "Visual effects (card animations)"
+	_effects.button_pressed = true
+	box.add_child(_effects)
 	var start := Button.new()
 	start.text = "Start Game"
 	start.custom_minimum_size = Vector2(0, 48)
 	start.pressed.connect(func():
-		start_requested.emit(CardDB.deck_ids()[_you.selected], CardDB.deck_ids()[_opp.selected], _speed.value))
+		start_requested.emit(CardDB.deck_ids()[_you.selected], CardDB.deck_ids()[_opp.selected], _speed.value, _effects.button_pressed))
 	box.add_child(start)
 	var quit := Button.new()
 	quit.text = "Quit"

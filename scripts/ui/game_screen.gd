@@ -32,12 +32,20 @@ var _attach_discard_btn: Button
 var _log: RichTextLabel
 var _detail: RichTextLabel
 var _opp_discard_btn: Button
+var fx_enabled := true
+var _fx: FxLayer
+var _opp_hand_row: Control
+var _slot_nodes := {}  # "seat:slot" -> slot panel
+var _hidden_slots := {}  # "seat:slot" -> number of effects still to land there
+var _fx_queue: Array = []
+var _fx_running := false
 var _my_discard_btn: Button
 var _opp_exile_btn: Button
 var _my_exile_btn: Button
 
 
-func start(deck_ids: Array, agents: Array, ai_delay: float) -> void:
+func start(deck_ids: Array, agents: Array, ai_delay: float, effects := true) -> void:
+	fx_enabled = effects
 	_build_ui()
 	controller = GameController.new()
 	controller.ai_delay = ai_delay
@@ -157,6 +165,14 @@ func _build_ui() -> void:
 	menu_btn.pressed.connect(func(): exit_requested.emit())
 	side.add_child(menu_btn)
 
+	# Opponent's hand as blank cards peeking in from the top of the screen.
+	_opp_hand_row = Control.new()
+	_opp_hand_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_opp_hand_row)
+	_fx = FxLayer.new()
+	add_child(_fx)
+	_fx.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+
 
 func _board_row(parent: Control) -> HBoxContainer:
 	var row := HBoxContainer.new()
@@ -181,6 +197,7 @@ func _refresh() -> void:
 	_rebuild_board(_opp_board, ME + 1)
 	_rebuild_board(_my_board, ME)
 	_rebuild_hand()
+	_rebuild_opp_hand()
 	var acting := _can_act()
 	_end_btn.disabled = not acting or not _pending.is_empty()
 	_swap_btn.disabled = not acting or you.swap_used
@@ -243,6 +260,9 @@ func _make_slot(seat: int, slot: int) -> Control:
 	var valid: bool = not _pending.is_empty() and _pending.valid.call(seat, slot)
 	var panel := PanelContainer.new()
 	panel.custom_minimum_size = SLOT_SIZE
+	_slot_nodes["%d:%d" % [seat, slot]] = panel
+	if _hidden_slots.get("%d:%d" % [seat, slot], 0) > 0:
+		panel.modulate.a = 0.0  # a card is still flying in
 	var style := StyleBoxFlat.new()
 	style.set_corner_radius_all(8)
 	style.set_content_margin_all(8)
@@ -305,6 +325,7 @@ func _make_slot(seat: int, slot: int) -> Control:
 		none.modulate = Color(1, 1, 1, 0.4)
 		chips.add_child(none)
 	box.add_child(chips)
+	panel.set_meta("chips", chips)
 	if Rules.is_stunned(creature, view.turn):
 		var stun := Label.new()
 		stun.text = "STUNNED"
@@ -334,6 +355,24 @@ func _make_slot(seat: int, slot: int) -> Control:
 			l.modulate = Color(1, 1, 1, 1.0 if met else 0.45)
 			box.add_child(l)
 	return panel
+
+
+func _rebuild_opp_hand() -> void:
+	for c in _opp_hand_row.get_children():
+		_opp_hand_row.remove_child(c)
+		c.queue_free()
+	var n: int = view.opponent.hand_count
+	var center_x := (size.x - 330.0 - 40.0) / 2.0
+	for i in n:
+		var back := Panel.new()
+		back.size = Vector2(70, 100)
+		back.pivot_offset = back.size / 2.0
+		back.add_theme_stylebox_override("panel", FxLayer.back_style(6))
+		back.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var off := float(i) - float(n - 1) / 2.0
+		back.position = Vector2(center_x + off * minf(40.0, 560.0 / maxf(n, 1)) - 35.0, -62.0)
+		back.rotation = off * 0.035
+		_opp_hand_row.add_child(back)
 
 
 func _rebuild_hand() -> void:
@@ -366,6 +405,8 @@ func _show_creature_detail(creature: Dictionary) -> void:
 
 
 func _on_event(ev: Dictionary) -> void:
+	if fx_enabled and ev.has("fx"):
+		_enqueue_fx(ev)
 	var color := "#cfd8d3"
 	match int(ev.player):
 		ME: color = "#8fc7ff"
@@ -696,6 +737,104 @@ func _on_swap() -> void:
 	_pick_from_list("Swap: give which creature from your hand?", labels, func(h):
 		_pick_from_list("Swap: take which creature from your discard?", disc_labels, func(d):
 			_submit({"type": "swap", "hand": hand_idx[h], "discard": disc_idx[d]})))
+
+
+# --- Visual effects -------------------------------------------------------------------------------------
+## Events are queued and played one after another. Start positions are captured now, while
+## the hand still shows the card that was just played; playback starts a frame later, after
+## the table has been rebuilt for the new state.
+func _enqueue_fx(ev: Dictionary) -> void:
+	var item := {"ev": ev, "src": _fx_source_rect(ev)}
+	_fx_queue.append(item)
+	var key := _fx_hide_key(ev)
+	if key != "":
+		_hidden_slots[key] = int(_hidden_slots.get(key, 0)) + 1
+	controller.hold_ai = true
+	if not _fx_running:
+		_run_fx_queue.call_deferred()
+
+
+func _fx_hide_key(ev: Dictionary) -> String:
+	return "%d:%d" % [ev.player, ev.slot] if ev.fx == "play_creature" else ""
+
+
+func _fx_source_rect(ev: Dictionary) -> Rect2:
+	var mine: bool = int(ev.player) == ME
+	if ev.fx == "swap":
+		return Rect2()
+	if ev.fx == "attach" and ev.from == "discard" or ev.fx == "play_creature" and int(ev.hand) < 0:
+		return (_my_discard_btn if mine else _opp_discard_btn).get_global_rect()
+	var idx := int(ev.hand)
+	if mine:
+		if idx >= 0 and idx < _hand_box.get_child_count():
+			return _hand_box.get_child(idx).get_global_rect()
+		return Rect2(Vector2(size.x / 2.0, size.y), Vector2(150, 250))
+	var n := _opp_hand_row.get_child_count()
+	if n == 0:
+		return Rect2(Vector2(size.x / 2.0 - 35.0, -60.0), Vector2(70, 100))
+	return _opp_hand_row.get_child(clampi(idx, 0, n - 1)).get_global_rect()
+
+
+func _slot_rect(seat: int, slot: int) -> Rect2:
+	var node: Control = _slot_nodes.get("%d:%d" % [seat, slot])
+	if node != null and is_instance_valid(node):
+		return node.get_global_rect()
+	return Rect2(size / 2.0, SLOT_SIZE)
+
+
+func _run_fx_queue() -> void:
+	_fx_running = true
+	await get_tree().process_frame
+	while not _fx_queue.is_empty():
+		var item: Dictionary = _fx_queue.pop_front()
+		await _play_fx(item.ev, item.src)
+		var key := _fx_hide_key(item.ev)
+		if key != "":
+			_hidden_slots[key] = maxi(int(_hidden_slots.get(key, 1)) - 1, 0)
+			if view != {}:
+				_refresh()
+	controller.hold_ai = false
+	_fx_running = false
+
+
+func _play_fx(ev: Dictionary, src: Rect2) -> void:
+	var mine: bool = int(ev.player) == ME
+	match ev.fx:
+		"play_creature":
+			var target := _slot_rect(ev.player, ev.slot)
+			if int(ev.hand) < 0:  # Reinforce: comes out of the discard pile
+				await _fx.play_card(ev.card, src, 0.6, [target], false)
+			else:
+				await _fx.play_card(ev.card, src, 0.0 if mine else 2.0, [target], not mine)
+		"spell":
+			var targets: Array = []
+			for t in ev.targets:
+				targets.append(_slot_rect(int(t.player), int(t.slot)))
+			await _fx.play_card(ev.card, src, 2.0, targets, not mine)
+		"attach":
+			await _play_attach(ev, src, mine)
+		"swap":
+			await _fx.show_pair(ev.hand_card, ev.discard_card, "From hand", "From discard", 2.0)
+
+
+func _play_attach(ev: Dictionary, src: Rect2, mine: bool) -> void:
+	var target := _slot_rect(ev.player, ev.slot)
+	if ev.from == "discard":
+		var pos := src.get_center()
+		_fx.firework(pos)
+		await get_tree().create_timer(0.35).timeout
+		await _fx.zap(pos, target.get_center())
+	else:
+		await _fx.play_card(ev.card, src, 0.0 if mine else 0.7, [target], not mine, 1.3)
+	var panel: Control = _slot_nodes.get("%d:%d" % [ev.player, ev.slot])
+	var spot := target.get_center()
+	if panel != null and is_instance_valid(panel) and panel.has_meta("chips"):
+		var chips: Control = panel.get_meta("chips")
+		if is_instance_valid(chips) and chips.get_child_count() > 0:
+			spot = chips.get_child(chips.get_child_count() - 1).get_global_rect().get_center()
+	_fx.burst(spot + Vector2(0, -8), Rules.element_color(CardDB.element_of(ev.card)), 30, 170.0, 0.7)
+	_fx.blink(_slot_rect(ev.player, ev.slot))
+	await get_tree().create_timer(0.8).timeout
 
 
 # --- Game over ------------------------------------------------------------------------------------------------
