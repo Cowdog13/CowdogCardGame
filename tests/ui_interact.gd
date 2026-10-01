@@ -17,6 +17,13 @@ func _init() -> void:
 		var v: Dictionary = screen.view
 		if v.phase == "over":
 			break
+		if not v.pending.is_empty() and v.pending.player == 0 and v.pending.berries.is_empty():
+			for d in screen.get_children().filter(func(c): return c is Window):
+				screen.remove_child(d)
+				d.free()
+			screen._recycle_open = false
+			screen._submit({"type": "recycle", "cards": Rules.recycle_pick(v.you.discard, v.pending.recycle)})
+			continue
 		if not v.pending.is_empty() and v.pending.player == 0:
 			for s in Rules.BOARD_SLOTS:
 				if v.you.board[s] != null:

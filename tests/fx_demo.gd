@@ -46,5 +46,11 @@ func _init() -> void:
 	await create_timer(1.0).timeout
 	root.get_texture().get_image().save_png(out + "/fx6_swap.png")
 	await create_timer(2.5).timeout
+	e.state.players[0].board[1].ability_used_turn = -1
+	e.state.players[0].abilities_used = 0
+	print("ability: ", e.submit(0, {"type": "use_ability", "slot": 1, "ability": 1, "params": {}}))
+	await create_timer(0.8).timeout
+	root.get_texture().get_image().save_png(out + "/fx7_ability.png")
+	await create_timer(1.5).timeout
 	print("queue empty: ", screen._fx_queue.is_empty(), " hold_ai=", screen.controller.hold_ai)
 	quit()

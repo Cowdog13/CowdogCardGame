@@ -16,6 +16,7 @@ Open the folder in Godot 4.7 and press Play (main scene `scenes/main.tscn`).
   stay 2s before landing (berries 0.7s); your cards fly straight to their target; attached berries pop and blink the creature; berries from
   the discard get a firework and a line to the creature; swaps and spells are shown large in the middle for 2s (spells then fly to their targets).
   The computer waits for effects to finish before acting.
+- Used abilities flash for 1.5s so it's clear what was activated. Creature spaces are numbered 1-5 (shown on the board and in the payment list).
 - Hover anything for card text. **Swap** is the once-per-game hand/discard creature swap.
 
 ## Layout
@@ -43,6 +44,7 @@ godot --headless -s tests/rules_test.gd
 godot --headless -s tests/ui_payment.gd
 xvfb-run godot --rendering-driver opengl3 -s tests/ui_click_area.gd   # needs a display for real mouse events
 godot --headless -s tests/ui_smoke.gd
+xvfb-run godot --rendering-driver opengl3 -s tests/ui_toggle_click.gd   # one-click toggling in the payment list
 godot --headless -s tests/ui_interact.gd
 ```
 
@@ -64,7 +66,9 @@ Constants live in `scripts/core/rules.gd`.
 - **Revealed Super Berries** (from Plunder or Pillage) go onto a creature of the acting player's choice (the game pauses for the choice), or into their hand if they have no creature.
 - **Evolving** a stunned creature removes the stun.
 - **Reinforce** ignores (and doesn't use up) the once-per-turn creature play, and only works on a creature pillaged this turn.
-- **Firewolf's recycle** picks cards automatically (newest first, keeping creatures in the discard when possible).
+- **Pillage**: Super Berries are always attached to a creature of your choice. Other revealed cards go to the discard, except that with Fire Famine's Active
+  effect every berry is attached to a creature of your choice. With Firewolf's Active effect you then choose as many cards from your discard to recycle as
+  were pillaged (one set per Firewolf, capped by the discard size; they go to the bottom in the order chosen).
 - **Berry Trade** (Water Ruler) discards berries from the Ruler itself and from one enemy creature.
 - **Not yet implemented**: casting spells in response to abilities/plays (spells are playable on your own turn only), Free-Form deck building, deck size/Super Berry validation.
 

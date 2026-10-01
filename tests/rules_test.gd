@@ -72,11 +72,51 @@ func _init() -> void:
 	check(e.submit(a, {"type": "use_ability", "slot": 3, "ability": 0}).ok, "plunder")
 	check(e.awaiting() == [a] and not e.state.pending.is_empty(), "pending super berry placement")
 	check(not e.submit(a, {"type": "end_turn"}).ok, "must place the berry first")
-	check(e.submit(a, {"type": "place_super", "slot": 4}).ok, "place super berry")
+	check(e.submit(a, {"type": "place_berry", "slot": 4}).ok, "place super berry")
 	check(pl.board[4].berries == ["super_berry"] and e.state.pending.is_empty(), "berry on chosen creature")
 	pl.deck = ["super_berry", "fire_berry", "fire_berry"]
 	pl.board[0] = {"cards": ["firepup"], "berries": ["fire_berry", "fire_berry"], "exhausted": [false, false], "stun_until": -1, "ability_used_turn": -1}
 	check(e.submit(a, {"type": "use_ability", "slot": 0, "ability": 0}).ok, "pillage")
 	check(not e.state.pending.is_empty() and e.state.pending.player == a, "pillaged super berry placed by choice")
+	# Fire Famine + Firewolf: berries attach by choice, others are discarded, recycle is chosen.
+	e.state.pending = {}
+	pl.discard = []
+	pl.board = [null, null, null, null, null]
+	pl.board[0] = {"cards": ["firepup"], "berries": ["fire_berry", "fire_berry"], "exhausted": [false, false], "stun_until": -1, "ability_used_turn": -1}
+	pl.board[1] = {"cards": ["firewolf"], "berries": ["super_berry", "super_berry"], "exhausted": [false, false], "stun_until": -1, "ability_used_turn": -1}
+	pl.board[2] = {"cards": ["fire_famine"], "berries": ["super_berry"], "exhausted": [false], "stun_until": -1, "ability_used_turn": -1}
+	pl.deck = ["fire_berry", "firespore", "super_berry", "removal", "fire_berry"]
+	pl.abilities_used = 0
+	pl.board[0].ability_used_turn = -1
+	var before: int = pl.board[2].berries.size()
+	check(e.submit(a, {"type": "use_ability", "slot": 0, "ability": 0}).ok, "pillage 2 with both actives")
+	# Pillage 2 reveals fire_berry, firespore: berry is offered, firespore goes to discard, 2 recycles (wolf).
+	check(e.state.pending.berries == ["fire_berry"], "regular berry offered for placement")
+	check(pl.discard == ["firespore"], "non-berry goes to discard")
+	check(not e.submit(a, {"type": "recycle", "cards": [0]}).ok, "place the berry before recycling")
+	check(e.submit(a, {"type": "place_berry", "slot": 2}).ok, "place berry on a creature of choice")
+	check(pl.board[2].berries.size() == before + 1, "berry attached to chosen creature")
+	check(int(e.state.pending.recycle) == 1, "recycle count capped by discard size")
+	check(not e.submit(a, {"type": "recycle", "cards": [0, 0]}).ok, "wrong number of recycle picks rejected")
+	check(e.submit(a, {"type": "recycle", "cards": [0]}).ok and e.state.pending.is_empty(), "recycle chosen")
+	check(pl.deck.back() == "firespore" and pl.discard.is_empty(), "recycled card went to the bottom")
+	# Firewolf alone: regular berries go to the discard, recycle is still chosen.
+	pl.board[2] = null
+	pl.deck = ["fire_berry", "removal", "fire_berry", "fire_berry"]
+	pl.board[0].ability_used_turn = -1
+	pl.abilities_used = 0
+	check(e.submit(a, {"type": "use_ability", "slot": 0, "ability": 0}).ok, "pillage with wolf only")
+	check(pl.discard == ["fire_berry", "removal"] and e.state.pending.berries.is_empty() and int(e.state.pending.recycle) == 2, "wolf only: berry discarded, two recycles pending")
+	e.submit(a, {"type": "recycle", "cards": [1, 0]})
+	check(e.state.pending.is_empty() and pl.deck.slice(-2) == ["removal", "fire_berry"], "recycle order respected")
+	# Fire Famine alone: all berries are attached by choice; no recycle.
+	pl.board[1] = null
+	pl.board[2] = {"cards": ["fire_famine"], "berries": ["super_berry", "fire_berry"], "exhausted": [false, false], "stun_until": -1, "ability_used_turn": -1}
+	pl.deck = ["fire_berry", "removal", "fire_berry"]
+	pl.board[0].ability_used_turn = -1
+	pl.abilities_used = 0
+	check(e.submit(a, {"type": "use_ability", "slot": 0, "ability": 0}).ok, "pillage with famine only")
+	check(e.state.pending.berries == ["fire_berry"] and int(e.state.pending.recycle) == 0, "famine only: berry placed by choice, no recycle")
+	e.submit(a, {"type": "place_berry", "slot": 0})
 	print("rules_test failures=%d" % fails)
 	quit(1 if fails > 0 else 0)

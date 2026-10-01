@@ -10,7 +10,9 @@ func _init(p_seat: int = 1) -> void:
 
 func decide(view: Dictionary) -> Dictionary:
 	if not view.pending.is_empty():
-		return {"type": "place_super", "slot": Rules.best_attach_slot(view.you.board, "super_berry")}
+		if view.pending.berries.is_empty():
+			return {"type": "recycle", "cards": Rules.recycle_pick(view.you.discard, view.pending.recycle)}
+		return {"type": "place_berry", "slot": Rules.best_attach_slot(view.you.board, view.pending.berries.back())}
 	if view.phase == "mulligan":
 		return _mulligan(view)
 	return _main_phase(view)

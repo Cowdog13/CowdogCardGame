@@ -11,7 +11,8 @@ extends RefCounted
 ##   {"type":"use_ability",  "slot":s, "ability":a, "params":{}}
 ##   {"type":"play_spell",   "hand":i, "payment":[...], "params":{}}
 ##   {"type":"swap",         "hand":i, "discard":j}             (once per game)
-##   {"type":"place_super",  "slot":s}                        (only while state.pending: choose where a revealed Super Berry goes)
+##   {"type":"place_berry",  "slot":s}                        (only while state.pending has berries: where a revealed berry goes)
+##   {"type":"recycle",      "cards":[discard indices]}       (only while state.pending.recycle > 0: Firewolf's choice)
 ##   {"type":"end_turn"}
 ## Results are {"ok":true} or {"ok":false,"error":"..."}.
 
@@ -37,7 +38,7 @@ func setup(deck_ids: Array, seed_val: int = -1) -> void:
 		"active": -1,
 		"first_player": rng.randi_range(0, 1),
 		"winner": -1,
-		"pending": {},  # {"player": p, "berries": [ids]} while a player must place revealed Super Berries
+		"pending": {},  # {"player": p, "berries": [ids], "recycle": n} while a player must place berries / choose recycles
 		"names": ["Player 1", "Player 2"],
 		"players": [_new_player(deck_ids[0]), _new_player(deck_ids[1])],
 	}
@@ -75,9 +76,10 @@ func submit(player: int, action: Dictionary) -> Dictionary:
 	var t: String = action.get("type", "")
 	var res: Dictionary
 	if not state.pending.is_empty():
-		if player != state.pending.player or t != "place_super":
-			return _err("Choose a creature for the Super Berry first")
-		res = _do_place_super(player, action)
+		var wanted := "place_berry" if not state.pending.berries.is_empty() else "recycle"
+		if player != state.pending.player or t != wanted:
+			return _err("Finish the pending choice first (%s)" % wanted)
+		res = _do_place_berry(player, action) if wanted == "place_berry" else _do_recycle(player, action)
 	elif state.phase == "mulligan":
 		if t != "mulligan":
 			return _err("Mulligan first")
@@ -346,7 +348,8 @@ func _do_ability(player: int, action: Dictionary) -> Dictionary:
 			return _err(why)
 	pl.abilities_used += 1
 	creature.ability_used_turn = state.turn
-	_say("%s uses %s's %s." % [_pname(player), Rules.creature_name(creature), Rules.ability_text(ab)], player, "ability")
+	_say("%s uses %s's %s." % [_pname(player), Rules.creature_name(creature), Rules.ability_text(ab)], player, "ability",
+		{"fx": "ability", "slot": slot, "ability": ai})
 	for e in ab.effects:
 		_apply_effect(e, player, slot, params)
 	return _ok()
@@ -509,86 +512,99 @@ func _plunder(initiator: int, target: int, n: int) -> void:
 		count += 1
 		if CardDB.element_of(id) == Rules.SUPER:
 			stolen += 1
-			_reveal_super(initiator, id)
+			_reveal_berry(initiator, id)
 		else:
 			tp.discard.append(id)
 	_say("%s discards %d card(s) from the top of the deck%s." % [_pname(target), count, " (%d Super Berry stolen)" % stolen if stolen > 0 else ""], target)
 
 
-## A Super Berry revealed by Plunder or Pillage goes onto a creature of the initiating
-## player's choice (resolved through a pending place_super action), or into their hand
-## if they have no creature.
-func _reveal_super(initiator: int, id: String) -> void:
-	var pl := _P(initiator)
-	if pl.board.all(func(c): return c == null):
-		pl.hand.append(id)
-		return
+## Berries revealed by Plunder or Pillage that the acting player may place go into
+## state.pending; the player then answers with place_berry actions (one per berry).
+## A Super Berry always goes onto a creature of the player's choice, or into their
+## hand if they have no creature. Other berries are only offered when Fire Famine's
+## Active effect applies (see _pillage); otherwise they go to the discard.
+func _pending_for(p: int) -> Dictionary:
 	if state.pending.is_empty():
-		state.pending = {"player": initiator, "berries": []}
-	state.pending.berries.append(id)
+		state.pending = {"player": p, "berries": [], "recycle": 0}
+	return state.pending
 
 
-func _do_place_super(player: int, action: Dictionary) -> Dictionary:
+func _reveal_berry(p: int, id: String) -> void:
+	var pl := _P(p)
+	if pl.board.all(func(c): return c == null):
+		if CardDB.element_of(id) == Rules.SUPER:
+			pl.hand.append(id)
+		else:
+			pl.discard.append(id)
+		return
+	_pending_for(p).berries.append(id)
+
+
+func _do_place_berry(player: int, action: Dictionary) -> Dictionary:
 	var pl := _P(player)
 	var slot := int(action.get("slot", -1))
 	if slot < 0 or slot >= pl.board.size() or pl.board[slot] == null:
 		return _err("Choose a creature")
 	var id: String = state.pending.berries.pop_back()
 	_add_berry(pl.board[slot], id, false)
-	_say("%s attaches the Super Berry to %s." % [_pname(player), Rules.creature_name(pl.board[slot])], player)
-	if state.pending.berries.is_empty():
-		state.pending = {}
+	_say("%s attaches the %s to %s." % [_pname(player), CardDB.card_name(id), Rules.creature_name(pl.board[slot])], player)
+	_clear_pending_if_done()
 	return _ok()
 
 
-func _pillage(p: int, n: int) -> void:
-	var pl := _P(p)
-	var attach_berries := _active_count(p, "attach_pillaged_berries") > 0
-	var recycles := _active_count(p, "recycle_on_pillage")
-	var taken := 0
-	for i in n:
-		if pl.deck.is_empty():
-			break
-		var id: String = pl.deck.pop_front()
-		taken += 1
-		if CardDB.element_of(id) == Rules.SUPER:
-			_reveal_super(p, id)
-			continue
-		if attach_berries and CardDB.is_berry(id):
-			var slot := Rules.best_attach_slot(pl.board, id)
-			if slot >= 0:
-				_add_berry(pl.board[slot], id, false)
-				continue
-		pl.discard.append(id)
-		pl.pillaged.append(id)
-	_say("%s pillages %d card(s) from their own deck." % [_pname(p), taken], p)
-	for r in recycles:
-		_recycle(p, taken)
-
-
-## Active recycle effects choose automatically: newest discards first, but keeping
-## creatures (which Reinforce may want) in the discard pile as long as possible.
-func _recycle(p: int, n: int) -> void:
-	var pl := _P(p)
-	var order: Array = range(pl.discard.size() - 1, -1, -1)
-	var rank := func(i: int) -> int: return 2 if CardDB.is_creature(pl.discard[i]) else (1 if CardDB.is_spell(pl.discard[i]) else 0)
-	order.sort_custom(func(a, b): return rank.call(a) < rank.call(b))
-	var chosen: Array = order.slice(0, mini(n, order.size()))
-	if chosen.is_empty():
-		return
-	var ids: Array = []
-	for i in chosen:
-		ids.append(pl.discard[i])
-	chosen.sort()
-	chosen.reverse()
-	for i in chosen:
+## Firewolf's Active effect: the player chooses which discard cards go to the bottom of
+## the deck. Cards go on the bottom in the order chosen.
+func _do_recycle(player: int, action: Dictionary) -> Dictionary:
+	var pl := _P(player)
+	var picks: Array = action.get("cards", [])
+	var need := int(state.pending.recycle)
+	if picks.size() != need or _indices_invalid(picks, pl.discard.size()):
+		return _err("Choose exactly %d card(s) from your discard to recycle" % need)
+	var ids: Array = picks.map(func(i): return pl.discard[int(i)])
+	var sorted := picks.map(func(i): return int(i))
+	sorted.sort()
+	sorted.reverse()
+	for i in sorted:
 		pl.discard.remove_at(i)
 	for id in ids:
 		pl.deck.push_back(id)
 		var pi: int = pl.pillaged.find(id)
 		if pi >= 0:
 			pl.pillaged.remove_at(pi)
-	_say("%s recycles %d card(s) to the bottom of their deck." % [_pname(p), ids.size()], p)
+	state.pending.recycle = 0
+	_say("%s recycles %d card(s) to the bottom of their deck." % [_pname(player), ids.size()], player)
+	_clear_pending_if_done()
+	return _ok()
+
+
+func _clear_pending_if_done() -> void:
+	if state.pending.berries.is_empty() and int(state.pending.recycle) == 0:
+		state.pending = {}
+
+
+## Pillage: the top n cards go to the discard, except
+##  - Super Berries, which are always attached to a creature of the player's choice, and
+##  - with Fire Famine's Active effect, every berry is attached (player's choice).
+## With Firewolf's Active effect the player then chooses an equal number of cards to recycle.
+func _pillage(p: int, n: int) -> void:
+	var pl := _P(p)
+	var famine := _active_count(p, "attach_pillaged_berries") > 0
+	var wolves := _active_count(p, "recycle_on_pillage")
+	var taken := 0
+	for i in n:
+		if pl.deck.is_empty():
+			break
+		var id: String = pl.deck.pop_front()
+		taken += 1
+		if CardDB.element_of(id) == Rules.SUPER or (famine and CardDB.is_berry(id)):
+			_reveal_berry(p, id)
+			continue
+		pl.discard.append(id)
+		pl.pillaged.append(id)
+	_say("%s pillages %d card(s) from their own deck." % [_pname(p), taken], p)
+	var recycle := mini(taken * wolves, pl.discard.size())
+	if recycle > 0:
+		_pending_for(p).recycle = recycle
 
 
 # --- Spells ---------------------------------------------------------------------------

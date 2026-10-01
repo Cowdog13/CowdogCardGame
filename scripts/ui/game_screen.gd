@@ -39,6 +39,7 @@ var _slot_nodes := {}  # "seat:slot" -> slot panel
 var _hidden_slots := {}  # "seat:slot" -> number of effects still to land there
 var _fx_queue: Array = []
 var _fx_running := false
+var _recycle_open := false
 var _my_discard_btn: Button
 var _opp_exile_btn: Button
 var _my_exile_btn: Button
@@ -208,9 +209,13 @@ func _refresh() -> void:
 		_: _turn_label.text = "Turn %d - %s" % [view.turn, "YOUR TURN" if acting else "Opponent's turn"]
 	_update_banner()
 	if not view.pending.is_empty() and view.pending.player == ME and _pending.is_empty():
-		_begin_targeting("Choose a creature to receive the revealed Super Berry (%d left)." % view.pending.berries.size(),
-			func(p, s): return p == ME and view.you.board[s] != null, 1,
-			func(t): _submit({"type": "place_super", "slot": t[0].slot}), true)
+		if not view.pending.berries.is_empty():
+			var id: String = view.pending.berries.back()
+			_begin_targeting("Choose a creature to receive the revealed %s (%d left)." % [CardDB.card_name(id), view.pending.berries.size()],
+				func(p, s): return p == ME and view.you.board[s] != null, 1,
+				func(t): _submit({"type": "place_berry", "slot": t[0].slot}), true)
+		elif not _recycle_open:
+			_ask_recycle(int(view.pending.recycle))
 
 
 func _turn_flags(you: Dictionary) -> String:
@@ -286,7 +291,7 @@ func _make_slot(seat: int, slot: int) -> Control:
 	panel.add_child(box)
 	if creature == null:
 		var empty := Label.new()
-		empty.text = "Empty"
+		empty.text = "Empty (%d)" % (slot + 1)
 		empty.modulate = Color(1, 1, 1, 0.35)
 		empty.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		empty.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -296,7 +301,7 @@ func _make_slot(seat: int, slot: int) -> Control:
 	var top := Rules.top_card(creature)
 	panel.mouse_entered.connect(func(): _show_creature_detail(creature))
 	var title := Label.new()
-	title.text = "%s  (Tier %d)" % [top.name, int(top.tier)]
+	title.text = "%d. %s  (Tier %d)" % [slot + 1, top.name, int(top.tier)]
 	title.add_theme_font_size_override("font_size", 18)
 	box.add_child(title)
 	if creature.cards.size() > 1:
@@ -331,6 +336,8 @@ func _make_slot(seat: int, slot: int) -> Control:
 		stun.text = "STUNNED"
 		stun.modulate = Color(0.5, 0.85, 1)
 		box.add_child(stun)
+	var ability_nodes: Array = []
+	panel.set_meta("abilities", ability_nodes)
 	for ai in top.abilities.size():
 		var ab: Dictionary = top.abilities[ai]
 		var label := "[%s] %s" % [Rules.cost_text(ab.cost), Rules.ability_text(ab)]
@@ -347,6 +354,7 @@ func _make_slot(seat: int, slot: int) -> Control:
 			# A disabled button would swallow clicks meant for the creature (e.g. while targeting).
 			btn.mouse_filter = Control.MOUSE_FILTER_IGNORE if btn.disabled else Control.MOUSE_FILTER_STOP
 			box.add_child(btn)
+			ability_nodes.append(btn)
 		else:
 			var l := Label.new()
 			l.text = label
@@ -354,6 +362,7 @@ func _make_slot(seat: int, slot: int) -> Control:
 			l.add_theme_font_size_override("font_size", 13)
 			l.modulate = Color(1, 1, 1, 1.0 if met else 0.45)
 			box.add_child(l)
+			ability_nodes.append(l)
 	return panel
 
 
@@ -611,7 +620,6 @@ func _cast(i: int, params: Dictionary) -> void:
 ## pre-selected, so confirming straight away behaves like an automatic payment.
 func _choose_payment(spell: Dictionary, on_paid: Callable) -> void:
 	var you: Dictionary = view.you
-	var need := int(spell.cost.amount)
 	var options: Array = []  # payment entries, parallel to the list items
 	var labels: Array = []
 	for s in you.board.size():
@@ -622,39 +630,66 @@ func _choose_payment(spell: Dictionary, on_paid: Callable) -> void:
 			if Rules.berry_matches(c.berries[bi], spell.cost.element):
 				var sideways: bool = c.exhausted[bi]
 				options.append({"src": "attached", "slot": s, "index": bi})
-				labels.append("%s on %s (%s)" % [CardDB.card_name(c.berries[bi]), Rules.creature_name(c),
+				labels.append("Creature %d (%s): %s, %s" % [s + 1, Rules.creature_name(c), CardDB.card_name(c.berries[bi]),
 					"exhausted -> exile" if sideways else "upright -> discard"])
 	for di in you.discard.size():
 		if CardDB.is_berry(you.discard[di]) and Rules.berry_matches(you.discard[di], spell.cost.element):
 			options.append({"src": "discard", "index": di})
-			labels.append("%s in your discard (-> exile)" % CardDB.card_name(you.discard[di]))
+			labels.append("Your discard: %s (-> exile)" % CardDB.card_name(you.discard[di]))
 	var plan := Rules.plan_payment(you, spell.cost)
+	var preselect: Array = []
+	for k in options.size():
+		for entry in plan.get("payment", []):
+			if entry.src == options[k].src and int(entry.index) == int(options[k].index) and int(entry.get("slot", -1)) == int(options[k].get("slot", -1)):
+				preselect.append(k)
+	_multi_pick("Pay for %s: choose %s" % [spell.name, Rules.cost_text(spell.cost)], labels, int(spell.cost.amount), preselect,
+		"Pay", func(picked: Array): on_paid.call(picked.map(func(k): return options[k])), Callable())
+
+
+## Dialog where each click toggles an item; confirms only with exactly `need` selected.
+func _multi_pick(title: String, labels: Array, need: int, preselect: Array, verb: String, on_ok: Callable, on_cancel: Callable) -> void:
 	var d := ConfirmationDialog.new()
-	d.title = "Pay for %s: choose %s" % [spell.name, Rules.cost_text(spell.cost)]
+	d.title = title
 	var list := ItemList.new()
-	list.select_mode = ItemList.SELECT_MULTI
-	list.custom_minimum_size = Vector2(420, 280)
+	list.select_mode = ItemList.SELECT_TOGGLE  # a plain click selects / deselects
+	list.custom_minimum_size = Vector2(460, 300)
 	for l in labels:
 		list.add_item(l)
 	d.add_child(list)
 	var update := func():
 		var n := list.get_selected_items().size()
 		d.get_ok_button().disabled = n != need
-		d.get_ok_button().text = "Pay (%d/%d)" % [n, need]
-	for k in options.size():
-		for entry in plan.get("payment", []):
-			if entry.src == options[k].src and int(entry.index) == int(options[k].index) and int(entry.get("slot", -1)) == int(options[k].get("slot", -1)):
-				list.select(k, false)
+		d.get_ok_button().text = "%s (%d/%d)" % [verb, n, need]
+	for k in preselect:
+		list.select(k, false)
 	list.multi_selected.connect(func(_i, _sel): update.call())
+	list.item_selected.connect(func(_i): update.call())
 	d.confirmed.connect(func():
-		var payment: Array = []
-		for k in list.get_selected_items():
-			payment.append(options[k])
+		var picked: Array = Array(list.get_selected_items())
 		d.queue_free()
-		on_paid.call(payment))
-	d.canceled.connect(d.queue_free)
+		on_ok.call(picked))
+	d.canceled.connect(func():
+		d.queue_free()
+		if on_cancel.is_valid():
+			on_cancel.call())
 	_popup(d)
 	update.call()
+
+
+## Firewolf: choose which cards from the discard go to the bottom of the deck.
+func _ask_recycle(n: int) -> void:
+	var discard: Array = view.you.discard
+	var order: Array = range(discard.size() - 1, -1, -1)  # newest first
+	var labels: Array = order.map(func(i): return CardDB.card_name(discard[i]))
+	var suggested := Rules.recycle_pick(discard, n).map(func(i): return order.find(i))
+	_recycle_open = true
+	_multi_pick("Recycle: choose %d card(s) to put on the bottom of your deck" % n, labels, n, suggested, "Recycle",
+		func(picked: Array):
+			_recycle_open = false
+			_submit({"type": "recycle", "cards": picked.map(func(k): return order[k])}),
+		func():
+			_recycle_open = false
+			_refresh.call_deferred())  # a recycle choice can't be skipped; ask again
 
 
 # --- Ability interaction -------------------------------------------------------------------------------
@@ -760,7 +795,7 @@ func _fx_hide_key(ev: Dictionary) -> String:
 
 func _fx_source_rect(ev: Dictionary) -> Rect2:
 	var mine: bool = int(ev.player) == ME
-	if ev.fx == "swap":
+	if ev.fx == "swap" or ev.fx == "ability":
 		return Rect2()
 	if ev.fx == "attach" and ev.from == "discard" or ev.fx == "play_creature" and int(ev.hand) < 0:
 		return (_my_discard_btn if mine else _opp_discard_btn).get_global_rect()
@@ -813,6 +848,14 @@ func _play_fx(ev: Dictionary, src: Rect2) -> void:
 			await _fx.play_card(ev.card, src, 2.0, targets, not mine)
 		"attach":
 			await _play_attach(ev, src, mine)
+		"ability":
+			var panel: Control = _slot_nodes.get("%d:%d" % [ev.player, ev.slot])
+			var rect := _slot_rect(ev.player, ev.slot)
+			if panel != null and is_instance_valid(panel) and panel.has_meta("abilities"):
+				var nodes: Array = panel.get_meta("abilities")
+				if int(ev.ability) < nodes.size() and is_instance_valid(nodes[int(ev.ability)]):
+					rect = nodes[int(ev.ability)].get_global_rect()
+			await _fx.flash(rect, 1.5)
 		"swap":
 			await _fx.show_pair(ev.hand_card, ev.discard_card, "From hand", "From discard", 2.0)
 

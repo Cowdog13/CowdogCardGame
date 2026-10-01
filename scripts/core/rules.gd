@@ -237,6 +237,16 @@ static func plan_payment(me: Dictionary, cost: Dictionary) -> Dictionary:
 	return {"payment": payment, "loss": before - board_potential(board)}
 
 
+## Indices of the `n` discard cards least worth keeping there, best first: berries, then
+## spells, then creatures (Reinforce may want those); newest first within a group.
+static func recycle_pick(discard: Array, n: int) -> Array:
+	var order: Array = range(discard.size() - 1, -1, -1)
+	var rank := func(i: int) -> int:
+		return 2 if CardDB.is_creature(discard[i]) else (1 if CardDB.is_spell(discard[i]) else 0)
+	order.sort_custom(func(a, b): return rank.call(a) < rank.call(b))
+	return order.slice(0, mini(n, order.size()))
+
+
 ## Berry trade: which `n` berries to discard from our creature and from the enemy creature.
 ## We give up the least useful, we take the most useful (Super Berries first).
 static func plan_trade(own: Dictionary, theirs: Dictionary, n: int) -> Dictionary:

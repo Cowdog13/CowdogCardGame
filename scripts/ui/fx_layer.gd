@@ -215,6 +215,30 @@ func zap(a: Vector2, b: Vector2, color := Color(1, 0.95, 0.6)) -> void:
 	line.queue_free()
 
 
+## Pulses a highlighted frame over `rect` for about `duration` seconds.
+func flash(rect: Rect2, duration := 1.5, color := Color(1, 0.92, 0.35)) -> void:
+	var frame := Panel.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(color.r, color.g, color.b, 0.28)
+	sb.border_color = color
+	sb.set_border_width_all(4)
+	sb.set_corner_radius_all(6)
+	frame.add_theme_stylebox_override("panel", sb)
+	frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	frame.position = rect.position - global_position - Vector2(3, 3)
+	frame.size = rect.size + Vector2(6, 6)
+	frame.modulate.a = 0.0
+	add_child(frame)
+	var cycles := maxi(int(duration / 0.3), 1)
+	var tw := create_tween()
+	for i in cycles:
+		tw.tween_property(frame, "modulate:a", 1.0, 0.15)
+		tw.tween_property(frame, "modulate:a", 0.25, 0.15)
+	tw.tween_property(frame, "modulate:a", 0.0, maxf(duration - cycles * 0.3, 0.05))
+	await tw.finished
+	frame.queue_free()
+
+
 ## Blinks a light border around `rect` a few times.
 func blink(rect: Rect2, color := Color(1, 0.96, 0.7), times := 3) -> void:
 	var frame := Panel.new()

@@ -17,9 +17,11 @@ func decide(_view: Dictionary) -> Dictionary:
 ## Always-valid action used if an agent keeps producing illegal ones.
 static func fallback_action(view: Dictionary) -> Dictionary:
 	if not view.pending.is_empty():
+		if view.pending.berries.is_empty():
+			return {"type": "recycle", "cards": Rules.recycle_pick(view.you.discard, view.pending.recycle)}
 		for s in view.you.board.size():
 			if view.you.board[s] != null:
-				return {"type": "place_super", "slot": s}
+				return {"type": "place_berry", "slot": s}
 	if view.phase == "mulligan":
 		return {"type": "mulligan", "cards": []}
 	return {"type": "end_turn"}
