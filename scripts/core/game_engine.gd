@@ -590,7 +590,7 @@ func _clear_pending_if_done() -> void:
 func _pillage(p: int, n: int) -> void:
 	var pl := _P(p)
 	var famine := _active_count(p, "attach_pillaged_berries") > 0
-	var wolves := _active_count(p, "recycle_on_pillage")
+	var wolves := _active_count(p, "recycle_on_pillage") > 0  # Active effects don't stack
 	var taken := 0
 	var discarded := 0  # cards that actually went to the discard (attached berries don't count)
 	for i in n:
@@ -605,7 +605,7 @@ func _pillage(p: int, n: int) -> void:
 		pl.pillaged.append(id)
 		discarded += 1
 	_say("%s pillages %d card(s) from their own deck." % [_pname(p), taken], p)
-	var recycle := mini(discarded * wolves, pl.discard.size())
+	var recycle := mini(discarded, pl.discard.size()) if wolves else 0
 	if recycle > 0:
 		_pending_for(p).recycle = recycle
 
