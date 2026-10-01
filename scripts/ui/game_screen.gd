@@ -33,6 +33,8 @@ var _log: RichTextLabel
 var _detail: RichTextLabel
 var _opp_discard_btn: Button
 var _my_discard_btn: Button
+var _opp_exile_btn: Button
+var _my_exile_btn: Button
 
 
 func start(deck_ids: Array, agents: Array, ai_delay: float) -> void:
@@ -75,6 +77,9 @@ func _build_ui() -> void:
 	_opp_discard_btn = Button.new()
 	_opp_discard_btn.pressed.connect(func(): _show_pile("Opponent's discard", view.opponent.discard))
 	opp_row.add_child(_opp_discard_btn)
+	_opp_exile_btn = Button.new()
+	_opp_exile_btn.pressed.connect(func(): _show_pile("Opponent's exile", view.opponent.exile))
+	opp_row.add_child(_opp_exile_btn)
 	_opp_board = _board_row(left)
 
 	var mid := HBoxContainer.new()
@@ -107,6 +112,9 @@ func _build_ui() -> void:
 	_my_discard_btn = Button.new()
 	_my_discard_btn.pressed.connect(func(): _show_pile("Your discard", view.you.discard))
 	my_row.add_child(_my_discard_btn)
+	_my_exile_btn = Button.new()
+	_my_exile_btn.pressed.connect(func(): _show_pile("Your exile", view.you.exile))
+	my_row.add_child(_my_exile_btn)
 	_attach_discard_btn = Button.new()
 	_attach_discard_btn.text = "Attach berry from discard"
 	_attach_discard_btn.pressed.connect(_on_attach_from_discard)
@@ -163,9 +171,11 @@ func _refresh() -> void:
 	view = controller.get_view(ME)
 	var you: Dictionary = view.you
 	var opp: Dictionary = view.opponent
-	_opp_info.text = "Opponent - Deck %d | Hand %d | Exile %d" % [opp.deck_count, opp.hand_count, opp.exile_count]
+	_opp_info.text = "Opponent - Deck %d | Hand %d" % [opp.deck_count, opp.hand_count]
 	_opp_discard_btn.text = "Discard (%d)" % opp.discard.size()
-	_my_info.text = "You - Deck %d | Exile %d%s" % [you.deck_count, you.exile_count, _turn_flags(you)]
+	_opp_exile_btn.text = "Exile (%d)" % opp.exile.size()
+	_my_exile_btn.text = "Exile (%d)" % you.exile.size()
+	_my_info.text = "You - Deck %d%s" % [you.deck_count, _turn_flags(you)]
 	_my_discard_btn.text = "Discard (%d)" % you.discard.size()
 	_rebuild_board(_opp_board, ME + 1)
 	_rebuild_board(_my_board, ME)
@@ -549,18 +559,58 @@ func _begin_spell(i: int, id: String) -> void:
 
 func _cast(i: int, params: Dictionary) -> void:
 	var spell := CardDB.card(view.you.hand[i])
-	var plan := Rules.plan_payment(view.you, spell.cost)
-	if plan.is_empty():
-		return _toast("You can't pay for %s." % spell.name)
-	var lines: Array = []
-	for entry in plan.payment:
-		if entry.src == "discard":
-			lines.append("Exile %s from your discard" % CardDB.card_name(view.you.discard[entry.index]))
-		else:
-			var c: Dictionary = view.you.board[entry.slot]
-			lines.append("Discard %s from %s" % [CardDB.card_name(c.berries[entry.index]), Rules.creature_name(c)])
-	_confirm("Play %s" % spell.name, "Pay %s:\n- %s" % [Rules.cost_text(spell.cost), "\n- ".join(lines)],
-		func(): _submit({"type": "play_spell", "hand": i, "payment": plan.payment, "params": params}))
+	_choose_payment(spell, func(payment: Array):
+		_submit({"type": "play_spell", "hand": i, "payment": payment, "params": params}))
+
+
+## Lets the player pick exactly which berries pay for `spell`. The cheapest payment is
+## pre-selected, so confirming straight away behaves like an automatic payment.
+func _choose_payment(spell: Dictionary, on_paid: Callable) -> void:
+	var you: Dictionary = view.you
+	var need := int(spell.cost.amount)
+	var options: Array = []  # payment entries, parallel to the list items
+	var labels: Array = []
+	for s in you.board.size():
+		var c = you.board[s]
+		if c == null:
+			continue
+		for bi in c.berries.size():
+			if Rules.berry_matches(c.berries[bi], spell.cost.element):
+				var sideways: bool = c.exhausted[bi]
+				options.append({"src": "attached", "slot": s, "index": bi})
+				labels.append("%s on %s (%s)" % [CardDB.card_name(c.berries[bi]), Rules.creature_name(c),
+					"exhausted -> exile" if sideways else "upright -> discard"])
+	for di in you.discard.size():
+		if CardDB.is_berry(you.discard[di]) and Rules.berry_matches(you.discard[di], spell.cost.element):
+			options.append({"src": "discard", "index": di})
+			labels.append("%s in your discard (-> exile)" % CardDB.card_name(you.discard[di]))
+	var plan := Rules.plan_payment(you, spell.cost)
+	var d := ConfirmationDialog.new()
+	d.title = "Pay for %s: choose %s" % [spell.name, Rules.cost_text(spell.cost)]
+	var list := ItemList.new()
+	list.select_mode = ItemList.SELECT_MULTI
+	list.custom_minimum_size = Vector2(420, 280)
+	for l in labels:
+		list.add_item(l)
+	d.add_child(list)
+	var update := func():
+		var n := list.get_selected_items().size()
+		d.get_ok_button().disabled = n != need
+		d.get_ok_button().text = "Pay (%d/%d)" % [n, need]
+	for k in options.size():
+		for entry in plan.get("payment", []):
+			if entry.src == options[k].src and int(entry.index) == int(options[k].index) and int(entry.get("slot", -1)) == int(options[k].get("slot", -1)):
+				list.select(k, false)
+	list.multi_selected.connect(func(_i, _sel): update.call())
+	d.confirmed.connect(func():
+		var payment: Array = []
+		for k in list.get_selected_items():
+			payment.append(options[k])
+		d.queue_free()
+		on_paid.call(payment))
+	d.canceled.connect(d.queue_free)
+	_popup(d)
+	update.call()
 
 
 # --- Ability interaction -------------------------------------------------------------------------------

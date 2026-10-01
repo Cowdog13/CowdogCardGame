@@ -10,7 +10,8 @@ Open the folder in Godot 4.7 and press Play (main scene `scenes/main.tscn`).
 - Mulligan: click cards to send to the bottom, **Confirm** to draw that many.
 - Click a hand card, then click a highlighted board space (berry -> creature, creature -> space/evolve target).
 - Click an ability button on one of your creatures to use it (2 per turn). Stun/Removal/Berry Trade ask for targets.
-- Spells show how they will be paid before they resolve (discard-pile berries are exiled first).
+- Spells ask which berries pay the cost (the cheapest choice is pre-selected; discard-pile berries are exiled).
+- **Discard** and **Exile** buttons show both players' piles.
 - Hover anything for card text. **Swap** is the once-per-game hand/discard creature swap.
 
 ## Layout
@@ -35,6 +36,7 @@ The engine is already shaped for it:
 godot --headless --import --quit
 godot --headless -s tests/run_sim.gd -- 200     # AI vs AI; fails on illegal AI moves, stuck games, lost cards
 godot --headless -s tests/rules_test.gd
+godot --headless -s tests/ui_payment.gd
 godot --headless -s tests/ui_smoke.gd
 godot --headless -s tests/ui_interact.gd
 ```

@@ -121,6 +121,7 @@ func _public_player(pl: Dictionary) -> Dictionary:
 		"deck_id": pl.deck_id,
 		"deck_count": pl.deck.size(),
 		"discard": pl.discard.duplicate(),
+		"exile": pl.exile.duplicate(),  # exile is public, like the discard
 		"exile_count": pl.exile.size(),
 		"board": pl.board.duplicate(true),
 		"mulligan_done": pl.mulligan_done,
