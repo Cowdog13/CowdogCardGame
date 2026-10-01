@@ -130,8 +130,9 @@ func _build_ui() -> void:
 	my_row.add_child(_end_btn)
 
 	var scroll := ScrollContainer.new()
-	scroll.custom_minimum_size = Vector2(0, 245)
-	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.custom_minimum_size = Vector2(0, 275)
+	# Never let a tall card grow the hand area (and push the table around).
+	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER
 	left.add_child(scroll)
 	_hand_box = HBoxContainer.new()
 	_hand_box.add_theme_constant_override("separation", 6)
@@ -322,6 +323,8 @@ func _make_slot(seat: int, slot: int) -> Control:
 			btn.disabled = not (_can_act() and _pending.is_empty() and met and not Rules.abilities_locked(view.turn) and not Rules.used_ability_this_turn(creature, view.turn)
 				and not Rules.is_stunned(creature, view.turn) and view.you.abilities_used < Rules.ABILITIES_PER_TURN)
 			btn.pressed.connect(_on_ability_pressed.bind(slot, ai))
+			# A disabled button would swallow clicks meant for the creature (e.g. while targeting).
+			btn.mouse_filter = Control.MOUSE_FILTER_IGNORE if btn.disabled else Control.MOUSE_FILTER_STOP
 			box.add_child(btn)
 		else:
 			var l := Label.new()

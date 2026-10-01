@@ -37,6 +37,7 @@ godot --headless --import --quit
 godot --headless -s tests/run_sim.gd -- 200     # AI vs AI; fails on illegal AI moves, stuck games, lost cards
 godot --headless -s tests/rules_test.gd
 godot --headless -s tests/ui_payment.gd
+xvfb-run godot --rendering-driver opengl3 -s tests/ui_click_area.gd   # needs a display for real mouse events
 godot --headless -s tests/ui_smoke.gd
 godot --headless -s tests/ui_interact.gd
 ```

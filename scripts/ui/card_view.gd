@@ -14,7 +14,9 @@ var _style := StyleBoxFlat.new()
 func setup(id: String, mark: Mark = Mark.NONE) -> CardView:
 	card_id = id
 	var card := CardDB.card(id)
-	custom_minimum_size = Vector2(150, 215)
+	custom_minimum_size = Vector2(150, 250)
+	size_flags_vertical = Control.SIZE_SHRINK_BEGIN  # keep the fixed card size; don't stretch with the hand row
+	clip_contents = true
 	var base: Color
 	match card.kind:
 		"spell": base = Color(0.36, 0.30, 0.46)
