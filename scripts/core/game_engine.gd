@@ -585,12 +585,14 @@ func _clear_pending_if_done() -> void:
 ## Pillage: the top n cards go to the discard, except
 ##  - Super Berries, which are always attached to a creature of the player's choice, and
 ##  - with Fire Famine's Active effect, every berry is attached (player's choice).
-## With Firewolf's Active effect the player then chooses an equal number of cards to recycle.
+## With Firewolf's Active effect the player then chooses as many cards to recycle as went to
+## the discard (berries attached to creatures don't count).
 func _pillage(p: int, n: int) -> void:
 	var pl := _P(p)
 	var famine := _active_count(p, "attach_pillaged_berries") > 0
 	var wolves := _active_count(p, "recycle_on_pillage")
 	var taken := 0
+	var discarded := 0  # cards that actually went to the discard (attached berries don't count)
 	for i in n:
 		if pl.deck.is_empty():
 			break
@@ -601,8 +603,9 @@ func _pillage(p: int, n: int) -> void:
 			continue
 		pl.discard.append(id)
 		pl.pillaged.append(id)
+		discarded += 1
 	_say("%s pillages %d card(s) from their own deck." % [_pname(p), taken], p)
-	var recycle := mini(taken * wolves, pl.discard.size())
+	var recycle := mini(discarded * wolves, pl.discard.size())
 	if recycle > 0:
 		_pending_for(p).recycle = recycle
 

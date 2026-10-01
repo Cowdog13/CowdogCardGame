@@ -109,6 +109,18 @@ func _init() -> void:
 	check(pl.discard == ["fire_berry", "removal"] and e.state.pending.berries.is_empty() and int(e.state.pending.recycle) == 2, "wolf only: berry discarded, two recycles pending")
 	e.submit(a, {"type": "recycle", "cards": [1, 0]})
 	check(e.state.pending.is_empty() and pl.deck.slice(-2) == ["removal", "fire_berry"], "recycle order respected")
+	# Firewolf + Famine, every pillaged card is a berry that gets attached: nothing to recycle.
+	pl.board[2] = {"cards": ["fire_famine"], "berries": ["super_berry"], "exhausted": [false], "stun_until": -1, "ability_used_turn": -1}
+	pl.board[1] = {"cards": ["firewolf"], "berries": ["super_berry", "super_berry"], "exhausted": [false, false], "stun_until": -1, "ability_used_turn": -1}
+	pl.discard = ["removal", "firespore"]
+	pl.deck = ["fire_berry", "fire_berry", "removal"]
+	pl.board[0].ability_used_turn = -1
+	pl.abilities_used = 0
+	e.submit(a, {"type": "use_ability", "slot": 0, "ability": 0})
+	check(e.state.pending.berries.size() == 2 and int(e.state.pending.recycle) == 0, "attached berries do not count toward recycling")
+	e.submit(a, {"type": "place_berry", "slot": 0})
+	e.submit(a, {"type": "place_berry", "slot": 0})
+	check(e.state.pending.is_empty(), "no recycle prompt when no card was discarded")
 	# Fire Famine alone: all berries are attached by choice; no recycle.
 	pl.board[1] = null
 	pl.board[2] = {"cards": ["fire_famine"], "berries": ["super_berry", "fire_berry"], "exhausted": [false, false], "stun_until": -1, "ability_used_turn": -1}
