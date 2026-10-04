@@ -515,7 +515,7 @@ func _plunder(initiator: int, target: int, n: int) -> void:
 			_reveal_berry(initiator, id)
 		else:
 			tp.discard.append(id)
-	_say("%s discards %d card(s) from the top of the deck%s." % [_pname(target), count, " (%d Super Berry stolen)" % stolen if stolen > 0 else ""], target)
+	_say("%s is plundered by %s: %d card(s) discarded from the top of their deck%s." % [_pname(target), _pname(initiator), count, " (%d Super Berry stolen)" % stolen if stolen > 0 else ""], target)
 
 
 ## Berries revealed by Plunder or Pillage that the acting player may place go into
