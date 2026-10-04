@@ -46,11 +46,16 @@ func _init() -> void:
 	await create_timer(1.0).timeout
 	root.get_texture().get_image().save_png(out + "/fx6_swap.png")
 	await create_timer(2.5).timeout
-	e.state.players[0].board[1].ability_used_turn = -1
+	e.state.players[0].board[1] = {"cards": ["water_constrictor", "water_binder"], "berries": ["water_berry", "water_berry", "water_berry"], "exhausted": [false, false, false], "stun_until": -1, "ability_used_turn": -1}
 	e.state.players[0].abilities_used = 0
-	print("ability: ", e.submit(0, {"type": "use_ability", "slot": 1, "ability": 1, "params": {}}))
-	await create_timer(0.8).timeout
-	root.get_texture().get_image().save_png(out + "/fx7_ability.png")
+	e.state.players[1].board[0] = {"cards": ["firespore"], "berries": [], "exhausted": [], "stun_until": -1, "ability_used_turn": -1}
+	e.state_changed.emit()
+	await create_timer(0.3).timeout
+	print("ability: ", e.submit(0, {"type": "use_ability", "slot": 1, "ability": 0, "params": {"targets": [{"player": 1, "slot": 2}, {"player": 1, "slot": 0}]}}))
+	await create_timer(0.35).timeout
+	root.get_texture().get_image().save_png(out + "/fx7_stun.png")
+	await create_timer(0.5).timeout
+	root.get_texture().get_image().save_png(out + "/fx7b_stun.png")
 	await create_timer(1.5).timeout
 	print("queue empty: ", screen._fx_queue.is_empty(), " hold_ai=", screen.controller.hold_ai)
 	quit()

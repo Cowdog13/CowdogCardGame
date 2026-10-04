@@ -28,10 +28,9 @@ var _confirm_btn: Button
 var _cancel_btn: Button
 var _end_btn: Button
 var _swap_btn: Button
-var _attach_discard_btn: Button
 var _log: RichTextLabel
 var _detail: RichTextLabel
-var _opp_discard_btn: Button
+var _piles: Array = [{}, {}]  # per seat: {"deck": PileView, "discard": ..., "exile": ...}
 var fx_enabled := true
 var _fx: FxLayer
 var _opp_hand_row: Control
@@ -40,9 +39,6 @@ var _hidden_slots := {}  # "seat:slot" -> number of effects still to land there
 var _fx_queue: Array = []
 var _fx_running := false
 var _recycle_open := false
-var _my_discard_btn: Button
-var _opp_exile_btn: Button
-var _my_exile_btn: Button
 
 
 func start(deck_ids: Array, agents: Array, ai_delay: float, effects := true) -> void:
@@ -83,12 +79,6 @@ func _build_ui() -> void:
 	_opp_info = Label.new()
 	_opp_info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	opp_row.add_child(_opp_info)
-	_opp_discard_btn = Button.new()
-	_opp_discard_btn.pressed.connect(func(): _show_pile("Opponent's discard", view.opponent.discard))
-	opp_row.add_child(_opp_discard_btn)
-	_opp_exile_btn = Button.new()
-	_opp_exile_btn.pressed.connect(func(): _show_pile("Opponent's exile", view.opponent.exile))
-	opp_row.add_child(_opp_exile_btn)
 	_opp_board = _board_row(left)
 
 	var mid := HBoxContainer.new()
@@ -118,16 +108,6 @@ func _build_ui() -> void:
 	_my_info = Label.new()
 	_my_info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	my_row.add_child(_my_info)
-	_my_discard_btn = Button.new()
-	_my_discard_btn.pressed.connect(func(): _show_pile("Your discard", view.you.discard))
-	my_row.add_child(_my_discard_btn)
-	_my_exile_btn = Button.new()
-	_my_exile_btn.pressed.connect(func(): _show_pile("Your exile", view.you.exile))
-	my_row.add_child(_my_exile_btn)
-	_attach_discard_btn = Button.new()
-	_attach_discard_btn.text = "Attach berry from discard"
-	_attach_discard_btn.pressed.connect(_on_attach_from_discard)
-	my_row.add_child(_attach_discard_btn)
 	_swap_btn = Button.new()
 	_swap_btn.text = "Swap (once per game)"
 	_swap_btn.pressed.connect(_on_swap)
@@ -153,14 +133,16 @@ func _build_ui() -> void:
 	root.add_child(side)
 	_detail = RichTextLabel.new()
 	_detail.bbcode_enabled = true
-	_detail.custom_minimum_size = Vector2(0, 190)
+	_detail.custom_minimum_size = Vector2(0, 150)
 	_detail.text = "Hover a card for details."
+	side.add_child(_make_pile_row(ME + 1, "Opponent"))
 	side.add_child(_detail)
 	_log = RichTextLabel.new()
 	_log.bbcode_enabled = true
 	_log.scroll_following = true
 	_log.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	side.add_child(_log)
+	side.add_child(_make_pile_row(ME, "You"))
 	var menu_btn := Button.new()
 	menu_btn.text = "Back to Menu"
 	menu_btn.pressed.connect(func(): exit_requested.emit())
@@ -189,12 +171,10 @@ func _refresh() -> void:
 	view = controller.get_view(ME)
 	var you: Dictionary = view.you
 	var opp: Dictionary = view.opponent
-	_opp_info.text = "Opponent - Deck %d | Hand %d" % [opp.deck_count, opp.hand_count]
-	_opp_discard_btn.text = "Discard (%d)" % opp.discard.size()
-	_opp_exile_btn.text = "Exile (%d)" % opp.exile.size()
-	_my_exile_btn.text = "Exile (%d)" % you.exile.size()
-	_my_info.text = "You - Deck %d%s" % [you.deck_count, _turn_flags(you)]
-	_my_discard_btn.text = "Discard (%d)" % you.discard.size()
+	_opp_info.text = "Opponent - Hand %d" % opp.hand_count
+	_set_piles(ME + 1, opp.deck_count, opp.discard.size(), opp.exile.size())
+	_set_piles(ME, you.deck_count, you.discard.size(), you.exile.size())
+	_my_info.text = "You%s" % _turn_flags(you)
 	_rebuild_board(_opp_board, ME + 1)
 	_rebuild_board(_my_board, ME)
 	_rebuild_hand()
@@ -202,7 +182,6 @@ func _refresh() -> void:
 	var acting := _can_act()
 	_end_btn.disabled = not acting or not _pending.is_empty()
 	_swap_btn.disabled = not acting or you.swap_used
-	_attach_discard_btn.disabled = not acting or you.berry_attached or not you.discard.any(func(id): return CardDB.is_berry(id))
 	match view.phase:
 		"mulligan": _turn_label.text = "Mulligan"
 		"over": _turn_label.text = "Game over"
@@ -739,19 +718,84 @@ func _ask_trade_amount(slot: int, ai: int, target: Dictionary) -> void:
 	_popup(d)
 
 
-func _on_attach_from_discard() -> void:
-	var idx: Array = []
-	var labels: Array = []
-	for i in view.you.discard.size():
-		if CardDB.is_berry(view.you.discard[i]):
-			idx.append(i)
-			labels.append(CardDB.card_name(view.you.discard[i]))
-	if idx.is_empty() or view.you.berry_attached:
-		return _toast("You need a berry in your discard and your berry attachment for the turn.")
-	_pick_from_list("Attach which berry from your discard? (enters exhausted)", labels, func(k):
-		_begin_targeting("Attach to which of your creatures? (exhausted)",
+## Opens a pile viewer. For your own discard it also offers to play a berry from there.
+func _view_pile(seat: int, kind: String) -> void:
+	var side: Dictionary = view.you if seat == ME else view.opponent
+	var ids: Array = side.discard if kind == "discard" else side.exile
+	var title := "%s %s" % ["Your" if seat == ME else "Opponent's", kind]
+	if kind != "discard" or seat != ME:
+		_show_pile(title, ids)
+		return
+	var d := AcceptDialog.new()
+	d.title = "%s (%d)" % [title, ids.size()]
+	d.ok_button_text = "Close"
+	d.min_size = Vector2(380, 460)
+	var box := VBoxContainer.new()
+	var list := ItemList.new()
+	list.custom_minimum_size = Vector2(340, 340)
+	var order: Array = range(ids.size() - 1, -1, -1)  # newest on top
+	for i in order:
+		list.add_item(CardDB.card_name(ids[i]))
+	box.add_child(list)
+	var hint := Label.new()
+	hint.text = "Select a berry to play it from here (it enters exhausted and uses your berry for the turn)."
+	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	hint.add_theme_font_size_override("font_size", 12)
+	box.add_child(hint)
+	d.add_child(box)
+	var play := d.add_button("Play berry from discard", false, "play")
+	var can_play: bool = _can_act() and not view.you.berry_attached and _pending.is_empty() \
+		and view.you.board.any(func(c): return c != null)
+	play.disabled = true
+	list.item_selected.connect(func(k): play.disabled = not (can_play and CardDB.is_berry(ids[order[k]])))
+	list.item_activated.connect(func(k):
+		if can_play and CardDB.is_berry(ids[order[k]]):
+			play.pressed.emit())
+	d.custom_action.connect(func(_a):
+		var sel := list.get_selected_items()
+		if sel.is_empty():
+			return
+		var di: int = order[sel[0]]
+		d.queue_free()
+		_begin_targeting("Attach %s from your discard to which creature? (enters exhausted)" % CardDB.card_name(ids[di]),
 			func(p, s): return p == ME and view.you.board[s] != null, 1,
-			func(t): _submit({"type": "attach_berry", "from": "discard", "discard": idx[k], "slot": t[0].slot})))
+			func(t): _submit({"type": "attach_berry", "from": "discard", "discard": di, "slot": t[0].slot})))
+	d.confirmed.connect(d.queue_free)
+	d.canceled.connect(d.queue_free)
+	_popup(d)
+
+
+func _make_pile_row(seat: int, heading: String) -> Control:
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 2)
+	var l := Label.new()
+	l.text = heading
+	l.add_theme_font_size_override("font_size", 13)
+	l.modulate = Color(1, 1, 1, 0.6)
+	box.add_child(l)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+	box.add_child(row)
+	for kind in ["deck", "discard", "exile"]:
+		var pile := PileView.new().setup(kind, kind != "deck")
+		if kind != "deck":
+			pile.clicked.connect(func(): _view_pile(seat, kind))
+		row.add_child(pile)
+		_piles[seat][kind] = pile
+	return box
+
+
+func _set_piles(seat: int, deck: int, discard: int, exile: int) -> void:
+	_piles[seat].deck.set_count(deck)
+	_piles[seat].discard.set_count(discard)
+	_piles[seat].exile.set_count(exile)
+
+
+func _pile_rect(seat: int, kind: String) -> Rect2:
+	var pile: Control = _piles[seat].get(kind)
+	if pile != null and is_instance_valid(pile):
+		return pile.get_global_rect()
+	return Rect2(size / 2.0, Vector2(84, 96))
 
 
 func _on_swap() -> void:
@@ -795,10 +839,10 @@ func _fx_hide_key(ev: Dictionary) -> String:
 
 func _fx_source_rect(ev: Dictionary) -> Rect2:
 	var mine: bool = int(ev.player) == ME
-	if ev.fx == "swap" or ev.fx == "ability":
+	if ev.fx == "swap" or ev.fx == "ability" or ev.fx == "stun":
 		return Rect2()
 	if ev.fx == "attach" and ev.from == "discard" or ev.fx == "play_creature" and int(ev.hand) < 0:
-		return (_my_discard_btn if mine else _opp_discard_btn).get_global_rect()
+		return _pile_rect(int(ev.player), "discard")
 	var idx := int(ev.hand)
 	if mine:
 		if idx >= 0 and idx < _hand_box.get_child_count():
@@ -856,6 +900,16 @@ func _play_fx(ev: Dictionary, src: Rect2) -> void:
 				if int(ev.ability) < nodes.size() and is_instance_valid(nodes[int(ev.ability)]):
 					rect = nodes[int(ev.ability)].get_global_rect()
 			await _fx.flash(rect, 1.5)
+		"stun":
+			var origin: Vector2
+			if int(ev.from_slot) >= 0:
+				origin = _slot_rect(ev.player, ev.from_slot).get_center()
+			else:  # a spell: the bolt starts on the caster's side of the table
+				origin = Vector2(size.x / 2.0 - 160.0, size.y - 30.0 if mine else 20.0)
+			var points: Array = []
+			for t in ev.targets:
+				points.append(_slot_rect(int(t.player), int(t.slot)).get_center())
+			await _fx.stun_bolts(origin, points)
 		"swap":
 			await _fx.show_pair(ev.hand_card, ev.discard_card, "From hand", "From discard", 2.0)
 
@@ -863,10 +917,8 @@ func _play_fx(ev: Dictionary, src: Rect2) -> void:
 func _play_attach(ev: Dictionary, src: Rect2, mine: bool) -> void:
 	var target := _slot_rect(ev.player, ev.slot)
 	if ev.from == "discard":
-		var pos := src.get_center()
-		_fx.firework(pos)
-		await get_tree().create_timer(0.35).timeout
-		await _fx.zap(pos, target.get_center())
+		_fx.firework(src.get_center())  # sparks over the pile as the card leaves it
+		await _fx.play_card(ev.card, src, 0.0, [target], false, 1.3)
 	else:
 		await _fx.play_card(ev.card, src, 0.0 if mine else 0.7, [target], not mine, 1.3)
 	var panel: Control = _slot_nodes.get("%d:%d" % [ev.player, ev.slot])

@@ -11,10 +11,11 @@ Open the folder in Godot 4.7 and press Play (main scene `scenes/main.tscn`).
 - Click a hand card, then click a highlighted board space (berry -> creature, creature -> space/evolve target).
 - Click an ability button on one of your creatures to use it (2 per turn). Stun/Removal/Berry Trade ask for targets.
 - Spells ask which berries pay the cost (the cheapest choice is pre-selected; discard-pile berries are exiled).
-- **Discard** and **Exile** buttons show both players' piles.
+- Each player has Deck / Discard / Exile piles (in the right sidebar) showing their card counts. Click a Discard or Exile pile to see its cards (decks are hidden).
+  In your own Discard viewer, select a berry and press **Play berry from discard** to attach it (the card flies out of the pile to the creature).
 - Visual effects (toggle on the main menu): the opponent's hand shows as blank cards at the top; their played cards fly to the centre, flip and
   stay 2s before landing (berries 0.7s); your cards fly straight to their target; attached berries pop and blink the creature; berries from
-  the discard get a firework and a line to the creature; swaps and spells are shown large in the middle for 2s (spells then fly to their targets).
+  the discard fly out of the pile with a firework; stuns shoot a blue lightning bolt with fireworks to every target; swaps and spells are shown large in the middle for 2s (spells then fly to their targets).
   The computer waits for effects to finish before acting.
 - Used abilities flash for 1.5s so it's clear what was activated. Creature spaces are numbered 1-5 (shown on the board and in the payment list).
 - Hover anything for card text. **Swap** is the once-per-game hand/discard creature swap.

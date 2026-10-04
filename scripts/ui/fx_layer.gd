@@ -192,8 +192,7 @@ func burst(pos: Vector2, color: Color, amount := 26, speed := 150.0, lifetime :=
 	get_tree().create_timer(lifetime + 0.3).timeout.connect(p.queue_free)
 
 
-func firework(pos: Vector2) -> void:
-	var colors := [Color(1, 0.4, 0.3), Color(1, 0.9, 0.3), Color(0.4, 0.9, 1), Color(0.9, 0.5, 1), Color(0.5, 1, 0.5)]
+func firework(pos: Vector2, colors := [Color(1, 0.4, 0.3), Color(1, 0.9, 0.3), Color(0.4, 0.9, 1), Color(0.9, 0.5, 1), Color(0.5, 1, 0.5)]) -> void:
 	for i in colors.size():
 		var offset := Vector2.from_angle(TAU * i / colors.size()) * 26.0
 		burst(pos + offset, colors[i], 22, 230.0, 0.9)
@@ -259,3 +258,56 @@ func blink(rect: Rect2, color := Color(1, 0.96, 0.7), times := 3) -> void:
 		tw.tween_property(frame, "modulate:a", 0.0, 0.14)
 	await tw.finished
 	frame.queue_free()
+
+
+## Stun: a crackling blue bolt from `origin` to every target, with blue fireworks where it lands.
+func stun_bolts(origin: Vector2, targets: Array) -> void:
+	var blues := [Color(0.35, 0.65, 1.0), Color(0.55, 0.9, 1.0), Color(1, 1, 1), Color(0.3, 0.45, 1.0), Color(0.7, 0.8, 1.0)]
+	var holder := Control.new()
+	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(holder)
+	var rng := RandomNumberGenerator.new()
+	var tw := create_tween().set_parallel(true)
+	for target in targets:
+		var path: Array = [origin]
+		var seg := 9
+		var dir: Vector2 = target - origin
+		var normal := dir.orthogonal().normalized()
+		for i in range(1, seg):
+			path.append(origin + dir * (float(i) / seg) + normal * rng.randf_range(-22.0, 22.0))
+		path.append(target)
+		var layers: Array = []
+		for style in [[16.0, 0.22, Color(0.25, 0.5, 1.0)], [8.0, 0.6, Color(0.45, 0.8, 1.0)], [3.0, 1.0, Color(1, 1, 1)]]:
+			var line := Line2D.new()
+			line.width = style[0]
+			var c: Color = style[2]
+			line.default_color = Color(c.r, c.g, c.b, style[1])
+			line.joint_mode = Line2D.LINE_JOINT_ROUND
+			line.begin_cap_mode = Line2D.LINE_CAP_ROUND
+			line.end_cap_mode = Line2D.LINE_CAP_ROUND
+			holder.add_child(line)
+			layers.append(line)
+		var reveal := func(t: float):
+			var upto := int(ceil(t * (path.size() - 1))) + 1
+			for line in layers:
+				line.clear_points()
+				for k in mini(upto, path.size()):
+					var pt: Vector2 = path[k]
+					if k == upto - 1 and k > 0:  # the head moves smoothly between vertices
+						var prev: Vector2 = path[k - 1]
+						var f := t * (path.size() - 1) - (k - 1)
+						pt = prev.lerp(pt, clampf(f, 0.0, 1.0))
+					line.add_point(pt - global_position)
+		tw.tween_method(reveal, 0.0, 1.0, 0.32)
+		# Sparks along the bolt and a blue firework at the target.
+		for k in range(1, path.size() - 1, 2):
+			var spark_pos: Vector2 = path[k]
+			tw.tween_callback(func(): burst(spark_pos, blues[rng.randi() % blues.size()], 7, 70.0, 0.4)).set_delay(0.32 * k / path.size())
+		tw.tween_callback(func(): firework(target, blues)).set_delay(0.32)
+	await get_tree().create_timer(0.32).timeout
+	var fade := create_tween()
+	fade.tween_interval(0.25)
+	fade.tween_property(holder, "modulate:a", 0.0, 0.35)
+	await fade.finished
+	holder.queue_free()
+	await get_tree().create_timer(0.3).timeout  # let the last sparks finish

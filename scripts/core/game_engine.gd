@@ -428,11 +428,14 @@ func _apply_effect(e: Dictionary, player: int, slot: int, params: Dictionary) ->
 		"pillage":
 			_pillage(player, int(e.amount))
 		"stun":
+			var names: Array = []
 			for t in params.targets:
 				var owner := int(t.player)
 				var c: Dictionary = _P(owner).board[int(t.slot)]
 				c.stun_until = state.turn + (2 if owner == state.active else 1)
-				_say("%s is stunned until the end of its controller's next turn." % Rules.creature_name(c), owner)
+				names.append(Rules.creature_name(c))
+			_say("%s stuns %s until the end of their controller's next turn." % [_pname(player), ", ".join(names)], player, "info",
+				{"fx": "stun", "from_slot": slot, "targets": params.targets.duplicate(true)})
 		"destroy":
 			_destroy_creature(int(params.target.player), int(params.target.slot))
 		"berry_trade":
