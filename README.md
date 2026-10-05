@@ -11,7 +11,7 @@ Open the folder in Godot 4.7 and press Play (main scene `scenes/main.tscn`).
 - Click a hand card, then click a highlighted board space (berry -> creature, creature -> space/evolve target).
 - Click an ability button on one of your creatures to use it (2 per turn). Stun/Removal/Berry Trade ask for targets.
 - Spells ask which berries pay the cost (the cheapest choice is pre-selected; discard-pile berries are exiled).
-- Each player has Deck / Discard / Exile piles (in the right sidebar) showing their card counts. Click a Discard or Exile pile to see its cards (decks are hidden).
+- Each player has Deck / Discard / Exile piles (in the right sidebar) showing their card counts. Click a Discard or Exile pile to see its cards (decks are hidden). Hovering a card in a pile list shows it big beside the list.
   In your own Discard viewer, select a berry and press **Play berry from discard** to attach it (the card flies out of the pile to the creature).
 - Visual effects (toggle on the main menu): the opponent's hand shows as blank cards at the top; their played cards fly to the centre, flip and
   stay 2s before landing (berries 0.7s); your cards fly straight to their target; attached berries pop and blink the creature; berries from
@@ -46,6 +46,7 @@ godot --headless -s tests/targets_test.gd     # every Plunder hits the opponent,
 godot --headless -s tests/ui_payment.gd
 xvfb-run godot --rendering-driver opengl3 -s tests/ui_click_area.gd   # needs a display for real mouse events
 godot --headless -s tests/ui_smoke.gd
+xvfb-run godot --rendering-driver opengl3 -s tests/ui_pile_hover.gd    # big card preview in pile lists
 xvfb-run godot --rendering-driver opengl3 -s tests/ui_toggle_click.gd   # one-click toggling in the payment list
 godot --headless -s tests/ui_interact.gd
 ```

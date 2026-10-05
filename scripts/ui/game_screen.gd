@@ -418,12 +418,13 @@ func _popup(dialog: Window) -> void:
 func _show_pile(title: String, ids: Array) -> void:
 	var d := AcceptDialog.new()
 	d.title = "%s (%d)" % [title, ids.size()]
-	d.min_size = Vector2(360, 420)
+	d.min_size = Vector2(680, 640)
 	var list := ItemList.new()
-	list.custom_minimum_size = Vector2(320, 340)
-	for i in range(ids.size() - 1, -1, -1):  # newest on top
+	list.custom_minimum_size = Vector2(320, 520)
+	var order: Array = range(ids.size() - 1, -1, -1)  # newest on top
+	for i in order:
 		list.add_item(CardDB.card_name(ids[i]))
-	d.add_child(list)
+	d.add_child(_list_with_preview(list, func(k: int) -> String: return ids[order[k]]))
 	d.canceled.connect(d.queue_free)
 	d.confirmed.connect(d.queue_free)
 	_popup(d)
@@ -718,6 +719,37 @@ func _ask_trade_amount(slot: int, ai: int, target: Dictionary) -> void:
 	_popup(d)
 
 
+## Puts `list` next to a big preview of the card under the mouse (or the selected one).
+## `card_at` maps a list index to a card id.
+func _list_with_preview(list: ItemList, card_at: Callable) -> HBoxContainer:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 12)
+	row.add_child(list)
+	var holder := Control.new()
+	holder.name = "Preview"
+	holder.custom_minimum_size = Vector2(280, 540)
+	row.add_child(holder)
+	var show := func(k: int):
+		for c in holder.get_children():
+			holder.remove_child(c)
+			c.queue_free()
+		if k < 0:
+			return
+		var card := CardView.new().setup(card_at.call(k))
+		card.size = Vector2(150, 250)
+		card.scale = Vector2(1.8, 1.8)  # 270 x 450
+		card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		holder.add_child(card)
+	list.gui_input.connect(func(ev: InputEvent):
+		if ev is InputEventMouseMotion:
+			show.call(list.get_item_at_position(ev.position, true)))
+	list.mouse_exited.connect(func():
+		var sel := list.get_selected_items()
+		show.call(sel[0] if not sel.is_empty() else -1))
+	list.item_selected.connect(func(k): show.call(k))
+	return row
+
+
 ## Opens a pile viewer. For your own discard it also offers to play a berry from there.
 func _view_pile(seat: int, kind: String) -> void:
 	var side: Dictionary = view.you if seat == ME else view.opponent
@@ -729,17 +761,18 @@ func _view_pile(seat: int, kind: String) -> void:
 	var d := AcceptDialog.new()
 	d.title = "%s (%d)" % [title, ids.size()]
 	d.ok_button_text = "Close"
-	d.min_size = Vector2(380, 460)
+	d.min_size = Vector2(700, 680)
 	var box := VBoxContainer.new()
 	var list := ItemList.new()
-	list.custom_minimum_size = Vector2(340, 340)
+	list.custom_minimum_size = Vector2(340, 520)
 	var order: Array = range(ids.size() - 1, -1, -1)  # newest on top
 	for i in order:
 		list.add_item(CardDB.card_name(ids[i]))
-	box.add_child(list)
+	box.add_child(_list_with_preview(list, func(k: int) -> String: return ids[order[k]]))
 	var hint := Label.new()
 	hint.text = "Select a berry to play it from here (it enters exhausted and uses your berry for the turn)."
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	hint.custom_minimum_size = Vector2(620, 0)  # without a width, an autowrapping label makes the dialog huge
 	hint.add_theme_font_size_override("font_size", 12)
 	box.add_child(hint)
 	d.add_child(box)
