@@ -37,16 +37,18 @@ func _init() -> void:
 	check(pl.exile.size() == exile_before + 1 and pl.exile.back() == "fire_berry", "exhausted payment exiled")
 	check(pl.discard.count("fire_berry") == 1 and pl.discard.has("super_berry") and pl.discard.has("removal"), "upright payment discarded")
 	check(e.state.players[opp].exile.has("water_berry") and e.state.players[opp].board[1] == null, "exhausted berries exiled when creature destroyed")
-	# Reinforce ignores the once-per-turn creature play.
-	pl.creature_played = true
-	pl.hand = ["reinforce"]
-	pl.discard = ["firepup", "fire_berry"]
-	pl.pillaged = ["firepup"]
-	pl.board[0] = {"cards": ["firespore"], "berries": ["fire_berry", "fire_berry"], "exhausted": [false, false], "stun_until": -1}
-	pay = [{"src": "discard", "index": 1}, {"src": "attached", "slot": 0, "index": 0}]
-	r = e.submit(a, {"type": "play_spell", "hand": 0, "payment": pay, "params": {"card_id": "firepup", "slot": 2}})
-	check(r.ok, "reinforce despite creature already played: %s" % r.get("error", ""))
-	check(pl.board[2] != null and pl.board[2].cards == ["firepup"], "reinforced creature in play")
+	# Reinforce (3 Fire Berries) lets the player play a second creature this turn.
+	pl.creature_plays_left = 0
+	pl.hand = ["reinforce", "firepup", "firespore"]
+	pl.discard = ["fire_berry", "fire_berry"]
+	pl.board[0] = {"cards": ["firespore"], "berries": ["fire_berry"], "exhausted": [false], "stun_until": -1}
+	check(not e.submit(a, {"type": "play_creature", "hand": 1, "slot": 2}).ok, "no creature play left before Reinforce")
+	pay = [{"src": "discard", "index": 0}, {"src": "discard", "index": 1}, {"src": "attached", "slot": 0, "index": 0}]
+	r = e.submit(a, {"type": "play_spell", "hand": 0, "payment": pay, "params": {}})
+	check(r.ok, "reinforce castable for 3 fire berries: %s" % r.get("error", ""))
+	check(e.submit(a, {"type": "play_creature", "hand": 0, "slot": 2}).ok, "second creature after Reinforce")
+	check(not e.submit(a, {"type": "play_creature", "hand": 0, "slot": 3}).ok, "only one extra creature per Reinforce")
+	check(pl.board[2] != null and pl.board[2].cards == ["firepup"], "creature in play")
 	# One ability per creature per turn (turn 3+ so abilities are unlocked).
 	e.state.turn = 5
 	e.state.active = a
@@ -57,7 +59,7 @@ func _init() -> void:
 	# Evolving removes a stun.
 	pl.board[3].stun_until = 99
 	pl.hand = ["firespitter"]
-	pl.creature_played = false
+	pl.creature_plays_left = 1
 	check(e.submit(a, {"type": "play_creature", "hand": 0, "slot": 3}).ok, "evolve")
 	check(not Rules.is_stunned(pl.board[3], e.state.turn), "evolving cleared the stun")
 	# Revealed Super Berries are placed by the player's choice (plunder and pillage).
@@ -139,6 +141,24 @@ func _init() -> void:
 	check(e.state.pending.berries == ["fire_berry"] and int(e.state.pending.recycle) == 0, "famine only: berry placed by choice, no recycle")
 	check(pl.deck.back() == "removal", "famine only: the non-berry went to the bottom of the deck")
 	e.submit(a, {"type": "place_berry", "slot": 0})
+	# Fire Famine: several recycled cards wait for the player to choose their order.
+	var e5 := GameEngine.new()
+	e5.setup(["scorching_fire", "crashing_wave"], 5)
+	for p in 2:
+		e5.submit(p, {"type": "mulligan", "cards": []})
+	var u5: int = e5.state.first_player
+	e5.state.turn = 5
+	e5.state.active = u5
+	var p5: Dictionary = e5.state.players[u5]
+	p5.board[0] = {"cards": ["firepup"], "berries": ["fire_berry", "fire_berry"], "exhausted": [false, false], "stun_until": -1, "ability_used_turn": -1}
+	p5.board[1] = {"cards": ["fire_famine"], "berries": ["super_berry"], "exhausted": [false], "stun_until": -1, "ability_used_turn": -1}
+	p5.deck = ["removal", "firespore", "firepup", "fire_berry", "removal"]
+	check(e5.submit(u5, {"type": "use_ability", "slot": 0, "ability": 0}).ok, "famine pillage 2")
+	check(e5.state.pending.ordering == ["removal", "firespore"] and e5.awaiting() == [u5], "order choice pending for recycled cards")
+	check(not e5.submit(u5, {"type": "end_turn"}).ok, "must order the recycled cards first")
+	check(not e5.submit(u5, {"type": "order_recycle", "order": [0, 0]}).ok, "order must be a permutation")
+	check(e5.submit(u5, {"type": "order_recycle", "order": [1, 0]}).ok, "order chosen")
+	check(p5.deck.slice(-2) == ["firespore", "removal"] and e5.state.pending.is_empty(), "cards placed on the bottom in the chosen order")
 	# Plundering more cards than are left in the deck wins immediately.
 	var e2 := GameEngine.new()
 	e2.setup(["scorching_fire", "crashing_wave"], 3)

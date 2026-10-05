@@ -194,7 +194,10 @@ func _refresh() -> void:
 				func(p, s): return p == ME and view.you.board[s] != null, 1,
 				func(t): _submit({"type": "place_berry", "slot": t[0].slot}), true)
 		elif not _recycle_open:
-			_ask_recycle(int(view.pending.recycle))
+			if not view.pending.ordering.is_empty():
+				_ask_order(view.pending.ordering)
+			else:
+				_ask_recycle(int(view.pending.recycle))
 
 
 func _turn_flags(you: Dictionary) -> String:
@@ -573,20 +576,6 @@ func _begin_spell(i: int, id: String) -> void:
 			var n := int(effect.count)
 			_begin_targeting("%s: choose up to %d creature(s)." % [spell.name, n], _any_creature, n,
 				func(t): _cast(i, {"targets": t}))
-		"play_pillaged_creature":
-			var options: Array = []
-			for c in view.you.pillaged:
-				if view.you.discard.has(c) and CardDB.is_creature(c) and not options.has(c):
-					options.append(c)
-			if options.is_empty():
-				return _toast("No creature was pillaged this turn.")
-			_pick_from_list("Reinforce: choose a pillaged creature", options.map(func(c): return CardDB.card_name(c)),
-				func(k):
-					var cid: String = options[k]
-					_begin_targeting("Play %s on which space?" % CardDB.card_name(cid),
-						func(p, s): return p == ME and Rules.place_error(view.you.board, cid, s) == "", 1,
-						func(t): _cast(i, {"card_id": cid, "slot": t[0].slot})),
-				options)
 		_:
 			_cast(i, {})
 
@@ -660,7 +649,7 @@ func _multi_pick(title: String, labels: Array, need: int, preselect: Array, verb
 	update.call()
 
 
-## Firewolf: choose which cards from the discard go to the bottom of the deck.
+## Firewolf: choose which cards from the discard go to the bottom of the deck, and in what order.
 func _ask_recycle(n: int) -> void:
 	var discard: Array = view.you.discard
 	var order: Array = range(discard.size() - 1, -1, -1)  # newest first
@@ -668,7 +657,7 @@ func _ask_recycle(n: int) -> void:
 	var recycle_ids: Array = order.map(func(i): return discard[i])
 	var suggested := Rules.recycle_pick(discard, n).map(func(i): return order.find(i))
 	_recycle_open = true
-	_multi_pick("Recycle: choose %d card(s) to put on the bottom of your deck" % n, labels, n, suggested, "Recycle",
+	_ordered_pick("Recycle: choose %d card(s) and the order they go on the bottom of your deck" % n, labels, n, suggested, "Recycle",
 		func(picked: Array):
 			_recycle_open = false
 			_submit({"type": "recycle", "cards": picked.map(func(k): return order[k])}),
@@ -676,6 +665,73 @@ func _ask_recycle(n: int) -> void:
 			_recycle_open = false
 			_refresh.call_deferred(),  # a recycle choice can't be skipped; ask again
 		recycle_ids)
+
+
+## Fire Famine: the pillaged non-berry cards are recycled; the player picks their order.
+func _ask_order(ids: Array) -> void:
+	var labels: Array = ids.map(func(id): return CardDB.card_name(id))
+	_recycle_open = true
+	_ordered_pick("Recycle: put the %d pillaged cards in order" % ids.size(), labels, ids.size(), range(ids.size()), "Recycle",
+		func(picked: Array):
+			_recycle_open = false
+			_submit({"type": "order_recycle", "order": picked}),
+		func():
+			_recycle_open = false
+			_refresh.call_deferred(),
+		ids)
+
+
+## Dialog where clicking a card numbers it 1, 2, 3... in the order clicked; clicking a numbered
+## card removes its number (the later ones renumber). `need` cards must be numbered. The numbers are
+## the order the cards are put on the bottom of the deck: 1 first, so the highest number ends up at
+## the very bottom. `on_ok` receives the chosen list indices in order.
+func _ordered_pick(title: String, labels: Array, need: int, initial: Array, verb: String, on_ok: Callable, on_cancel: Callable, card_ids: Array = []) -> void:
+	var d := ConfirmationDialog.new()
+	d.title = title
+	var box := VBoxContainer.new()
+	var list := ItemList.new()
+	list.custom_minimum_size = Vector2(380, 520 if not card_ids.is_empty() else 300)
+	for l in labels:
+		list.add_item(l)
+	box.add_child(_list_with_preview(list, func(k: int) -> String: return card_ids[k]) if not card_ids.is_empty() else list)
+	var hint := Label.new()
+	hint.text = "Click cards to number them in the order they go on the bottom of the deck: 1 goes first (closest to the top), the highest number ends up at the very bottom. Click a numbered card to remove it."
+	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	hint.custom_minimum_size = Vector2(620, 0)
+	hint.add_theme_font_size_override("font_size", 12)
+	box.add_child(hint)
+	d.add_child(box)
+	var order: Array = Array(initial)
+	var refresh := func():
+		for i in labels.size():
+			var pos := order.find(i)
+			list.set_item_text(i, ("%d.  %s" % [pos + 1, labels[i]]) if pos >= 0 else ("      " + labels[i]))
+			list.set_item_custom_bg_color(i, Color(0.25, 0.5, 0.25, 0.7) if pos >= 0 else Color(0, 0, 0, 0))
+		list.deselect_all()
+		d.get_ok_button().disabled = order.size() != need
+		d.get_ok_button().text = "%s (%d/%d)" % [verb, order.size(), need]
+	list.item_clicked.connect(func(i: int, _pos: Vector2, button: int):
+		if button != MOUSE_BUTTON_LEFT:
+			return
+		var at := order.find(i)
+		if at >= 0:
+			order.remove_at(at)
+		elif order.size() < need:
+			order.append(i)
+		refresh.call())
+	d.add_button("Clear", false, "clear")
+	d.custom_action.connect(func(_a):
+		order.clear()
+		refresh.call())
+	d.confirmed.connect(func():
+		d.queue_free()
+		on_ok.call(order.duplicate()))
+	d.canceled.connect(func():
+		d.queue_free()
+		if on_cancel.is_valid():
+			on_cancel.call())
+	_popup(d)
+	refresh.call()
 
 
 # --- Ability interaction -------------------------------------------------------------------------------
@@ -753,6 +809,7 @@ func _list_with_preview(list: ItemList, card_at: Callable) -> HBoxContainer:
 		var sel := list.get_selected_items()
 		show.call(sel[0] if not sel.is_empty() else -1))
 	list.item_selected.connect(func(k): show.call(k))
+	list.item_clicked.connect(func(k, _pos, _btn): show.call(k))
 	return row
 
 

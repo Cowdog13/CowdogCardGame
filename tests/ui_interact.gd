@@ -22,7 +22,10 @@ func _init() -> void:
 				screen.remove_child(d)
 				d.free()
 			screen._recycle_open = false
-			screen._submit({"type": "recycle", "cards": Rules.recycle_pick(v.you.discard, v.pending.recycle)})
+			if not v.pending.ordering.is_empty():
+				screen._submit({"type": "order_recycle", "order": range(v.pending.ordering.size())})
+			else:
+				screen._submit({"type": "recycle", "cards": Rules.recycle_pick(v.you.discard, v.pending.recycle)})
 			continue
 		if not v.pending.is_empty() and v.pending.player == 0:
 			for s in Rules.BOARD_SLOTS:

@@ -49,6 +49,7 @@ godot --headless -s tests/ui_smoke.gd
 xvfb-run godot --rendering-driver opengl3 -s tests/ui_pile_hover.gd    # big card preview in pile lists
 xvfb-run godot --rendering-driver opengl3 -s tests/ui_picker_preview.gd  # ...and in the other pickers
 xvfb-run godot --rendering-driver opengl3 -s tests/ui_picker_preview.gd  # ...and in the swap/payment/recycle pickers
+xvfb-run godot --rendering-driver opengl3 -s tests/ui_order_pick.gd      # numbered recycle ordering
 xvfb-run godot --rendering-driver opengl3 -s tests/ui_toggle_click.gd   # one-click toggling in the payment list
 godot --headless -s tests/ui_interact.gd
 ```
@@ -71,10 +72,12 @@ Constants live in `scripts/core/rules.gd`.
   exhausted ones to exile. Colorless = any berry; element cost = that element or Super.
 - **Revealed Super Berries** (from Plunder or Pillage) go onto a creature of the acting player's choice (the game pauses for the choice), or into their hand if they have no creature.
 - **Evolving** a stunned creature removes the stun.
-- **Reinforce** ignores (and doesn't use up) the once-per-turn creature play, and only works on a creature pillaged this turn.
+- **Reinforce** costs 3 Fire Berries and lets you play a second creature this turn (it adds one creature play; casting it twice gives two extra).
+- **Recycling order**: whenever cards are recycled you choose the order they go on the bottom of the deck. Click cards to number them 1, 2, 3...: 1 is put on the bottom
+  first (so it is drawn soonest of the group) and the highest number ends up at the very bottom.
 - **Pillage**: Super Berries are always attached to a creature of your choice. Other revealed cards go to the discard, except that with Fire Famine's Active
-  effect every berry is attached to a creature of your choice. With Fire Famine's Active effect, all pillaged non-berry cards are also recycled automatically to the bottom of the deck (in order) instead of going to the discard, so
-  Reinforce can't use them and Firewolf has nothing to recycle from that pillage. With Firewolf's Active effect you then choose as many cards from your discard to recycle as
+  effect every berry is attached to a creature of your choice. With Fire Famine's Active effect, all pillaged non-berry cards are also recycled to the bottom of the deck (you choose their order) instead of going to the discard, so
+  Firewolf has nothing to recycle from that pillage. With Firewolf's Active effect you then choose as many cards from your discard to recycle as
   went to the discard in that pillage - berries attached to creatures don't count (e.g. Pillage 4 revealing 2 berries recycles 2; Active effects don't stack, so
   several Firewolves still recycle just that many; capped by the discard size; they go to the bottom in the order chosen).
 - **Berry Trade** (Water Ruler) discards berries from the Ruler itself and from one enemy creature.

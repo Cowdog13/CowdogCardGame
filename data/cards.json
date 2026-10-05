@@ -407,12 +407,12 @@
   "kind": "spell",
   "cost": {
    "element": "fire",
-   "amount": 2
+   "amount": 3
   },
-  "text": "Play a creature you would normally be able to play that was pillaged this turn",
+  "text": "You may play a second creature this turn",
   "effects": [
    {
-    "type": "play_pillaged_creature"
+    "type": "extra_creature_play"
    }
   ]
  },

@@ -12,7 +12,8 @@ extends RefCounted
 ##   {"type":"play_spell",   "hand":i, "payment":[...], "params":{}}
 ##   {"type":"swap",         "hand":i, "discard":j}             (once per game)
 ##   {"type":"place_berry",  "slot":s}                        (only while state.pending has berries: where a revealed berry goes)
-##   {"type":"recycle",      "cards":[discard indices]}       (only while state.pending.recycle > 0: Firewolf's choice)
+##   {"type":"order_recycle","order":[indices]}               (only while state.pending.ordering is set: Fire Famine's order)
+##   {"type":"recycle",      "cards":[discard indices]}       (only while state.pending.recycle > 0: Firewolf's choice, in order)
 ##   {"type":"end_turn"}
 ## Results are {"ok":true} or {"ok":false,"error":"..."}.
 
@@ -39,7 +40,7 @@ func setup(deck_ids: Array, seed_val: int = -1) -> void:
 		"first_player": rng.randi_range(0, 1),
 		"winner": -1,
 		"doomed": {},  # set when a Plunder could not be completed; applied once everything has resolved
-		"pending": {},  # {"player": p, "berries": [ids], "recycle": n} while a player must place berries / choose recycles
+		"pending": {},  # {"player": p, "berries": [ids], "ordering": [ids], "recycle": n} while a player must place berries / choose recycles
 		"names": ["Player 1", "Player 2"],
 		"players": [_new_player(deck_ids[0]), _new_player(deck_ids[1])],
 	}
@@ -77,10 +78,15 @@ func submit(player: int, action: Dictionary) -> Dictionary:
 	var t: String = action.get("type", "")
 	var res: Dictionary
 	if not state.pending.is_empty():
-		var wanted := "place_berry" if not state.pending.berries.is_empty() else "recycle"
+		var wanted := "place_berry"
+		if state.pending.berries.is_empty():
+			wanted = "order_recycle" if not state.pending.ordering.is_empty() else "recycle"
 		if player != state.pending.player or t != wanted:
 			return _err("Finish the pending choice first (%s)" % wanted)
-		res = _do_place_berry(player, action) if wanted == "place_berry" else _do_recycle(player, action)
+		match wanted:
+			"place_berry": res = _do_place_berry(player, action)
+			"order_recycle": res = _do_order_recycle(player, action)
+			_: res = _do_recycle(player, action)
 	elif state.phase == "mulligan":
 		if t != "mulligan":
 			return _err("Mulligan first")
@@ -115,7 +121,7 @@ func get_view(player: int) -> Dictionary:
 		"winner": state.winner,
 		"pending": state.pending.duplicate(true),
 		"awaiting": awaiting(),
-		"you": _public_player(me).merged({"hand": me.hand.duplicate(), "pillaged": me.pillaged.duplicate()}),
+		"you": _public_player(me).merged({"hand": me.hand.duplicate()}),
 		"opponent": _public_player(opp).merged({"hand_count": opp.hand.size()}),
 	}
 
@@ -131,7 +137,8 @@ func _public_player(pl: Dictionary) -> Dictionary:
 		"mulligan_done": pl.mulligan_done,
 		"swap_used": pl.swap_used,
 		"berry_attached": pl.berry_attached,
-		"creature_played": pl.creature_played,
+		"creature_played": pl.creature_plays_left <= 0,
+		"creature_plays_left": pl.creature_plays_left,
 		"abilities_used": pl.abilities_used,
 	}
 
@@ -149,8 +156,7 @@ func _new_player(deck_id: String) -> Dictionary:
 	return {
 		"deck_id": deck_id, "deck": deck, "hand": [], "discard": [], "exile": [],
 		"board": board, "mulligan_done": false, "swap_used": false,
-		"berry_attached": false, "creature_played": false, "abilities_used": 0,
-		"pillaged": [],
+		"berry_attached": false, "creature_plays_left": 1, "abilities_used": 0,
 	}
 
 
@@ -211,9 +217,8 @@ func _begin_turn() -> void:
 	var p: int = state.active
 	var pl := _P(p)
 	pl.berry_attached = false
-	pl.creature_played = false
+	pl.creature_plays_left = 1
 	pl.abilities_used = 0
-	pl.pillaged = []
 	_say("Turn %d: %s" % [state.turn, _pname(p)], p, "turn")
 	if state.turn == 1 and Rules.FIRST_PLAYER_SKIPS_FIRST_DRAW:
 		return
@@ -281,7 +286,7 @@ func _do_play_creature(player: int, action: Dictionary) -> Dictionary:
 	if hi < 0 or hi >= pl.hand.size():
 		return _err("Choose a card from your hand")
 	var id: String = pl.hand[hi]
-	if pl.creature_played:
+	if pl.creature_plays_left <= 0:
 		return _err("You already played a creature this turn")
 	var why := Rules.place_error(pl.board, id, slot)
 	if why != "":
@@ -305,7 +310,7 @@ func _place_creature(player: int, id: String, slot: int, counts_as_play: bool, h
 		_say("%s evolves %s into %s%s." % [_pname(player), prev, c.name, " (the stun is removed)" if was_stunned else ""], player, "info",
 			{"fx": "play_creature", "card": id, "slot": slot, "hand": hand_index})
 	if counts_as_play:
-		pl.creature_played = true
+		pl.creature_plays_left -= 1
 
 
 func _do_swap(player: int, action: Dictionary) -> Dictionary:
@@ -409,12 +414,6 @@ func _check_effect(e: Dictionary, player: int, params: Dictionary) -> String:
 				return "Trade the same (non-zero) number of berries on each side"
 			if _indices_invalid(own, mine.berries.size()) or _indices_invalid(theirs, enemy.berries.size()):
 				return "Invalid berry selection"
-		"play_pillaged_creature":
-			var pl := _P(player)
-			var id: String = params.get("card_id", "")
-			if id == "" or not pl.pillaged.has(id) or not pl.discard.has(id):
-				return "That creature was not pillaged this turn"
-			return Rules.place_error(pl.board, id, int(params.get("slot", -1)))
 	return ""
 
 
@@ -456,12 +455,9 @@ func _apply_effect(e: Dictionary, player: int, slot: int, params: Dictionary) ->
 			_release_berries(player, mine, params.own)
 			_release_berries(tp, enemy, params.theirs)
 			_say("%d berr%s discarded from each side." % [params.own.size(), "y" if params.own.size() == 1 else "ies"], player)
-		"play_pillaged_creature":
-			var pl := _P(player)
-			var id: String = params.card_id
-			pl.discard.remove_at(pl.discard.find(id))
-			pl.pillaged.remove_at(pl.pillaged.find(id))
-			_place_creature(player, id, int(params.slot), false)  # Reinforce ignores the once-per-turn limit
+		"extra_creature_play":
+			_P(player).creature_plays_left += 1
+			_say("%s may play a second creature this turn." % _pname(player), player)
 		_:
 			pass  # "Active" effects are resolved where they trigger (see _pillage).
 
@@ -545,7 +541,7 @@ func _plunder(initiator: int, target: int, n: int) -> void:
 ## Active effect applies (see _pillage); otherwise they go to the discard.
 func _pending_for(p: int) -> Dictionary:
 	if state.pending.is_empty():
-		state.pending = {"player": p, "berries": [], "recycle": 0}
+		state.pending = {"player": p, "berries": [], "ordering": [], "recycle": 0}
 	return state.pending
 
 
@@ -572,8 +568,25 @@ func _do_place_berry(player: int, action: Dictionary) -> Dictionary:
 	return _ok()
 
 
+## Fire Famine's Active effect: the pillaged non-berry cards go to the bottom of the deck in
+## an order the player chooses. `order` lists indices into pending.ordering; the first one is
+## put on the bottom first (so the last one ends up at the very bottom).
+func _do_order_recycle(player: int, action: Dictionary) -> Dictionary:
+	var pl := _P(player)
+	var order: Array = action.get("order", [])
+	var cards: Array = state.pending.ordering
+	if order.size() != cards.size() or _indices_invalid(order, cards.size()):
+		return _err("Put all %d cards in an order" % cards.size())
+	for i in order:
+		pl.deck.push_back(cards[int(i)])
+	state.pending.ordering = []
+	_say("%s recycles %d card(s) to the bottom of their deck in a chosen order." % [_pname(player), order.size()], player)
+	_clear_pending_if_done()
+	return _ok()
+
+
 ## Firewolf's Active effect: the player chooses which discard cards go to the bottom of
-## the deck. Cards go on the bottom in the order chosen.
+## the deck, and in which order (first listed goes on the bottom first).
 func _do_recycle(player: int, action: Dictionary) -> Dictionary:
 	var pl := _P(player)
 	var picks: Array = action.get("cards", [])
@@ -588,9 +601,6 @@ func _do_recycle(player: int, action: Dictionary) -> Dictionary:
 		pl.discard.remove_at(i)
 	for id in ids:
 		pl.deck.push_back(id)
-		var pi: int = pl.pillaged.find(id)
-		if pi >= 0:
-			pl.pillaged.remove_at(pi)
 	state.pending.recycle = 0
 	_say("%s recycles %d card(s) to the bottom of their deck." % [_pname(player), ids.size()], player)
 	_clear_pending_if_done()
@@ -598,7 +608,7 @@ func _do_recycle(player: int, action: Dictionary) -> Dictionary:
 
 
 func _clear_pending_if_done() -> void:
-	if state.pending.berries.is_empty() and int(state.pending.recycle) == 0:
+	if state.pending.berries.is_empty() and state.pending.ordering.is_empty() and int(state.pending.recycle) == 0:
 		state.pending = {}
 
 
@@ -627,9 +637,12 @@ func _pillage(p: int, n: int) -> void:
 			recycled.append(id)
 			continue
 		pl.discard.append(id)
-		pl.pillaged.append(id)
 		discarded += 1
-	pl.deck.append_array(recycled)  # after the loop, so they can't be pillaged again
+	# Recycled cards wait outside the deck until placed, so they can't be pillaged again.
+	if recycled.size() == 1:
+		pl.deck.append_array(recycled)
+	elif recycled.size() > 1:
+		_pending_for(p).ordering = recycled
 	_say("%s pillages %d card(s) from their own deck%s." % [_pname(p), taken, " (%d recycled to the bottom)" % recycled.size() if not recycled.is_empty() else ""], p)
 	var recycle := mini(discarded, pl.discard.size()) if wolves else 0
 	if recycle > 0:
@@ -643,7 +656,6 @@ func _spell_targets(spell: Dictionary, params: Dictionary) -> Array:
 	match spell.effects[0].type:
 		"destroy": out.append(params.target)
 		"stun": out.append_array(params.targets)
-		"play_pillaged_creature": out.append({"player": state.active, "slot": int(params.slot)})
 	return out
 
 

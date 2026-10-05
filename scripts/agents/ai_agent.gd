@@ -11,6 +11,8 @@ func _init(p_seat: int = 1) -> void:
 func decide(view: Dictionary) -> Dictionary:
 	if not view.pending.is_empty():
 		if view.pending.berries.is_empty():
+			if not view.pending.ordering.is_empty():
+				return {"type": "order_recycle", "order": range(view.pending.ordering.size())}
 			return {"type": "recycle", "cards": Rules.recycle_pick(view.you.discard, view.pending.recycle)}
 		return {"type": "place_berry", "slot": Rules.best_attach_slot(view.you.board, view.pending.berries.back())}
 	if view.phase == "mulligan":
@@ -162,12 +164,15 @@ func _spell(view: Dictionary) -> Dictionary:
 				params = {"targets": [{"player": 1 - view.me, "slot": t}]}
 				if worth < 3.0:
 					continue
-			"play_pillaged_creature":
-				var pick := _reinforce_pick(me)
-				if pick.is_empty():
+			"extra_creature_play":
+				# Worth it when there is a second creature in hand that could be played this turn.
+				var playable := 0
+				for id2 in me.hand:
+					if CardDB.is_creature(id2) and _playable_now(me, id2):
+						playable += 1
+				if playable < (1 if me.creature_played else 2):
 					continue
-				worth = 6.0
-				params = pick
+				worth = 7.0
 			_:
 				continue
 		if plan.loss < worth * 0.6:
@@ -195,16 +200,6 @@ func _strongest_enemy(opp: Dictionary, turn: int, skip_stunned: bool) -> int:
 			best_t = t
 			best = s
 	return best
-
-
-func _reinforce_pick(me: Dictionary) -> Dictionary:
-	for id in me.pillaged:
-		if not me.discard.has(id) or not CardDB.is_creature(id):
-			continue
-		for slot in me.board.size():
-			if Rules.place_error(me.board, id, slot) == "":
-				return {"card_id": id, "slot": slot}
-	return {}
 
 
 # --- Abilities --------------------------------------------------------------------------
