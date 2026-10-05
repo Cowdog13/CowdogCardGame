@@ -90,16 +90,14 @@ func _init() -> void:
 	pl.board[0].ability_used_turn = -1
 	var before: int = pl.board[2].berries.size()
 	check(e.submit(a, {"type": "use_ability", "slot": 0, "ability": 0}).ok, "pillage 2 with both actives")
-	# Pillage 2 reveals fire_berry, firespore: berry is offered, firespore goes to discard, 2 recycles (wolf).
+	# Pillage 2 reveals fire_berry, firespore: the berry is offered for placement and, with Fire Famine,
+	# the non-berry is recycled to the bottom of the deck instead of going to the discard. Nothing
+	# reached the discard, so Firewolf has nothing to recycle.
 	check(e.state.pending.berries == ["fire_berry"], "regular berry offered for placement")
-	check(pl.discard == ["firespore"], "non-berry goes to discard")
-	check(not e.submit(a, {"type": "recycle", "cards": [0]}).ok, "place the berry before recycling")
+	check(pl.discard.is_empty() and pl.deck.back() == "firespore", "Famine recycles the non-berry to the bottom")
 	check(e.submit(a, {"type": "place_berry", "slot": 2}).ok, "place berry on a creature of choice")
 	check(pl.board[2].berries.size() == before + 1, "berry attached to chosen creature")
-	check(int(e.state.pending.recycle) == 1, "recycle count capped by discard size")
-	check(not e.submit(a, {"type": "recycle", "cards": [0, 0]}).ok, "wrong number of recycle picks rejected")
-	check(e.submit(a, {"type": "recycle", "cards": [0]}).ok and e.state.pending.is_empty(), "recycle chosen")
-	check(pl.deck.back() == "firespore" and pl.discard.is_empty(), "recycled card went to the bottom")
+	check(e.state.pending.is_empty(), "no Firewolf recycle when nothing was discarded")
 	# Firewolf alone: regular berries go to the discard, recycle is still chosen.
 	pl.board[2] = null
 	pl.deck = ["fire_berry", "removal", "fire_berry", "fire_berry"]
@@ -139,6 +137,7 @@ func _init() -> void:
 	pl.abilities_used = 0
 	check(e.submit(a, {"type": "use_ability", "slot": 0, "ability": 0}).ok, "pillage with famine only")
 	check(e.state.pending.berries == ["fire_berry"] and int(e.state.pending.recycle) == 0, "famine only: berry placed by choice, no recycle")
+	check(pl.deck.back() == "removal", "famine only: the non-berry went to the bottom of the deck")
 	e.submit(a, {"type": "place_berry", "slot": 0})
 	# Plundering more cards than are left in the deck wins immediately.
 	var e2 := GameEngine.new()

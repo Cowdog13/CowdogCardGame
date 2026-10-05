@@ -181,10 +181,13 @@
     "effects": [
      {
       "type": "attach_pillaged_berries"
+     },
+     {
+      "type": "recycle_pillaged_nonberries"
      }
     ],
     "active": true,
-    "text": "Active: When pillaging a berry, attach it to a creature"
+    "text": "Active: When pillaging, attach pillaged berries to creatures and recycle all other pillaged cards"
    },
    {
     "name": "Pillage 4",

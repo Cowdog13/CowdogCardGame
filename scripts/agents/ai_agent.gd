@@ -243,7 +243,7 @@ func _evaluate_ability(view: Dictionary, slot: int, c: Dictionary, ab: Dictionar
 		"pillage":
 			# Only pillage when something makes it free or profitable: Recycle keeps the deck
 			# size, Scavenger turns pillaged berries into attachments.
-			var safe: bool = _has_active(me, "recycle_on_pillage") or (_has_active(me, "attach_pillaged_berries") and me.deck_count > 25)
+			var safe: bool = _has_active(me, "recycle_on_pillage") or (_has_active(me, "attach_pillaged_berries") and me.deck_count > 15)
 			if not safe or me.deck_count <= int(effect.amount) + 5:
 				return {}
 			return {"value": 0.8, "params": {}}
