@@ -236,9 +236,10 @@ func _evaluate_ability(view: Dictionary, slot: int, c: Dictionary, ab: Dictionar
 	var enemy := 1 - int(view.me)
 	match effect.type:
 		"plunder":
-			if opp.deck_count <= 0:
-				return {}
-			return {"value": Rules.effect_value(effect, c), "params": {}}
+			var amount := Rules.effect_value(effect, c)
+			if amount > opp.deck_count:
+				amount += 1000.0  # not enough cards left: this Plunder wins the game
+			return {"value": amount, "params": {}}
 		"pillage":
 			# Only pillage when something makes it free or profitable: Recycle keeps the deck
 			# size, Scavenger turns pillaged berries into attachments.

@@ -61,7 +61,7 @@ func _init() -> void:
 	check(e.submit(a, {"type": "play_creature", "hand": 0, "slot": 3}).ok, "evolve")
 	check(not Rules.is_stunned(pl.board[3], e.state.turn), "evolving cleared the stun")
 	# Revealed Super Berries are placed by the player's choice (plunder and pillage).
-	e.state.players[opp].deck = ["super_berry", "fire_berry"]
+	e.state.players[opp].deck = ["super_berry", "fire_berry", "removal", "removal", "removal", "removal"]
 	e.state.players[opp].board[0] = null
 	pl.board[3].berries = ["fire_berry", "fire_berry"]
 	pl.board[3].exhausted = [false, false]
@@ -140,5 +140,42 @@ func _init() -> void:
 	check(e.submit(a, {"type": "use_ability", "slot": 0, "ability": 0}).ok, "pillage with famine only")
 	check(e.state.pending.berries == ["fire_berry"] and int(e.state.pending.recycle) == 0, "famine only: berry placed by choice, no recycle")
 	e.submit(a, {"type": "place_berry", "slot": 0})
+	# Plundering more cards than are left in the deck wins immediately.
+	var e2 := GameEngine.new()
+	e2.setup(["scorching_fire", "crashing_wave"], 3)
+	for p in 2:
+		e2.submit(p, {"type": "mulligan", "cards": []})
+	e2.state.turn = 5
+	var u: int = e2.state.first_player
+	e2.state.active = u
+	var up: Dictionary = e2.state.players[u]
+	up.board[0] = {"cards": ["firespore"], "berries": ["fire_berry"], "exhausted": [false], "stun_until": -1, "ability_used_turn": -1}
+	e2.state.players[1 - u].deck = ["removal"]
+	check(e2.submit(u, {"type": "use_ability", "slot": 0, "ability": 0}).ok, "plunder 2 vs 1 card")
+	check(e2.is_over() and e2.state.winner == u, "plunder larger than the deck wins the game")
+	# The plunder still takes everything it can, including Super Berries, before the loss applies.
+	var e4 := GameEngine.new()
+	e4.setup(["scorching_fire", "crashing_wave"], 3)
+	for p in 2:
+		e4.submit(p, {"type": "mulligan", "cards": []})
+	e4.state.turn = 5
+	e4.state.active = u
+	e4.state.players[u].board[0] = {"cards": ["firespore"], "berries": ["fire_berry"], "exhausted": [false], "stun_until": -1, "ability_used_turn": -1}
+	e4.state.players[1 - u].deck = ["super_berry"]
+	e4.submit(u, {"type": "use_ability", "slot": 0, "ability": 0})
+	check(not e4.is_over() and e4.awaiting() == [u], "game waits for the Super Berry to be placed first")
+	e4.submit(u, {"type": "place_berry", "slot": 0})
+	check(e4.is_over() and e4.state.winner == u and e4.state.players[u].board[0].berries.has("super_berry"), "Super Berry placed, then the plundered player loses")
+	# Exactly enough cards: the game goes on.
+	var e3 := GameEngine.new()
+	e3.setup(["scorching_fire", "crashing_wave"], 3)
+	for p in 2:
+		e3.submit(p, {"type": "mulligan", "cards": []})
+	e3.state.turn = 5
+	e3.state.active = u
+	e3.state.players[u].board[0] = {"cards": ["firespore"], "berries": ["fire_berry"], "exhausted": [false], "stun_until": -1, "ability_used_turn": -1}
+	e3.state.players[1 - u].deck = ["removal", "removal"]
+	e3.submit(u, {"type": "use_ability", "slot": 0, "ability": 0})
+	check(not e3.is_over() and e3.state.players[1 - u].deck.is_empty(), "plunder exactly emptying the deck does not end the game")
 	print("rules_test failures=%d" % fails)
 	quit(1 if fails > 0 else 0)

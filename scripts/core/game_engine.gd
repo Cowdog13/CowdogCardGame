@@ -38,6 +38,7 @@ func setup(deck_ids: Array, seed_val: int = -1) -> void:
 		"active": -1,
 		"first_player": rng.randi_range(0, 1),
 		"winner": -1,
+		"doomed": {},  # set when a Plunder could not be completed; applied once everything has resolved
 		"pending": {},  # {"player": p, "berries": [ids], "recycle": n} while a player must place berries / choose recycles
 		"names": ["Player 1", "Player 2"],
 		"players": [_new_player(deck_ids[0]), _new_player(deck_ids[1])],
@@ -96,6 +97,7 @@ func submit(player: int, action: Dictionary) -> Dictionary:
 			"end_turn": res = _do_end_turn(player)
 			_: res = _err("Unknown action")
 	if res.ok:
+		_apply_deferred_loss()
 		state_changed.emit()
 	return res
 
@@ -233,6 +235,15 @@ func _draw_card(p: int) -> bool:
 		return false
 	pl.hand.append(pl.deck.pop_front())
 	return true
+
+
+## Applies a loss from an uncompletable Plunder once nothing is left to resolve.
+func _apply_deferred_loss() -> void:
+	if state.doomed.is_empty() or not state.pending.is_empty() or state.phase == "over":
+		return
+	var d: Dictionary = state.doomed
+	state.doomed = {}
+	_win(int(d.winner), String(d.reason))
 
 
 func _win(winner: int, reason: String) -> void:
@@ -519,6 +530,12 @@ func _plunder(initiator: int, target: int, n: int) -> void:
 		else:
 			tp.discard.append(id)
 	_say("%s is plundered by %s: %d card(s) discarded from the top of their deck%s." % [_pname(target), _pname(initiator), count, " (%d Super Berry stolen)" % stolen if stolen > 0 else ""], target)
+	if count < n:
+		# The plunder couldn't be completed, so the target loses. The plunder still resolves in
+		# full first (revealed Super Berries are placed), and the loss is applied afterwards in
+		# _apply_deferred_loss(), which leaves room for a future card that can save the player.
+		state.doomed = {"winner": initiator, "loser": target,
+			"reason": "%s cannot complete the Plunder %d (only %d card(s) were left)." % [_pname(target), n, count]}
 
 
 ## Berries revealed by Plunder or Pillage that the acting player may place go into

@@ -58,6 +58,7 @@ Constants live in `scripts/core/rules.gd`.
 - **Ability costs are requirements, not payments**: berries stay attached. An element cost accepts that element or
   Super Berries; a "Super Berry" cost needs actual Super Berries.
 - **First player draws** on turn 1, but neither player can use abilities on their own first turn (`FIRST_TURN_NO_ABILITIES`).
+- **Plunder X** with fewer than X cards left in the target's deck ends the game immediately: the plundered player loses (the plunder still takes as many cards as it can, including Super Berries, before the loss applies).
 - **Evolving** keeps attached berries (and removes any stun); a creature may evolve the turn it was played (still 1 play/evolve per turn).
 - **Stun X** can target any creatures (up to X); it ends at the end of the stunned creature's controller's next turn. Active abilities keep working.
 - **Exhausted (sideways) berries**: you may attach a berry from your discard instead of from hand; it counts as your berry for the turn and
