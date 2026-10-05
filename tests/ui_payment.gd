@@ -23,7 +23,7 @@ func _init() -> void:
 	var got: Array = []
 	screen._choose_payment(spell, func(pay): got.assign(pay))
 	var d: ConfirmationDialog = screen.get_children().filter(func(c): return c is ConfirmationDialog)[0]
-	var list: ItemList = d.get_children().filter(func(c): return c is ItemList)[0]
+	var list: ItemList = d.find_children("*", "ItemList", true, false)[0]
 	print("items=%d selected=%s ok=%s" % [list.item_count, list.get_selected_items(), d.get_ok_button().text])
 	if list.item_count != 2:
 		fails += 1

@@ -34,7 +34,7 @@ func _init() -> void:
 	await process_frame
 	await process_frame
 	var d: ConfirmationDialog = screen.get_children().filter(func(c): return c is ConfirmationDialog)[0]
-	var list: ItemList = d.get_children().filter(func(c): return c is ItemList)[0]
+	var list: ItemList = d.find_children("*", "ItemList", true, false)[0]
 	var args := OS.get_cmdline_user_args()
 	if args.size() > 0:
 		root.get_texture().get_image().save_png(args[0] + "/payment_dialog.png")

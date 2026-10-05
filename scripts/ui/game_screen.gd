@@ -431,14 +431,14 @@ func _show_pile(title: String, ids: Array) -> void:
 
 
 ## Modal list chooser; `labels` are shown, `on_pick` receives the chosen index.
-func _pick_from_list(title: String, labels: Array, on_pick: Callable) -> void:
+func _pick_from_list(title: String, labels: Array, on_pick: Callable, card_ids: Array = []) -> void:
 	var d := ConfirmationDialog.new()
 	d.title = title
 	var list := ItemList.new()
-	list.custom_minimum_size = Vector2(320, 260)
+	list.custom_minimum_size = Vector2(320, 520 if not card_ids.is_empty() else 260)
 	for l in labels:
 		list.add_item(l)
-	d.add_child(list)
+	d.add_child(_list_with_preview(list, func(k: int) -> String: return card_ids[k]) if not card_ids.is_empty() else list)
 	d.get_ok_button().disabled = true
 	list.item_selected.connect(func(_i): d.get_ok_button().disabled = false)
 	list.item_activated.connect(func(_i): d.get_ok_button().pressed.emit())
@@ -585,7 +585,8 @@ func _begin_spell(i: int, id: String) -> void:
 					var cid: String = options[k]
 					_begin_targeting("Play %s on which space?" % CardDB.card_name(cid),
 						func(p, s): return p == ME and Rules.place_error(view.you.board, cid, s) == "", 1,
-						func(t): _cast(i, {"card_id": cid, "slot": t[0].slot})))
+						func(t): _cast(i, {"card_id": cid, "slot": t[0].slot})),
+				options)
 		_:
 			_cast(i, {})
 
@@ -602,6 +603,7 @@ func _choose_payment(spell: Dictionary, on_paid: Callable) -> void:
 	var you: Dictionary = view.you
 	var options: Array = []  # payment entries, parallel to the list items
 	var labels: Array = []
+	var berry_ids: Array = []
 	for s in you.board.size():
 		var c = you.board[s]
 		if c == null:
@@ -610,11 +612,13 @@ func _choose_payment(spell: Dictionary, on_paid: Callable) -> void:
 			if Rules.berry_matches(c.berries[bi], spell.cost.element):
 				var sideways: bool = c.exhausted[bi]
 				options.append({"src": "attached", "slot": s, "index": bi})
+				berry_ids.append(c.berries[bi])
 				labels.append("Creature %d (%s): %s, %s" % [s + 1, Rules.creature_name(c), CardDB.card_name(c.berries[bi]),
 					"exhausted -> exile" if sideways else "upright -> discard"])
 	for di in you.discard.size():
 		if CardDB.is_berry(you.discard[di]) and Rules.berry_matches(you.discard[di], spell.cost.element):
 			options.append({"src": "discard", "index": di})
+			berry_ids.append(you.discard[di])
 			labels.append("Your discard: %s (-> exile)" % CardDB.card_name(you.discard[di]))
 	var plan := Rules.plan_payment(you, spell.cost)
 	var preselect: Array = []
@@ -623,19 +627,19 @@ func _choose_payment(spell: Dictionary, on_paid: Callable) -> void:
 			if entry.src == options[k].src and int(entry.index) == int(options[k].index) and int(entry.get("slot", -1)) == int(options[k].get("slot", -1)):
 				preselect.append(k)
 	_multi_pick("Pay for %s: choose %s" % [spell.name, Rules.cost_text(spell.cost)], labels, int(spell.cost.amount), preselect,
-		"Pay", func(picked: Array): on_paid.call(picked.map(func(k): return options[k])), Callable())
+		"Pay", func(picked: Array): on_paid.call(picked.map(func(k): return options[k])), Callable(), berry_ids)
 
 
 ## Dialog where each click toggles an item; confirms only with exactly `need` selected.
-func _multi_pick(title: String, labels: Array, need: int, preselect: Array, verb: String, on_ok: Callable, on_cancel: Callable) -> void:
+func _multi_pick(title: String, labels: Array, need: int, preselect: Array, verb: String, on_ok: Callable, on_cancel: Callable, card_ids: Array = []) -> void:
 	var d := ConfirmationDialog.new()
 	d.title = title
 	var list := ItemList.new()
 	list.select_mode = ItemList.SELECT_TOGGLE  # a plain click selects / deselects
-	list.custom_minimum_size = Vector2(460, 300)
+	list.custom_minimum_size = Vector2(460, 520 if not card_ids.is_empty() else 300)
 	for l in labels:
 		list.add_item(l)
-	d.add_child(list)
+	d.add_child(_list_with_preview(list, func(k: int) -> String: return card_ids[k]) if not card_ids.is_empty() else list)
 	var update := func():
 		var n := list.get_selected_items().size()
 		d.get_ok_button().disabled = n != need
@@ -661,6 +665,7 @@ func _ask_recycle(n: int) -> void:
 	var discard: Array = view.you.discard
 	var order: Array = range(discard.size() - 1, -1, -1)  # newest first
 	var labels: Array = order.map(func(i): return CardDB.card_name(discard[i]))
+	var recycle_ids: Array = order.map(func(i): return discard[i])
 	var suggested := Rules.recycle_pick(discard, n).map(func(i): return order.find(i))
 	_recycle_open = true
 	_multi_pick("Recycle: choose %d card(s) to put on the bottom of your deck" % n, labels, n, suggested, "Recycle",
@@ -669,7 +674,8 @@ func _ask_recycle(n: int) -> void:
 			_submit({"type": "recycle", "cards": picked.map(func(k): return order[k])}),
 		func():
 			_recycle_open = false
-			_refresh.call_deferred())  # a recycle choice can't be skipped; ask again
+			_refresh.call_deferred(),  # a recycle choice can't be skipped; ask again
+		recycle_ids)
 
 
 # --- Ability interaction -------------------------------------------------------------------------------
@@ -834,21 +840,26 @@ func _pile_rect(seat: int, kind: String) -> Rect2:
 func _on_swap() -> void:
 	var hand_idx: Array = []
 	var labels: Array = []
+	var hand_ids: Array = []
 	for i in view.you.hand.size():
 		if CardDB.is_creature(view.you.hand[i]):
 			hand_idx.append(i)
 			labels.append(CardDB.card_name(view.you.hand[i]))
+			hand_ids.append(view.you.hand[i])
 	var disc_idx: Array = []
 	var disc_labels: Array = []
+	var disc_ids: Array = []
 	for i in view.you.discard.size():
 		if CardDB.is_creature(view.you.discard[i]):
 			disc_idx.append(i)
 			disc_labels.append(CardDB.card_name(view.you.discard[i]))
+			disc_ids.append(view.you.discard[i])
 	if hand_idx.is_empty() or disc_idx.is_empty():
 		return _toast("Swap needs a creature in your hand and one in your discard.")
 	_pick_from_list("Swap: give which creature from your hand?", labels, func(h):
 		_pick_from_list("Swap: take which creature from your discard?", disc_labels, func(d):
-			_submit({"type": "swap", "hand": hand_idx[h], "discard": disc_idx[d]})))
+			_submit({"type": "swap", "hand": hand_idx[h], "discard": disc_idx[d]}), disc_ids),
+		hand_ids)
 
 
 # --- Visual effects -------------------------------------------------------------------------------------
