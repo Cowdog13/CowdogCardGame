@@ -537,20 +537,20 @@ func _plunder(initiator: int, target: int, n: int) -> void:
 	var tp := _P(target)
 	var count := 0
 	var stolen := 0
-	var revealed: Array = []
+	var taken: Array = []  # every card plundered, in order (clients show them before they go to the discard)
 	for i in n:
 		if tp.deck.is_empty():
 			break
 		var id: String = tp.deck.pop_front()
 		count += 1
+		taken.append(id)
 		if CardDB.element_of(id) == Rules.SUPER:
 			stolen += 1
-			revealed.append(id)
 			_reveal_berry(initiator, id)
 		else:
 			tp.discard.append(id)
-	_say("%s is plundered by %s: %d card(s) discarded from the top of their deck%s." % [_pname(target), _pname(initiator), count, " (%d Super Berry stolen)" % stolen if stolen > 0 else ""], target)
-	_announce_reveal(target, revealed)
+	_say("%s is plundered by %s: %d card(s) discarded from the top of their deck%s." % [_pname(target), _pname(initiator), count, " (%d Super Berry stolen)" % stolen if stolen > 0 else ""], target, "info",
+		{"fx": "plunder", "cards": taken, "target": target})
 	if count < n:
 		# The plunder couldn't be completed, so the target loses. The plunder still resolves in
 		# full first (revealed Super Berries are placed), and the loss is applied afterwards in
@@ -646,6 +646,7 @@ func _clear_pending_if_done() -> void:
 ## Tells clients that berries were found in `deck_owner`'s deck so they can show them on screen.
 func _announce_reveal(deck_owner: int, ids: Array) -> void:
 	if ids.is_empty():
+		_say("No berries found in %s's deck." % _pname(deck_owner), deck_owner, "info", {"fx": "reveal", "cards": []})
 		return
 	var names: Array = ids.map(func(id): return CardDB.card_name(id))
 	_say("%s's deck reveals: %s." % [_pname(deck_owner), ", ".join(names)], deck_owner, "info",

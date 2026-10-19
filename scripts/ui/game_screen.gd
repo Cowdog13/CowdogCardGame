@@ -31,6 +31,7 @@ var _my_board: HBoxContainer
 var _hand_view: HandView
 var _banner: Label
 var _banner_panel: PanelContainer
+var _banner_icon: TextureRect
 var _confirm_btn: Button
 var _cancel_btn: Button
 var _end_btn: Button
@@ -151,12 +152,23 @@ func _build_ui() -> void:
 	banner_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	banner_panel.add_theme_stylebox_override("panel", UiStyle.box(Color(0.06, 0.1, 0.14, 0.7), 12, Color(0.85, 0.72, 0.38, 0.6), 2, 6))
 	mid.add_child(banner_panel)
+	var banner_row := HBoxContainer.new()
+	banner_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	banner_row.add_theme_constant_override("separation", 8)
+	banner_panel.add_child(banner_row)
+	_banner_icon = TextureRect.new()  # the berry being placed (Plunder / Pillage)
+	_banner_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_banner_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_banner_icon.custom_minimum_size = Vector2(46, 46)
+	_banner_icon.visible = false
+	banner_row.add_child(_banner_icon)
 	_banner = Label.new()
+	_banner.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_banner.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_banner.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_banner.add_theme_font_size_override("font_size", 16)
-	banner_panel.add_child(_banner)
+	banner_row.add_child(_banner)
 	_confirm_btn = Button.new()
 	_confirm_btn.text = "Confirm"
 	_confirm_btn.pressed.connect(_on_confirm)
@@ -286,9 +298,12 @@ func _refresh() -> void:
 	if not view.pending.is_empty() and view.pending.player == ME and _pending.is_empty() and not _fx_busy():
 		if not view.pending.berries.is_empty():
 			var id: String = view.pending.berries.back()
-			_begin_targeting("Choose a creature to receive the revealed %s (%d left)." % [CardDB.card_name(id), view.pending.berries.size()],
+			_begin_targeting("Choose a creature to receive the %s (%d left)." % [CardDB.card_name(id), view.pending.berries.size()],
 				func(p, s): return p == ME and view.you.board[s] != null, 1,
 				func(t): _submit({"type": "place_berry", "slot": t[0].slot}), true)
+			_pending["icon"] = id
+			_show_card_detail(id)  # the big preview shows exactly which berry this is
+			_update_banner()
 		elif not _recycle_open:
 			if not view.pending.ordering.is_empty():
 				_ask_order(view.pending.ordering)
@@ -326,6 +341,9 @@ func _update_banner() -> void:
 	if _status != "":
 		text = (text + "\n" if text != "" else "") + _status
 	_banner.text = text
+	var icon_id := String(_pending.get("icon", "")) if not _pending.is_empty() else ""
+	_banner_icon.texture = ArtDB.berry_icon(icon_id) if icon_id != "" else null
+	_banner_icon.visible = _banner_icon.texture != null
 	_banner_panel.visible = text != ""  # no shaded box when there is nothing to say
 	_confirm_btn.visible = show_confirm
 	_cancel_btn.visible = not _pending.is_empty() and not _pending.get("locked", false)
@@ -1024,7 +1042,7 @@ func _fx_hide_key(ev: Dictionary) -> String:
 
 func _fx_source_rect(ev: Dictionary) -> Rect2:
 	var mine: bool = int(ev.player) == ME
-	if ev.fx == "swap" or ev.fx == "ability" or ev.fx == "stun" or ev.fx == "reveal":
+	if ev.fx == "swap" or ev.fx == "ability" or ev.fx == "stun" or ev.fx == "reveal" or ev.fx == "plunder":
 		return Rect2()
 	if ev.fx == "attach" and ev.from == "discard" or ev.fx == "play_creature" and int(ev.hand) < 0:
 		return _pile_rect(int(ev.player), "discard")
@@ -1085,7 +1103,12 @@ func _play_fx(ev: Dictionary, src: Rect2, item: Dictionary) -> void:
 			var origin: Vector2 = item.get("origin", Vector2(size.x / 2.0 - 160.0, size.y - 30.0 if mine else 20.0))
 			var points: Array = item.targets.map(func(r: Rect2): return r.get_center())
 			await _fx.stun_bolts(origin, points)
+		"plunder":
+			await _fx.show_plunder(ev.cards, _pile_rect(int(ev.target), "discard"), 0.55)
 		"reveal":
+			if ev.cards.is_empty():
+				await _fx.show_message("No berries found", 1.0)
+				return
 			var all_super: bool = ev.cards.all(func(id): return CardDB.element_of(id) == Rules.SUPER)
 			var caption := "Super Berry found!" if all_super and ev.cards.size() == 1 else ("Super Berries found!" if all_super else "Berries found!")
 			await _fx.show_reveal(ev.cards, caption, 1.2)

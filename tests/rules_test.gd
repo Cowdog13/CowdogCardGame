@@ -168,12 +168,12 @@ func _init() -> void:
 	e7.state.turn = 5
 	e7.state.active = u7
 	var reveals: Array = []
-	e7.event_logged.connect(func(ev): if ev.get("fx", "") == "reveal": reveals.append(ev.cards))
+	e7.event_logged.connect(func(ev): if ev.get("fx", "") == "reveal" or ev.get("fx", "") == "plunder": reveals.append(ev.cards))
 	var p7: Dictionary = e7.state.players[u7]
 	p7.board[0] = {"cards": ["firespore"], "berries": ["fire_berry"], "exhausted": [false], "stun_until": -1, "ability_used_turn": -1}
 	e7.state.players[1 - u7].deck = ["super_berry", "removal", "removal", "removal"]
 	e7.submit(u7, {"type": "use_ability", "slot": 0, "ability": 0})
-	check(reveals == [["super_berry"]], "plundering a Super Berry is announced: %s" % [reveals])
+	check(reveals == [["super_berry", "removal"]], "a plunder announces every card taken, in order: %s" % [reveals])
 	e7.submit(u7, {"type": "place_berry", "slot": 0})
 	reveals.clear()
 	p7.board[1] = {"cards": ["fire_famine"], "berries": ["super_berry"], "exhausted": [false], "stun_until": -1, "ability_used_turn": -1}
@@ -181,6 +181,15 @@ func _init() -> void:
 	p7.deck = ["fire_berry", "removal", "fire_berry", "removal", "removal"]
 	e7.submit(u7, {"type": "use_ability", "slot": 2, "ability": 0})
 	check(reveals == [["fire_berry"]], "berries found by the Fire Famine pillage are announced: %s" % [reveals])
+	e7.submit(u7, {"type": "place_berry", "slot": 0})
+	if not e7.state.pending.is_empty():
+		e7.submit(u7, {"type": "order_recycle", "order": range(e7.state.pending.ordering.size())})
+	reveals.clear()
+	p7.deck = ["removal", "removal", "removal"]
+	p7.board[2].ability_used_turn = -1
+	p7.abilities_used = 0
+	e7.submit(u7, {"type": "use_ability", "slot": 2, "ability": 0})
+	check(reveals == [[]], "a pillage that finds no berries says so: %s" % [reveals])
 	# Plundering more cards than are left in the deck wins immediately.
 	var e2 := GameEngine.new()
 	e2.setup(["scorching_fire", "crashing_wave"], 3)

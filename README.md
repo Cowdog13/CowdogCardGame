@@ -19,6 +19,8 @@ Open the folder in Godot 4.7 and press Play (main scene `scenes/main.tscn`).
   the discard fly out of the pile with a firework; stuns shoot a blue lightning bolt with fireworks to every target; swaps and spells are shown large in the middle for 2s (spells then fly to their targets).
   The computer waits for effects to finish before acting.
 - Super Berries found in a deck by Plunder or Pillage (and, with Fire Famine, every berry it finds) pop up in the middle of the screen briefly before you choose where they go.
+- Plunder lays the plundered cards out in a row in the middle of the screen, then sends them to the discard (Super Berries stay for you to place). If a Plunder or Pillage finds no berries, "No berries found" flashes up.
+- Berries on a creature have a green ring when they were played from hand (upright) and a red ring when exhausted (sideways). The berry you are about to place shows beside the prompt and in the big preview.
 - The status strip in the middle of the board only appears while it has something to say.
 - Used abilities flash for 1.5s so it's clear what was activated. Creature spaces are numbered 1-5 (shown on the board and in the payment list).
 - Hover any card (hand, board, piles) to see it large in the right-hand column. **Log** shows the full game log. **Swap** is the once-per-game hand/discard creature swap.

@@ -107,6 +107,13 @@ func setup(p_creature: Dictionary, p_slot: int, mine: bool, turn: int, valid: bo
 			holder.add_child(tr)
 		else:
 			holder.add_child(CardView.make_badge(CardDB.element_of(id), BERRY_ICON))
+		# Outline: green = played from hand (upright), red = exhausted (sideways; exiled when discarded).
+		var ring := Panel.new()
+		ring.size = holder.size
+		ring.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		ring.add_theme_stylebox_override("panel", UiStyle.box(Color(0, 0, 0, 0), int(BERRY_ICON / 2.0),
+			Color(0.95, 0.25, 0.25) if sideways else Color(0.25, 0.85, 0.32), 3))
+		holder.add_child(ring)
 		if sideways:
 			holder.rotation = PI / 2.0
 		berry_strip.add_child(holder)

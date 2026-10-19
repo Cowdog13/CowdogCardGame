@@ -328,3 +328,81 @@ func show_reveal(ids: Array, caption: String, hold: float) -> void:
 	await get_tree().create_timer(hold).timeout
 	await fade_out(holder, 0.3)
 	holder.queue_free()
+
+
+## A big caption in the middle of the screen for a moment (e.g. "No berries found").
+func show_message(text: String, hold: float) -> void:
+	var label := Label.new()
+	label.text = text
+	label.size = Vector2(900, 60)
+	label.position = screen_center() - global_position - label.size / 2.0
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.add_theme_font_size_override("font_size", 38)
+	label.add_theme_color_override("font_color", Color(1, 0.95, 0.75))
+	label.add_theme_color_override("font_outline_color", Color(0.05, 0.08, 0.16))
+	label.add_theme_constant_override("outline_size", 10)
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	label.modulate.a = 0.0
+	add_child(label)
+	var tw := create_tween()
+	tw.tween_property(label, "modulate:a", 1.0, 0.15)
+	await tw.finished
+	await get_tree().create_timer(hold).timeout
+	await fade_out(label, 0.25)
+	label.queue_free()
+
+
+## Plunder: lay the plundered cards out in a row in the middle of the screen, then send the ones
+## that go to the discard flying there. Super Berries stay behind (the player places them next).
+func show_plunder(ids: Array, discard_rect: Rect2, hold: float) -> void:
+	var n := ids.size()
+	if n == 0:
+		await show_message("No berries found", 1.0)
+		return
+	var s := minf(0.95, 1080.0 / (n * CARD_SIZE.x + 10.0 * n))
+	var step := minf(CARD_SIZE.x * s + 12.0, 1080.0 / n)
+	var cards: Array = []
+	var any_super := false
+	for i in n:
+		var card := make_card(ids[i], true)
+		add_child(card)
+		var c := screen_center() + Vector2((i - (n - 1) / 2.0) * step, 0.0)
+		place(card, c, s * 0.6)
+		card.modulate.a = 0.0
+		cards.append(card)
+		var pop := create_tween().set_parallel(true).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		pop.tween_property(card, "scale", Vector2(s, s), 0.22).set_delay(0.04 * i)
+		pop.tween_property(card, "modulate:a", 1.0, 0.15).set_delay(0.04 * i)
+		if CardDB.element_of(ids[i]) == Rules.SUPER:
+			any_super = true
+	await get_tree().create_timer(0.3 + 0.04 * n).timeout
+	if any_super:
+		for i in n:
+			if CardDB.element_of(ids[i]) == Rules.SUPER:
+				burst(cards[i].global_position + CARD_SIZE / 2.0 * s, Rules.element_color(Rules.SUPER), 28, 200.0, 0.8)
+	await get_tree().create_timer(hold).timeout
+	var flights: Array = []
+	for i in n:
+		if CardDB.element_of(ids[i]) == Rules.SUPER:
+			continue
+		flights.append(_to_discard(cards[i], discard_rect, 0.05 * i))
+	for tw in flights:
+		if tw.is_running():
+			await tw.finished
+	var supers: Array = cards.filter(func(c): return is_instance_valid(c) and c.modulate.a > 0.5)
+	if supers.is_empty():
+		await show_message("No berries found", 0.9)
+	else:
+		await get_tree().create_timer(0.35).timeout
+		for c in supers:
+			c.queue_free()
+
+
+func _to_discard(card: Control, target: Rect2, delay: float) -> Tween:
+	var tw := create_tween().set_parallel(true).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+	var s := scale_for(target)
+	tw.tween_property(card, "position", target.get_center() - global_position - CARD_SIZE / 2.0, 0.45).set_delay(delay)
+	tw.tween_property(card, "scale", Vector2(s, s), 0.45).set_delay(delay)
+	tw.tween_property(card, "modulate:a", 0.0, 0.12).set_delay(delay + 0.36)
+	tw.finished.connect(card.queue_free)
+	return tw
