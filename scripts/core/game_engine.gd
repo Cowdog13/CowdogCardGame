@@ -27,7 +27,9 @@ var seed_value := 0
 var rng := RandomNumberGenerator.new()
 
 
-func setup(deck_ids: Array, seed_val: int = -1, names: Array = []) -> void:
+## `fixed_decks` (optional, for the tutorial): one ordered card list per player. They are used exactly as
+## given (no shuffling) and player 0 goes first, so a scripted game plays out the same way every time.
+func setup(deck_ids: Array, seed_val: int = -1, names: Array = [], fixed_decks: Array = []) -> void:
 	if seed_val < 0:
 		rng.randomize()
 	else:
@@ -38,14 +40,14 @@ func setup(deck_ids: Array, seed_val: int = -1, names: Array = []) -> void:
 		"phase": "mulligan",
 		"turn": 0,
 		"active": -1,
-		"first_player": rng.randi_range(0, 1),
+		"first_player": 0 if not fixed_decks.is_empty() else rng.randi_range(0, 1),
 		"winner": -1,
 		"doomed": {},  # set when a Plunder could not be completed; applied once everything has resolved
 		"pending": {},  # {"player": p, "berries": [ids], "ordering": [ids], "recycle": n} while a player must place berries / choose recycles
 		"names": [names[0] if names.size() > 0 else "Player 1", names[1] if names.size() > 1 else "Player 2"],
-		"players": [_new_player(deck_ids[0]), _new_player(deck_ids[1])],
+		"players": [_new_player(deck_ids[0], fixed_decks[0] if not fixed_decks.is_empty() else []), _new_player(deck_ids[1], fixed_decks[1] if not fixed_decks.is_empty() else [])],
 	}
-	_say("%s wins the roll and goes first." % _pname(state.first_player))
+	_say("%s goes first." % _pname(state.first_player) if not fixed_decks.is_empty() else "%s wins the roll and goes first." % _pname(state.first_player))
 	for p in 2:
 		for i in Rules.HAND_SIZE:
 			_draw_card(p)
@@ -151,13 +153,14 @@ func _public_player(pl: Dictionary) -> Dictionary:
 
 
 # --- Setup helpers ------------------------------------------------------------
-func _new_player(deck_id: String) -> Dictionary:
-	var deck := CardDB.build_deck_list(deck_id)
-	for i in range(deck.size() - 1, 0, -1):
-		var j := rng.randi_range(0, i)
-		var tmp = deck[i]
-		deck[i] = deck[j]
-		deck[j] = tmp
+func _new_player(deck_id: String, fixed: Array = []) -> Dictionary:
+	var deck: Array = fixed.duplicate() if not fixed.is_empty() else CardDB.build_deck_list(deck_id)
+	if fixed.is_empty():
+		for i in range(deck.size() - 1, 0, -1):
+			var j := rng.randi_range(0, i)
+			var tmp = deck[i]
+			deck[i] = deck[j]
+			deck[j] = tmp
 	var board: Array = []
 	board.resize(Rules.BOARD_SLOTS)
 	return {

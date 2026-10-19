@@ -22,6 +22,7 @@ var _mull_sel := {}
 var _status := ""
 var _over_shown := false
 var _allow_rematch := true
+var tutorial_mode := false  # the tutorial runs this game: the Menu button just leaves, no surrender
 
 var _opp_info: Label
 var _last_event: Label
@@ -315,11 +316,35 @@ func _on_menu_pressed() -> void:
 	if view.get("phase", "over") == "over":
 		exit_requested.emit()
 		return
-	if _allow_rematch:  # single player
+	if tutorial_mode:
+		_confirm("Leave the tutorial?", "You can start it again from the main menu.", func(): exit_requested.emit())
+	elif _allow_rematch:  # single player
 		_confirm("Leave the game?", "The game in progress will be lost.", func(): exit_requested.emit())
 	else:
 		_confirm("Surrender?", "You will lose this game and your opponent wins.", func():
 			controller.submit(ME, {"type": "concede"}))
+
+
+## Screen rectangle of something the tutorial points at: "hand:<card id>", "mine:<creature id>",
+## "theirs:<creature id>" (the creature whose top card that is), "end_turn", "swap", "discard".
+func tutorial_target_rect(target: String) -> Rect2:
+	if view.is_empty():
+		return Rect2()
+	var parts := target.split(":")
+	match parts[0]:
+		"hand":
+			var i: int = view.you.hand.find(parts[1])
+			return _hand_view.card_rect(i) if i >= 0 else Rect2()
+		"mine", "theirs":
+			var seat := ME if parts[0] == "mine" else OPP
+			var side: Dictionary = view.you if seat == ME else view.opponent
+			for s in side.board.size():
+				if side.board[s] != null and Rules.top_card(side.board[s]).id == parts[1]:
+					return _slot_rect(seat, s)
+		"end_turn": return _end_btn.get_global_rect()
+		"swap": return _swap_btn.get_global_rect()
+		"discard": return _pile_rect(ME, "discard")
+	return Rect2()
 
 
 func _opp_name() -> String:

@@ -16,6 +16,7 @@ func _show_menu() -> void:
 	_menu = MainMenu.new()
 	_menu.start_requested.connect(_start_game)
 	_menu.multiplayer_requested.connect(_show_multiplayer)
+	_menu.tutorial_requested.connect(_start_tutorial)
 	add_child(_menu)
 	_menu.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
@@ -30,6 +31,27 @@ func _start_game(deck0: String, deck1: String, ai_delay: float, effects: bool) -
 	_game.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	# The human always sits in seat 0; seat 1 is the computer.
 	_game.start([deck0, deck1], [HumanAgent.new(0), AIAgent.new(1)], ai_delay, effects)
+
+
+# --- Tutorial -----------------------------------------------------------------------------------
+## A scripted game: stacked decks, a practice opponent that follows a script, and the TutorialDirector
+## explaining each step. When the player chooses to finish, the opponent turns into the normal AI.
+func _start_tutorial() -> void:
+	_clear()
+	_game = GameScreen.new()
+	_game.tutorial_mode = true
+	_game.exit_requested.connect(_show_menu)
+	add_child(_game)
+	_game.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var ctrl := GameController.new()
+	ctrl.ai_delay = 0.9
+	ctrl.hold_external = true
+	_game.attach(ctrl, 0, true, false)
+	var decks := TutorialScript.decks()
+	ctrl.start(["scorching_fire", "crashing_wave"], [HumanAgent.new(0), ScriptedAgent.new(1, TutorialScript.opponent_intents())], -1, ["You", "Practice Bot"], decks)
+	var director := TutorialDirector.new().setup(ctrl, _game)
+	director.quit_requested.connect(_show_menu)
+	_game.add_child(director)
 
 
 # --- Multiplayer ----------------------------------------------------------------------------------

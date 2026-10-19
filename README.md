@@ -55,6 +55,13 @@ Peer-to-peer games (one player hosts, no server) are in **Multiplayer (beta)** o
 - `scripts/ui/`, `scripts/main.gd` - menu and table UI; `fx_layer.gd` holds the visual effects. The engine's log events carry an optional `fx` payload that the UI plays.
 - `tests/` - `fx_demo.gd` (screenshots of every effect), `run_sim.gd` (AI vs AI, rule invariants), `ui_smoke.gd`, `ui_interact.gd`, `screenshot.gd`.
 
+## Tutorial
+Main menu -> "Tutorial (learn to play)". A scripted game (stacked decks, a practice opponent that follows a script) where a
+dialog walks through the mulligan, creatures, evolving, berries (hand and discard), abilities, Plunder, Pillage, Stun, Super
+Berries, the swap and a spell; only the move the current step asks for is accepted. At the end the player can finish the game
+against the normal AI or quit. The steps live in `scripts/tutorial/tutorial_script.gd` (turn plan at the top of that file);
+`tutorial_director.gd` enforces them and `tutorial_overlay.gd` draws the dialog and highlights.
+
 ## Networking later
 The engine is already shaped for it:
 - All state changes go through `GameEngine.submit(player, action)` with a plain-Dictionary action; results and
@@ -77,6 +84,7 @@ godot --headless -s tests/ui_smoke.gd
 godot --headless -s tests/net_test.gd        # host + client over a real local connection play a full game
 godot --headless -s tests/net_ui_test.gd     # both screens over the network
 godot --headless -s tests/net_surrender_test.gd   # Menu -> confirm surrenders in multiplayer
+godot --headless -s tests/tutorial_test.gd        # plays the whole tutorial through the controller
 godot --headless -s tests/ui_double_click.gd      # no accidental ability use after a click
 godot --headless -s tests/ui_removal_ghost.gd     # a destroyed creature stays until the Removal animation ends
 godot --headless -s tests/net_disconnect_test.gd  # a dropped player concedes
