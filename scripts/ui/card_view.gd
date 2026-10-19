@@ -79,6 +79,7 @@ func set_ability_state(index: int, usable: bool, affordable: bool) -> void:
 	if index < 0 or index >= ability_boxes.size():
 		return
 	var box := ability_boxes[index]
+	box.set_meta("usable", usable)
 	box.modulate = Color(1, 1, 1, 1.0 if affordable else 0.5)
 	if usable:
 		box.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -195,7 +196,8 @@ func _build_abilities(card: Dictionary, element: String, pal: Dictionary) -> voi
 		if _interactive and not ab.get("active", false):
 			var index := i
 			box.gui_input.connect(func(ev: InputEvent):
-				if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
+				# Only a usable ability reacts. Otherwise the click belongs to the card itself (e.g. choosing it as a target).
+				if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT and box.get_meta("usable", false):
 					box.accept_event()
 					ability_pressed.emit(index))
 

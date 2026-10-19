@@ -858,8 +858,8 @@ func _lock_abilities(ms := 650) -> void:
 
 
 func _on_ability_pressed(slot: int, ai: int) -> void:
-	if Time.get_ticks_msec() < _ability_lock_until:
-		return  # most likely the second half of a double-click aimed at something else
+	if Time.get_ticks_msec() < _ability_lock_until or not _pending.is_empty():
+		return  # a double-click aimed at something else, or a click meant to choose a target
 	var creature: Dictionary = view.you.board[slot]
 	var ab: Dictionary = Rules.top_card(creature).abilities[ai]
 	var effect: Dictionary = ab.effects[0]

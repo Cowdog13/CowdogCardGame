@@ -27,7 +27,8 @@ func _init() -> void:
 	await process_frame
 	await process_frame
 	# Click probing: begin targeting then click at several y offsets inside slot 2.
-	screen._begin_targeting("test", func(p, s): return p == 0, 1, func(t): pass)
+	var picks := [0]
+	screen._begin_targeting("test", func(p, s): return p == 0, 1, func(t): picks[0] += 1)
 	await process_frame
 	var slot: BoardCreature = screen._my_board.get_child(2)
 	var r := slot.top_card_rect()  # the whole card, including its ability boxes, must select the creature
@@ -45,9 +46,12 @@ func _init() -> void:
 			fails += 1
 			print("click at %.2f of the slot height was ignored" % f)
 		if screen._pending.is_empty():
-			screen._begin_targeting("test", func(p, s): return p == 0, 1, func(t): pass)
+			screen._begin_targeting("test", func(p, s): return p == 0, 1, func(t): picks[0] += 1)
 			await process_frame
 			slot = screen._my_board.get_child(2)
 			r = slot.top_card_rect()
+	if picks[0] != 6:
+		fails += 1
+		print("expected every click to choose the creature (6 picks), got %d" % picks[0])
 	print("click_area failures=%d" % fails)
 	quit(fails)
