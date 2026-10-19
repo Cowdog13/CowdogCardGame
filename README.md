@@ -21,6 +21,9 @@ Open the folder in Godot 4.7 and press Play (main scene `scenes/main.tscn`).
 - Super Berries found in a deck by Plunder or Pillage (and, with Fire Famine, every berry it finds) pop up in the middle of the screen briefly before you choose where they go.
 - Plunder lays the plundered cards out in a row in the middle of the screen, then sends them to the discard (Super Berries stay for you to place). If a Plunder or Pillage finds no berries, "No berries found" flashes up.
 - Berries on a creature have a green ring when they were played from hand (upright) and a red ring when exhausted (sideways). The berry you are about to place shows beside the prompt and in the big preview.
+- A destroyed creature stays on the table until the Removal card has finished its animation and landed on it.
+- **Menu** always asks before leaving. In multiplayer it is also how you surrender: confirming concedes the game (you lose, your opponent wins).
+- Clicks on an ability within about half a second of another action are ignored, so a double-click can't use an ability by accident.
 - The status strip in the middle of the board only appears while it has something to say.
 - Used abilities flash for 1.5s so it's clear what was activated. Creature spaces are numbered 1-5 (shown on the board and in the payment list).
 - Hover any card (hand, board, piles) to see it large in the right-hand column. **Log** shows the full game log. **Swap** is the once-per-game hand/discard creature swap.
@@ -73,6 +76,9 @@ xvfb-run godot --rendering-driver opengl3 -s tests/ui_click_area.gd   # needs a 
 godot --headless -s tests/ui_smoke.gd
 godot --headless -s tests/net_test.gd        # host + client over a real local connection play a full game
 godot --headless -s tests/net_ui_test.gd     # both screens over the network
+godot --headless -s tests/net_surrender_test.gd   # Menu -> confirm surrenders in multiplayer
+godot --headless -s tests/ui_double_click.gd      # no accidental ability use after a click
+godot --headless -s tests/ui_removal_ghost.gd     # a destroyed creature stays until the Removal animation ends
 godot --headless -s tests/net_disconnect_test.gd  # a dropped player concedes
 xvfb-run godot --rendering-driver opengl3 -s tests/ui_lobby.gd -- /tmp/out   # lobby screenshots
 xvfb-run godot --rendering-driver opengl3 -s tests/ui_look.gd -- /tmp/out   # screenshots of the menu and a full table

@@ -17,6 +17,7 @@ func _init() -> void:
 	e.state_changed.emit()
 	await process_frame
 	await process_frame
+	screen._ability_lock_until = 0
 	var before: int = e.state.players[1].deck.size()
 	var widget: BoardCreature = screen._my_board.get_child(0)
 	var rect := widget.ability_rect(0)

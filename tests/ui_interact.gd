@@ -66,6 +66,7 @@ func _init() -> void:
 				var abs: Array = Rules.top_card(c).abilities
 				for ai in abs.size():
 					if not abs[ai].get("active", false) and Rules.meets_cost(c.berries, abs[ai].cost) and not Rules.is_stunned(c, v.turn):
+						screen._ability_lock_until = 0
 						screen._on_ability_pressed(s, ai)
 						if not screen._pending.is_empty():
 							for ts in Rules.BOARD_SLOTS:

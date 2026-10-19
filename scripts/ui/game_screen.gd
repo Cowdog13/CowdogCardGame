@@ -49,6 +49,8 @@ var _hidden_slots := {}  # "seat:slot" -> number of effects still to land there
 var _fx_queue: Array = []
 var _fx_running := false
 var _recycle_open := false
+var _ability_lock_until := 0  # ms; ignores ability clicks right after another click (double-click protection)
+var _ghosts := {}  # destroyed creatures kept on screen until the spell that destroys them has landed
 
 
 func start(deck_ids: Array, agents: Array, ai_delay: float, effects := true) -> void:
@@ -248,11 +250,7 @@ func _build_ui() -> void:
 	var menu_btn := Button.new()
 	menu_btn.text = "Menu"
 	menu_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	menu_btn.pressed.connect(func():
-		if _allow_rematch or (view.get("phase", "over") == "over"):
-			exit_requested.emit()
-		else:
-			_confirm("Leave the game?", "Leaving counts as a concession.", func(): exit_requested.emit()))
+	menu_btn.pressed.connect(_on_menu_pressed)
 	small.add_child(menu_btn)
 
 	# Opponent's hand as card backs peeking in from the top of the screen.
@@ -309,6 +307,19 @@ func _refresh() -> void:
 				_ask_order(view.pending.ordering)
 			else:
 				_ask_recycle(int(view.pending.recycle))
+
+
+## The Menu button never leaves by accident: it always asks first. In a multiplayer game it is also
+## the way to surrender - confirming concedes the game (you lose) and the result screen follows.
+func _on_menu_pressed() -> void:
+	if view.get("phase", "over") == "over":
+		exit_requested.emit()
+		return
+	if _allow_rematch:  # single player
+		_confirm("Leave the game?", "The game in progress will be lost.", func(): exit_requested.emit())
+	else:
+		_confirm("Surrender?", "You will lose this game and your opponent wins.", func():
+			controller.submit(ME, {"type": "concede"}))
 
 
 func _opp_name() -> String:
@@ -387,6 +398,12 @@ func _rebuild_board(row: HBoxContainer, seat: int) -> void:
 		if _hidden_slots.get("%d:%d" % [seat, slot], 0) > 0:
 			w.modulate.a = 0.0  # a card is still flying in
 		row.add_child(w)
+	# A creature destroyed by a spell stays visible (untouchable) until the spell's card has landed on it.
+	for g in _ghosts.get(seat, []):
+		var gw := BoardCreature.new().setup(g.creature, int(g.slot), false, view.turn, false, false)
+		gw.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		row.add_child(gw)
+		row.move_child(gw, mini(int(g.slot), row.get_child_count() - 1))
 
 
 func _rebuild_opp_hand() -> void:
@@ -568,6 +585,7 @@ func _on_slot_clicked(seat: int, slot: int) -> void:
 
 
 func _finish_targeting() -> void:
+	_lock_abilities()
 	var done: Callable = _pending.done
 	var targets: Array = _pending.targets
 	_pending = {}
@@ -596,6 +614,7 @@ func _submit_action_only(action: Dictionary) -> void:
 
 
 func _submit(action: Dictionary) -> bool:
+	_lock_abilities()
 	var res: Dictionary = controller.submit(ME, action)
 	_status = "" if res.ok else String(res.error)
 	_refresh()
@@ -604,6 +623,7 @@ func _submit(action: Dictionary) -> bool:
 
 # --- Hand interaction -------------------------------------------------------------------------------
 func _on_hand_clicked(i: int) -> void:
+	_lock_abilities(450)
 	if view.phase == "mulligan":
 		if view.you.mulligan_done:
 			return
@@ -833,7 +853,13 @@ func _ordered_pick(title: String, labels: Array, need: int, initial: Array, verb
 
 
 # --- Ability interaction -------------------------------------------------------------------------------
+func _lock_abilities(ms := 650) -> void:
+	_ability_lock_until = Time.get_ticks_msec() + ms
+
+
 func _on_ability_pressed(slot: int, ai: int) -> void:
+	if Time.get_ticks_msec() < _ability_lock_until:
+		return  # most likely the second half of a double-click aimed at something else
 	var creature: Dictionary = view.you.board[slot]
 	var ab: Dictionary = Rules.top_card(creature).abilities[ai]
 	var effect: Dictionary = ab.effects[0]
@@ -1022,6 +1048,16 @@ func _enqueue_fx(ev: Dictionary) -> void:
 			item.targets.append(_slot_rect(int(t.player), int(t.slot)))
 		if ev.fx == "stun" and int(ev.from_slot) >= 0:
 			item["origin"] = _slot_rect(ev.player, ev.from_slot).get_center()
+	if ev.fx == "spell" and CardDB.card(ev.card).effects[0].type == "destroy":
+		item["ghosts"] = []
+		for t in ev.targets:
+			var w: BoardCreature = _slot_nodes.get("%d:%d" % [int(t.player), int(t.slot)])
+			if w != null and is_instance_valid(w):
+				var ghost := {"creature": w.creature.duplicate(true), "slot": int(t.slot), "seat": int(t.player)}
+				if not _ghosts.has(ghost.seat):
+					_ghosts[ghost.seat] = []
+				_ghosts[ghost.seat].append(ghost)
+				item.ghosts.append(ghost)
 	_fx_queue.append(item)
 	var key := _fx_hide_key(ev)
 	if key != "":
@@ -1069,6 +1105,13 @@ func _run_fx_queue() -> void:
 	while not _fx_queue.is_empty():
 		var item: Dictionary = _fx_queue.pop_front()
 		await _play_fx(item.ev, item.src, item)
+		for g in item.get("ghosts", []):
+			(_ghosts[g.seat] as Array).erase(g)
+			var i: int = item.ghosts.find(g)
+			if i >= 0 and i < item.targets.size():
+				_fx.burst(item.targets[i].get_center(), Color(0.9, 0.9, 1.0), 34, 220.0, 0.7)
+			if view != {}:
+				_refresh()
 		var key := _fx_hide_key(item.ev)
 		if key != "":
 			_hidden_slots[key] = maxi(int(_hidden_slots.get(key, 1)) - 1, 0)

@@ -11,7 +11,8 @@ Open **Multiplayer (beta)** on the main menu. The single-player game is untouche
     Some ISPs (carrier-grade NAT) don't allow incoming connections at all; see *Limits* below.
 - **Join:** pick a name and deck, choose *Join a game*, type the host's address (`ip` or `ip:port`) and press *Connect*.
 - The host presses *Start game* when both players are in. Each player uses their own deck.
-- Leaving a game counts as a concession. If the host leaves, everyone is disconnected.
+- **Surrender:** the Menu button asks for confirmation and then concedes - you lose and your opponent wins; both players see the result and return to the menu.
+  Closing the window or losing the connection also counts as a concession. If the host's program closes, the other player is disconnected.
 - To try it on one computer, start two copies of the game; host in one and join `127.0.0.1` in the other.
 
 ## How it works
