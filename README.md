@@ -8,8 +8,9 @@ Open the folder in Godot 4.7 and press Play (main scene `scenes/main.tscn`).
 
 ## How to play
 - Mulligan: click cards to send to the bottom, **Confirm** to draw that many.
-- Click a hand card, then click a highlighted board space (berry -> creature, creature -> space/evolve target).
-- Click an ability button on one of your creatures to use it (2 per turn). Stun/Removal/Berry Trade ask for targets.
+- Click a hand card to play it. Basic creatures join the end of your row; berries go onto your creature (you pick when you have several); evolutions go on the creature
+  they evolve (you pick if more than one fits). Cards in hand lift when hovered.
+- Click an ability box on one of your creatures' cards to use it (2 per turn). Stun/Removal/Berry Trade ask for targets.
 - Spells ask which berries pay the cost (the cheapest choice is pre-selected; discard-pile berries are exiled).
 - Each player has Deck / Discard / Exile piles (in the right sidebar) showing their card counts. Click a Discard or Exile pile to see its cards (decks are hidden). Hovering a card in any list (piles, swap, spell payment, recycle, Reinforce) shows it big beside the list.
   In your own Discard viewer, select a berry and press **Play berry from discard** to attach it (the card flies out of the pile to the creature).
@@ -18,7 +19,21 @@ Open the folder in Godot 4.7 and press Play (main scene `scenes/main.tscn`).
   the discard fly out of the pile with a firework; stuns shoot a blue lightning bolt with fireworks to every target; swaps and spells are shown large in the middle for 2s (spells then fly to their targets).
   The computer waits for effects to finish before acting.
 - Used abilities flash for 1.5s so it's clear what was activated. Creature spaces are numbered 1-5 (shown on the board and in the payment list).
-- Hover anything for card text. **Swap** is the once-per-game hand/discard creature swap.
+- Hover any card (hand, board, piles) to see it large in the right-hand column. **Log** shows the full game log. **Swap** is the once-per-game hand/discard creature swap.
+
+## Art and look
+- Cards are drawn in code at a fixed 300x420 size (frame, name, `Basic` / `Evolves from X`, element badge, art window, ability boxes with cost badges, spell text) and
+  scaled to wherever they are shown. The frame is a **placeholder** built from element colours; the art, symbols, font (Gluten, OFL licence in `assets/fonts`) and board
+  background come from your files. Missing art or symbols fall back to a plain placeholder, so partial art is fine.
+- `assets/` holds the processed art: `cards/` (creature, spell and berry art with transparent backgrounds), `symbols/` (white glyphs, tinted in-game), `berries/`
+  (small berry icons), `board/board_bg.webp`, `ui/card_back_logo.png` (used as the card back for now).
+- **Replacing art:** drop the new raw files into the same folder structure as the original delivery (`FireCards/`, `WaterCards/`, `Berries/`, `Symbols/`) and run
+  `python3 tools/process_art.py <raw_dir> assets` (needs pillow, numpy, scipy). It removes the white backgrounds and writes the game-ready PNGs. File names map to card ids in that script.
+  Missing element symbols (Void, Metal, Air, Electric) show a lettered badge until their art exists.
+- Evolved creatures sit on top of the card they evolved from; the lower cards keep their name plates showing above it. Creatures sit in a row (no fixed spaces) and shuffle over
+  to make room; the board holds 5. The number on each creature matches the numbers in the spell payment list.
+- The layout uses anchors and containers (board and hand on the left, piles, card preview and buttons in a right-hand column) on a 1600x900 canvas that scales with the window.
+  A phone/portrait layout can later replace the right-hand column with popups.
 
 ## Layout
 - `data/cards.json`, `data/decks.json` - all card and deck data. New decks/cards are added here.
@@ -44,8 +59,10 @@ godot --headless -s tests/run_sim.gd -- 200     # AI vs AI; fails on illegal AI 
 godot --headless -s tests/rules_test.gd
 godot --headless -s tests/targets_test.gd     # every Plunder hits the opponent, every Pillage hits yourself
 godot --headless -s tests/ui_payment.gd
+xvfb-run godot --rendering-driver opengl3 -s tests/ui_ability_click.gd   # clicking an ability box on a board card
 xvfb-run godot --rendering-driver opengl3 -s tests/ui_click_area.gd   # needs a display for real mouse events
 godot --headless -s tests/ui_smoke.gd
+xvfb-run godot --rendering-driver opengl3 -s tests/ui_look.gd -- /tmp/out   # screenshots of the menu and a full table
 xvfb-run godot --rendering-driver opengl3 -s tests/ui_pile_hover.gd    # big card preview in pile lists
 xvfb-run godot --rendering-driver opengl3 -s tests/ui_picker_preview.gd  # ...and in the other pickers
 xvfb-run godot --rendering-driver opengl3 -s tests/ui_picker_preview.gd  # ...and in the swap/payment/recycle pickers

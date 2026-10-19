@@ -38,7 +38,7 @@ func _init() -> void:
 	await create_timer(0.55).timeout
 	root.get_texture().get_image().save_png(out + "/fx4_discard_berry.png")
 	await create_timer(1.5).timeout
-	print("spell: ", e.submit(0, {"type": "play_spell", "hand": e.state.players[0].hand.find("disable"), "payment": [{"src": "discard", "index": 1}], "params": {"targets": [{"player": 1, "slot": 2}]}}))
+	print("spell: ", e.submit(0, {"type": "play_spell", "hand": e.state.players[0].hand.find("disable"), "payment": [{"src": "discard", "index": 1}], "params": {"targets": [{"player": 1, "slot": 0}]}}))
 	await create_timer(1.2).timeout
 	root.get_texture().get_image().save_png(out + "/fx5_spell.png")
 	await create_timer(2.5).timeout
@@ -51,7 +51,7 @@ func _init() -> void:
 	e.state.players[1].board[0] = {"cards": ["firespore"], "berries": [], "exhausted": [], "stun_until": -1, "ability_used_turn": -1}
 	e.state_changed.emit()
 	await create_timer(0.3).timeout
-	print("ability: ", e.submit(0, {"type": "use_ability", "slot": 1, "ability": 0, "params": {"targets": [{"player": 1, "slot": 2}, {"player": 1, "slot": 0}]}}))
+	print("ability: ", e.submit(0, {"type": "use_ability", "slot": 1, "ability": 0, "params": {"targets": [{"player": 1, "slot": 0}, {"player": 1, "slot": 1}]}}))
 	await create_timer(0.35).timeout
 	root.get_texture().get_image().save_png(out + "/fx7_stun.png")
 	await create_timer(0.5).timeout

@@ -100,6 +100,14 @@ static func meets_cost(berries: Array, cost: Dictionary) -> bool:
 	return count_matching(berries, cost) >= int(cost.amount)
 
 
+## First empty board space, or -1 when the board is full.
+static func first_free_slot(board: Array) -> int:
+	for i in board.size():
+		if board[i] == null:
+			return i
+	return -1
+
+
 ## Returns "" when `card_id` can be played on `slot` of `board`, otherwise the reason it can't.
 static func place_error(board: Array, card_id: String, slot: int) -> String:
 	var c := CardDB.card(card_id)

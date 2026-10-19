@@ -2,12 +2,16 @@ class_name GameScreen
 extends Control
 ## The playtest table. Reads only get_view(ME) from the controller and sends every
 ## move through controller.submit(), exactly like a networked client would.
+##
+## Layout (1600x900 design, scales with the window): the board and hand on the left, a column
+## on the right with the piles, the big card preview and the buttons. Written with anchors and
+## containers so a phone layout can later swap the right column for popups.
 
 signal exit_requested
 signal rematch_requested
 
 const ME := 0
-const SLOT_SIZE := Vector2(232, 215)
+const RIGHT_W := 332.0
 
 var controller: GameController
 var view: Dictionary = {}
@@ -18,23 +22,25 @@ var _status := ""
 var _over_shown := false
 
 var _opp_info: Label
+var _last_event: Label
 var _turn_label: Label
 var _opp_board: HBoxContainer
 var _my_board: HBoxContainer
-var _my_info: Label
-var _hand_box: HBoxContainer
+var _hand_view: HandView
 var _banner: Label
 var _confirm_btn: Button
 var _cancel_btn: Button
 var _end_btn: Button
 var _swap_btn: Button
-var _log: RichTextLabel
-var _detail: RichTextLabel
+var _preview_holder: Control
+var _preview_note: Label
+var _preview_id := ""
+var _log_bbcode := ""
 var _piles: Array = [{}, {}]  # per seat: {"deck": PileView, "discard": ..., "exile": ...}
 var fx_enabled := true
 var _fx: FxLayer
 var _opp_hand_row: Control
-var _slot_nodes := {}  # "seat:slot" -> slot panel
+var _slot_nodes := {}  # "seat:slot" -> BoardCreature
 var _hidden_slots := {}  # "seat:slot" -> number of effects still to land there
 var _fx_queue: Array = []
 var _fx_running := false
@@ -56,43 +62,71 @@ func start(deck_ids: Array, agents: Array, ai_delay: float, effects := true) -> 
 
 # --- Layout ----------------------------------------------------------------------------
 func _build_ui() -> void:
-	var bg := ColorRect.new()
-	bg.color = Color(0.09, 0.12, 0.11)
-	add_child(bg)
-	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	var margin := MarginContainer.new()
-	for side in ["left", "right", "top", "bottom"]:
-		margin.add_theme_constant_override("margin_" + side, 10)
-	add_child(margin)
-	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	var root := HBoxContainer.new()
-	root.add_theme_constant_override("separation", 12)
-	margin.add_child(root)
+	var tex := ArtDB.board_background()
+	if tex != null:
+		var bg := TextureRect.new()
+		bg.texture = tex
+		bg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		bg.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+		bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(bg)
+		bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	else:
+		var flat := ColorRect.new()
+		flat.color = Color(0.09, 0.15, 0.2)
+		add_child(flat)
+		flat.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
+	# Left: info row, opponent board, status strip, my board.
 	var left := VBoxContainer.new()
-	left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	left.add_theme_constant_override("separation", 6)
-	root.add_child(left)
+	left.add_theme_constant_override("separation", 4)
+	add_child(left)
+	left.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	left.offset_left = 14
+	left.offset_top = 6
+	left.offset_right = -(RIGHT_W + 20)
+	left.offset_bottom = -6
 
 	var opp_row := HBoxContainer.new()
+	opp_row.custom_minimum_size = Vector2(0, 26)
 	left.add_child(opp_row)
 	_opp_info = Label.new()
-	_opp_info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_opp_info.add_theme_font_size_override("font_size", 15)
+	_opp_info.add_theme_color_override("font_color", Color(1, 1, 1, 0.95))
+	_opp_info.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
+	_opp_info.add_theme_constant_override("outline_size", 5)
 	opp_row.add_child(_opp_info)
+	_last_event = Label.new()
+	_last_event.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_last_event.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_last_event.add_theme_font_size_override("font_size", 14)
+	_last_event.add_theme_color_override("font_color", Color(1, 0.95, 0.75, 1.0))
+	_last_event.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
+	_last_event.add_theme_constant_override("outline_size", 5)
+	_last_event.clip_text = true
+	opp_row.add_child(_last_event)
 	_opp_board = _board_row(left)
 
 	var mid := HBoxContainer.new()
-	mid.custom_minimum_size = Vector2(0, 44)
+	mid.custom_minimum_size = Vector2(0, 46)
+	mid.add_theme_constant_override("separation", 10)
 	left.add_child(mid)
 	_turn_label = Label.new()
 	_turn_label.add_theme_font_size_override("font_size", 18)
+	_turn_label.add_theme_color_override("font_color", Color(1, 0.95, 0.75))
+	_turn_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.8))
+	_turn_label.add_theme_constant_override("outline_size", 5)
 	mid.add_child(_turn_label)
+	var banner_panel := PanelContainer.new()
+	banner_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	banner_panel.add_theme_stylebox_override("panel", UiStyle.box(Color(0.06, 0.1, 0.14, 0.7), 12, Color(0.85, 0.72, 0.38, 0.6), 2, 6))
+	mid.add_child(banner_panel)
 	_banner = Label.new()
-	_banner.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_banner.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_banner.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	mid.add_child(_banner)
+	_banner.add_theme_font_size_override("font_size", 16)
+	banner_panel.add_child(_banner)
 	_confirm_btn = Button.new()
 	_confirm_btn.text = "Confirm"
 	_confirm_btn.pressed.connect(_on_confirm)
@@ -101,54 +135,81 @@ func _build_ui() -> void:
 	_cancel_btn.text = "Cancel"
 	_cancel_btn.pressed.connect(_cancel)
 	mid.add_child(_cancel_btn)
-
 	_my_board = _board_row(left)
-	var my_row := HBoxContainer.new()
-	left.add_child(my_row)
-	_my_info = Label.new()
-	_my_info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	my_row.add_child(_my_info)
-	_swap_btn = Button.new()
-	_swap_btn.text = "Swap (once per game)"
-	_swap_btn.pressed.connect(_on_swap)
-	my_row.add_child(_swap_btn)
+
+	# Hand: along the bottom edge of the left area.
+	_hand_view = HandView.new()
+	add_child(_hand_view)
+	_hand_view.anchor_left = 0.0
+	_hand_view.anchor_right = 1.0
+	_hand_view.anchor_top = 1.0
+	_hand_view.anchor_bottom = 1.0
+	_hand_view.offset_left = 14
+	_hand_view.offset_right = -(RIGHT_W + 20)
+	_hand_view.offset_top = -180
+	_hand_view.offset_bottom = 0
+	_hand_view.card_clicked.connect(_on_hand_clicked)
+	_hand_view.card_hovered.connect(_show_card_detail)
+
+	# Right column: opponent piles, big card preview, my piles, buttons.
+	var right := VBoxContainer.new()
+	right.add_theme_constant_override("separation", 6)
+	add_child(right)
+	right.anchor_left = 1.0
+	right.anchor_right = 1.0
+	right.anchor_top = 0.0
+	right.anchor_bottom = 1.0
+	right.offset_left = -(RIGHT_W + 8)
+	right.offset_right = -8
+	right.offset_top = 6
+	right.offset_bottom = -6
+	right.add_child(_make_pile_row(ME + 1))
+	var preview_panel := PanelContainer.new()
+	preview_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	preview_panel.add_theme_stylebox_override("panel", UiStyle.box(Color(0.05, 0.09, 0.13, 0.62), 14, Color(0.85, 0.72, 0.38, 0.5), 2, 8))
+	right.add_child(preview_panel)
+	var pbox := VBoxContainer.new()
+	pbox.add_theme_constant_override("separation", 4)
+	preview_panel.add_child(pbox)
+	_preview_holder = Control.new()
+	_preview_holder.custom_minimum_size = Vector2(0, 340)
+	_preview_holder.resized.connect(_center_preview)
+	_preview_holder.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	pbox.add_child(_preview_holder)
+	_preview_note = Label.new()
+	_preview_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_preview_note.add_theme_font_size_override("font_size", 14)
+	_preview_note.custom_minimum_size = Vector2(0, 34)
+	_preview_note.text = "Hover a card to see it larger."
+	_preview_note.modulate = Color(1, 1, 1, 0.85)
+	pbox.add_child(_preview_note)
+	right.add_child(_make_pile_row(ME))
 	_end_btn = Button.new()
 	_end_btn.text = "End Turn"
-	_end_btn.custom_minimum_size = Vector2(120, 0)
+	_end_btn.custom_minimum_size = Vector2(0, 44)
 	_end_btn.pressed.connect(func(): _submit({"type": "end_turn"}))
-	my_row.add_child(_end_btn)
-
-	var scroll := ScrollContainer.new()
-	scroll.custom_minimum_size = Vector2(0, 275)
-	# Never let a tall card grow the hand area (and push the table around).
-	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER
-	left.add_child(scroll)
-	_hand_box = HBoxContainer.new()
-	_hand_box.add_theme_constant_override("separation", 6)
-	scroll.add_child(_hand_box)
-
-	var side := VBoxContainer.new()
-	side.custom_minimum_size = Vector2(330, 0)
-	side.add_theme_constant_override("separation", 6)
-	root.add_child(side)
-	_detail = RichTextLabel.new()
-	_detail.bbcode_enabled = true
-	_detail.custom_minimum_size = Vector2(0, 150)
-	_detail.text = "Hover a card for details."
-	side.add_child(_make_pile_row(ME + 1, "Opponent"))
-	side.add_child(_detail)
-	_log = RichTextLabel.new()
-	_log.bbcode_enabled = true
-	_log.scroll_following = true
-	_log.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	side.add_child(_log)
-	side.add_child(_make_pile_row(ME, "You"))
+	right.add_child(_end_btn)
+	var small := HBoxContainer.new()
+	small.add_theme_constant_override("separation", 6)
+	right.add_child(small)
+	_swap_btn = Button.new()
+	_swap_btn.text = "Swap"
+	_swap_btn.tooltip_text = "Once per game: swap a creature in your hand with one in your discard"
+	_swap_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_swap_btn.pressed.connect(_on_swap)
+	small.add_child(_swap_btn)
+	var log_btn := Button.new()
+	log_btn.text = "Log"
+	log_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	log_btn.pressed.connect(_show_log)
+	small.add_child(log_btn)
 	var menu_btn := Button.new()
-	menu_btn.text = "Back to Menu"
+	menu_btn.text = "Menu"
+	menu_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	menu_btn.pressed.connect(func(): exit_requested.emit())
-	side.add_child(menu_btn)
+	small.add_child(menu_btn)
 
-	# Opponent's hand as blank cards peeking in from the top of the screen.
+	# Opponent's hand as card backs peeking in from the top of the screen.
 	_opp_hand_row = Control.new()
 	_opp_hand_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_opp_hand_row)
@@ -159,9 +220,9 @@ func _build_ui() -> void:
 
 func _board_row(parent: Control) -> HBoxContainer:
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 10)
+	row.add_theme_constant_override("separation", 12)
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.custom_minimum_size = Vector2(0, SLOT_SIZE.y)
+	row.custom_minimum_size = Vector2(0, BoardCreature.widget_size().y)
 	parent.add_child(row)
 	return row
 
@@ -171,10 +232,9 @@ func _refresh() -> void:
 	view = controller.get_view(ME)
 	var you: Dictionary = view.you
 	var opp: Dictionary = view.opponent
-	_opp_info.text = "Opponent - Hand %d" % opp.hand_count
-	_set_piles(ME + 1, opp.deck_count, opp.discard.size(), opp.exile.size())
-	_set_piles(ME, you.deck_count, you.discard.size(), you.exile.size())
-	_my_info.text = "You%s" % _turn_flags(you)
+	_opp_info.text = "Opponent  -  %d card(s) in hand" % opp.hand_count
+	_set_piles(ME + 1, opp)
+	_set_piles(ME, you)
 	_rebuild_board(_opp_board, ME + 1)
 	_rebuild_board(_my_board, ME)
 	_rebuild_hand()
@@ -185,7 +245,7 @@ func _refresh() -> void:
 	match view.phase:
 		"mulligan": _turn_label.text = "Mulligan"
 		"over": _turn_label.text = "Game over"
-		_: _turn_label.text = "Turn %d - %s" % [view.turn, "YOUR TURN" if acting else "Opponent's turn"]
+		_: _turn_label.text = "Turn %d - %s%s" % [view.turn, "YOUR TURN" if acting else "Opponent's turn", _turn_flags(you)]
 	_update_banner()
 	if not view.pending.is_empty() and view.pending.player == ME and _pending.is_empty():
 		if not view.pending.berries.is_empty():
@@ -203,7 +263,7 @@ func _refresh() -> void:
 func _turn_flags(you: Dictionary) -> String:
 	if view.phase != "main" or view.active != ME:
 		return ""
-	return " | Berry: %s | Creature: %s | Abilities: %d/%d" % [
+	return "   |   Berry %s   Creature %s   Abilities %d/%d" % [
 		"used" if you.berry_attached else "ready", "used" if you.creature_played else "ready",
 		you.abilities_used, Rules.ABILITIES_PER_TURN]
 
@@ -237,115 +297,36 @@ func _rebuild_board(row: HBoxContainer, seat: int) -> void:
 	for c in row.get_children():
 		c.queue_free()
 		row.remove_child(c)
-	for slot in Rules.BOARD_SLOTS:
-		row.add_child(_make_slot(seat, slot))
-
-
-func _make_slot(seat: int, slot: int) -> Control:
+	for key in _slot_nodes.keys():
+		if key.begins_with("%d:" % seat):
+			_slot_nodes.erase(key)
 	var side: Dictionary = view.you if seat == ME else view.opponent
-	var creature = side.board[slot]
-	var valid: bool = not _pending.is_empty() and _pending.valid.call(seat, slot)
-	var panel := PanelContainer.new()
-	panel.custom_minimum_size = SLOT_SIZE
-	_slot_nodes["%d:%d" % [seat, slot]] = panel
-	if _hidden_slots.get("%d:%d" % [seat, slot], 0) > 0:
-		panel.modulate.a = 0.0  # a card is still flying in
-	var style := StyleBoxFlat.new()
-	style.set_corner_radius_all(8)
-	style.set_content_margin_all(8)
-	style.bg_color = Color(0.15, 0.19, 0.17)
-	style.border_color = Color(0.3, 0.36, 0.33)
-	style.set_border_width_all(2)
-	if creature != null:
-		var base := Rules.element_color(String(Rules.top_card(creature).element))
-		style.bg_color = base.darkened(0.6)
-		style.border_color = base.lightened(0.1)
-	var chosen := _target_index(seat, slot) >= 0
-	if valid or chosen:
-		style.border_color = Color(1, 0.35, 0.35) if chosen else Color(1, 0.9, 0.3)
-		style.set_border_width_all(5)
-	panel.add_theme_stylebox_override("panel", style)
-	panel.gui_input.connect(func(ev: InputEvent):
-		if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
-			_on_slot_clicked(seat, slot))
-	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 4)
-	panel.add_child(box)
-	if creature == null:
-		var empty := Label.new()
-		empty.text = "Empty (%d)" % (slot + 1)
-		empty.modulate = Color(1, 1, 1, 0.35)
-		empty.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		empty.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		empty.size_flags_vertical = Control.SIZE_EXPAND_FILL
-		box.add_child(empty)
-		return panel
-	var top := Rules.top_card(creature)
-	panel.mouse_entered.connect(func(): _show_creature_detail(creature))
-	var title := Label.new()
-	title.text = "%d. %s  (Tier %d)" % [slot + 1, top.name, int(top.tier)]
-	title.add_theme_font_size_override("font_size", 18)
-	box.add_child(title)
-	if creature.cards.size() > 1:
-		var names: Array = creature.cards.map(func(id): return CardDB.card_name(id))
-		var stack := Label.new()
-		stack.text = " > ".join(names)
-		stack.add_theme_font_size_override("font_size", 11)
-		stack.modulate = Color(1, 1, 1, 0.6)
-		box.add_child(stack)
-	var chips := HFlowContainer.new()
-	chips.add_theme_constant_override("h_separation", 3)
-	chips.add_theme_constant_override("v_separation", 3)
-	for bi in creature.berries.size():
-		var b: String = creature.berries[bi]
-		var sideways: bool = creature.exhausted[bi]
-		var chip := ColorRect.new()
-		chip.custom_minimum_size = Vector2(26, 14) if sideways else Vector2(16, 24)  # sideways = exhausted
-		chip.color = Rules.element_color(CardDB.element_of(b))
-		chip.tooltip_text = CardDB.card_name(b) + (" (exhausted: exiled when discarded)" if sideways else "")
-		chip.mouse_filter = Control.MOUSE_FILTER_PASS
-		chips.add_child(chip)
-	if creature.berries.is_empty():
-		var none := Label.new()
-		none.text = "No berries"
-		none.add_theme_font_size_override("font_size", 12)
-		none.modulate = Color(1, 1, 1, 0.4)
-		chips.add_child(none)
-	box.add_child(chips)
-	panel.set_meta("chips", chips)
-	if Rules.is_stunned(creature, view.turn):
-		var stun := Label.new()
-		stun.text = "STUNNED"
-		stun.modulate = Color(0.5, 0.85, 1)
-		box.add_child(stun)
-	var ability_nodes: Array = []
-	panel.set_meta("abilities", ability_nodes)
-	for ai in top.abilities.size():
-		var ab: Dictionary = top.abilities[ai]
-		var label := "[%s] %s" % [Rules.cost_text(ab.cost), Rules.ability_text(ab)]
-		var met := Rules.meets_cost(creature.berries, ab.cost)
-		if seat == ME and not ab.get("active", false):
-			var btn := Button.new()
-			btn.text = label
-			btn.clip_text = false
-			btn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-			btn.add_theme_font_size_override("font_size", 13)
-			btn.disabled = not (_can_act() and _pending.is_empty() and met and not Rules.abilities_locked(view.turn) and not Rules.used_ability_this_turn(creature, view.turn)
-				and not Rules.is_stunned(creature, view.turn) and view.you.abilities_used < Rules.ABILITIES_PER_TURN)
-			btn.pressed.connect(_on_ability_pressed.bind(slot, ai))
-			# A disabled button would swallow clicks meant for the creature (e.g. while targeting).
-			btn.mouse_filter = Control.MOUSE_FILTER_IGNORE if btn.disabled else Control.MOUSE_FILTER_STOP
-			box.add_child(btn)
-			ability_nodes.append(btn)
-		else:
-			var l := Label.new()
-			l.text = label
-			l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-			l.add_theme_font_size_override("font_size", 13)
-			l.modulate = Color(1, 1, 1, 1.0 if met else 0.45)
-			box.add_child(l)
-			ability_nodes.append(l)
-	return panel
+	for slot in Rules.BOARD_SLOTS:
+		var creature = side.board[slot]
+		if creature == null:
+			continue
+		var valid: bool = not _pending.is_empty() and _pending.valid.call(seat, slot)
+		var chosen := _target_index(seat, slot) >= 0
+		var w := BoardCreature.new().setup(creature, slot, seat == ME, view.turn, valid, chosen)
+		w.clicked.connect(_on_slot_clicked.bind(seat, slot))
+		w.hovered.connect(_show_creature_detail)
+		if seat == ME:
+			w.ability_pressed.connect(func(i): _on_ability_pressed(slot, i))
+			var abilities: Array = Rules.top_card(creature).abilities
+			var usable: Array = []
+			var affordable: Array = []
+			for ai in abilities.size():
+				var ab: Dictionary = abilities[ai]
+				var met := Rules.meets_cost(creature.berries, ab.cost)
+				affordable.append(met or ab.get("active", false))
+				usable.append(not ab.get("active", false) and _can_act() and _pending.is_empty() and met
+					and not Rules.abilities_locked(view.turn) and not Rules.used_ability_this_turn(creature, view.turn)
+					and not Rules.is_stunned(creature, view.turn) and view.you.abilities_used < Rules.ABILITIES_PER_TURN)
+			w.set_ability_states(usable, affordable)
+		_slot_nodes["%d:%d" % [seat, slot]] = w
+		if _hidden_slots.get("%d:%d" % [seat, slot], 0) > 0:
+			w.modulate.a = 0.0  # a card is still flying in
+		row.add_child(w)
 
 
 func _rebuild_opp_hand() -> void:
@@ -353,46 +334,56 @@ func _rebuild_opp_hand() -> void:
 		_opp_hand_row.remove_child(c)
 		c.queue_free()
 	var n: int = view.opponent.hand_count
-	var center_x := (size.x - 330.0 - 40.0) / 2.0
+	var center_x := (size.x - RIGHT_W - 20.0) / 2.0
 	for i in n:
-		var back := Panel.new()
-		back.size = Vector2(70, 100)
+		var back := CardBack.new().setup(Vector2(70, 98))
 		back.pivot_offset = back.size / 2.0
-		back.add_theme_stylebox_override("panel", FxLayer.back_style(6))
-		back.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		var off := float(i) - float(n - 1) / 2.0
-		back.position = Vector2(center_x + off * minf(40.0, 560.0 / maxf(n, 1)) - 35.0, -62.0)
+		back.position = Vector2(center_x + off * minf(40.0, 560.0 / maxf(n, 1)) - 35.0, -66.0)
 		back.rotation = off * 0.035
 		_opp_hand_row.add_child(back)
 
 
 func _rebuild_hand() -> void:
-	for c in _hand_box.get_children():
-		c.queue_free()
-		_hand_box.remove_child(c)
 	var hand: Array = view.you.hand
+	var marks: Array = []
 	for i in hand.size():
 		var mark := CardView.Mark.NONE
 		if view.phase == "mulligan" and not view.you.mulligan_done:
 			mark = CardView.Mark.SELECTED if _mull_sel.has(i) else CardView.Mark.SELECTABLE
-		var cv := CardView.new().setup(hand[i], mark)
-		cv.clicked.connect(_on_hand_clicked.bind(i))
-		cv.hovered.connect(_show_card_detail)
-		_hand_box.add_child(cv)
+		marks.append(mark)
+	_hand_view.set_hand(hand, marks, view.phase == "mulligan")
 
 
-# --- Detail / log / dialogs -------------------------------------------------------------------
+# --- Preview / log / dialogs -------------------------------------------------------------------
+func _set_preview(id: String, note: String) -> void:
+	if id != _preview_id:
+		_preview_id = id
+		for c in _preview_holder.get_children():
+			_preview_holder.remove_child(c)
+			c.queue_free()
+		var cv := CardView.new().setup(id, CardView.Mark.NONE, Vector2(288, 403))
+		cv.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_preview_holder.add_child(cv)
+		_center_preview()
+	_preview_note.text = note
+
+
+func _center_preview() -> void:
+	for c in _preview_holder.get_children():
+		c.position = Vector2((_preview_holder.size.x - c.size.x) / 2.0, maxf((_preview_holder.size.y - c.size.y) / 2.0, 0.0))
+
+
 func _show_card_detail(id: String) -> void:
-	_detail.text = "[b]%s[/b]\n%s" % [CardDB.card_name(id), CardDB.card_text(id)]
+	_set_preview(id, "")
 
 
 func _show_creature_detail(creature: Dictionary) -> void:
-	var top := Rules.top_card(creature)
 	var counts := {}
 	for b in creature.berries:
 		counts[CardDB.card_name(b)] = int(counts.get(CardDB.card_name(b), 0)) + 1
 	var berries := ", ".join(counts.keys().map(func(k): return "%d %s" % [counts[k], k]))
-	_detail.text = "[b]%s[/b]\n%s\n\nAttached: %s" % [top.name, CardDB.card_text(top.id), berries if berries != "" else "none"]
+	_set_preview(Rules.top_card(creature).id, "Attached: %s" % (berries if berries != "" else "no berries"))
 
 
 func _on_event(ev: Dictionary) -> void:
@@ -403,9 +394,26 @@ func _on_event(ev: Dictionary) -> void:
 		ME: color = "#8fc7ff"
 		ME + 1: color = "#ffb27a"
 	match ev.kind:
-		"turn": _log.append_text("\n[b][color=#ffe27a]%s[/color][/b]\n" % ev.text)
-		"win": _log.append_text("[b][color=#ff7a7a]%s[/color][/b]\n" % ev.text)
-		_: _log.append_text("[color=%s]%s[/color]\n" % [color, ev.text])
+		"turn": _log_bbcode += "\n[b][color=#ffe27a]%s[/color][/b]\n" % ev.text
+		"win": _log_bbcode += "[b][color=#ff7a7a]%s[/color][/b]\n" % ev.text
+		_: _log_bbcode += "[color=%s]%s[/color]\n" % [color, ev.text]
+	if ev.kind != "turn":
+		_last_event.text = ev.text
+
+
+func _show_log() -> void:
+	var d := AcceptDialog.new()
+	d.title = "Game log"
+	d.min_size = Vector2(620, 560)
+	var rt := RichTextLabel.new()
+	rt.bbcode_enabled = true
+	rt.custom_minimum_size = Vector2(580, 480)
+	rt.text = _log_bbcode
+	rt.scroll_following = true
+	d.add_child(rt)
+	d.confirmed.connect(d.queue_free)
+	d.canceled.connect(d.queue_free)
+	_popup(d)
 
 
 func _toast(msg: String) -> void:
@@ -518,6 +526,11 @@ func _on_confirm() -> void:
 		_finish_targeting()
 
 
+## Submits and returns (used to end a click handler that needs no further input).
+func _submit_action_only(action: Dictionary) -> void:
+	_submit(action)
+
+
 func _submit(action: Dictionary) -> bool:
 	var res := controller.submit(ME, action)
 	_status = "" if res.ok else String(res.error)
@@ -544,13 +557,34 @@ func _on_hand_clicked(i: int) -> void:
 		"berry":
 			if view.you.berry_attached:
 				return _toast("You already attached a berry this turn.")
+			var mine: Array = []
+			for s in view.you.board.size():
+				if view.you.board[s] != null:
+					mine.append(s)
+			if mine.is_empty():
+				return _toast("You need a creature to attach a berry to.")
+			if mine.size() == 1:
+				return _submit_action_only({"type": "attach_berry", "hand": i, "slot": mine[0]})
 			_begin_targeting("Attach %s to which of your creatures?" % CardDB.card_name(id),
 				func(p, s): return p == ME and view.you.board[s] != null, 1,
 				func(t): _submit({"type": "attach_berry", "hand": i, "slot": t[0].slot}))
 		"creature":
 			if view.you.creature_played:
 				return _toast("You already played a creature this turn.")
-			_begin_targeting("Place %s on which space?" % CardDB.card_name(id),
+			if int(CardDB.card(id).tier) <= 1:
+				var free := Rules.first_free_slot(view.you.board)
+				if free < 0:
+					return _toast("You already have %d creatures - the board is full." % Rules.BOARD_SLOTS)
+				return _submit_action_only({"type": "play_creature", "hand": i, "slot": free})
+			var options: Array = []
+			for s in view.you.board.size():
+				if Rules.place_error(view.you.board, id, s) == "":
+					options.append(s)
+			if options.is_empty():
+				return _toast("%s must be played on %s." % [CardDB.card_name(id), CardDB.card_name(CardDB.card(id).evolves_from)])
+			if options.size() == 1:
+				return _submit_action_only({"type": "play_creature", "hand": i, "slot": options[0]})
+			_begin_targeting("Evolve which creature into %s?" % CardDB.card_name(id),
 				func(p, s): return p == ME and Rules.place_error(view.you.board, id, s) == "", 1,
 				func(t): _submit({"type": "play_creature", "hand": i, "slot": t[0].slot}))
 		"spell":
@@ -789,7 +823,7 @@ func _list_with_preview(list: ItemList, card_at: Callable) -> HBoxContainer:
 	row.add_child(list)
 	var holder := Control.new()
 	holder.name = "Preview"
-	holder.custom_minimum_size = Vector2(280, 540)
+	holder.custom_minimum_size = Vector2(280, 400)
 	row.add_child(holder)
 	var show := func(k: int):
 		for c in holder.get_children():
@@ -797,9 +831,7 @@ func _list_with_preview(list: ItemList, card_at: Callable) -> HBoxContainer:
 			c.queue_free()
 		if k < 0:
 			return
-		var card := CardView.new().setup(card_at.call(k))
-		card.size = Vector2(150, 250)
-		card.scale = Vector2(1.8, 1.8)  # 270 x 450
+		var card := CardView.new().setup(card_at.call(k), CardView.Mark.NONE, Vector2(270, 378))
 		card.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		holder.add_child(card)
 	list.gui_input.connect(func(ev: InputEvent):
@@ -861,37 +893,31 @@ func _view_pile(seat: int, kind: String) -> void:
 	_popup(d)
 
 
-func _make_pile_row(seat: int, heading: String) -> Control:
-	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 2)
-	var l := Label.new()
-	l.text = heading
-	l.add_theme_font_size_override("font_size", 13)
-	l.modulate = Color(1, 1, 1, 0.6)
-	box.add_child(l)
+func _make_pile_row(seat: int) -> Control:
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 10)
-	box.add_child(row)
+	row.add_theme_constant_override("separation", 2)
 	for kind in ["deck", "discard", "exile"]:
 		var pile := PileView.new().setup(kind, kind != "deck")
 		if kind != "deck":
 			pile.clicked.connect(func(): _view_pile(seat, kind))
 		row.add_child(pile)
 		_piles[seat][kind] = pile
-	return box
+	return row
 
 
-func _set_piles(seat: int, deck: int, discard: int, exile: int) -> void:
-	_piles[seat].deck.set_count(deck)
-	_piles[seat].discard.set_count(discard)
-	_piles[seat].exile.set_count(exile)
+func _set_piles(seat: int, side: Dictionary) -> void:
+	var discard: Array = side.discard
+	var exile: Array = side.exile
+	_piles[seat].deck.set_pile(side.deck_count, "")
+	_piles[seat].discard.set_pile(discard.size(), "" if discard.is_empty() else discard.back())
+	_piles[seat].exile.set_pile(exile.size(), "" if exile.is_empty() else exile.back())
 
 
 func _pile_rect(seat: int, kind: String) -> Rect2:
-	var pile: Control = _piles[seat].get(kind)
+	var pile: PileView = _piles[seat].get(kind)
 	if pile != null and is_instance_valid(pile):
-		return pile.get_global_rect()
-	return Rect2(size / 2.0, Vector2(84, 96))
+		return pile.top_rect()
+	return Rect2(size / 2.0, Vector2(78, 109))
 
 
 func _on_swap() -> void:
@@ -924,7 +950,14 @@ func _on_swap() -> void:
 ## the hand still shows the card that was just played; playback starts a frame later, after
 ## the table has been rebuilt for the new state.
 func _enqueue_fx(ev: Dictionary) -> void:
-	var item := {"ev": ev, "src": _fx_source_rect(ev)}
+	var item := {"ev": ev, "src": _fx_source_rect(ev), "targets": []}
+	# Targets are measured now: after the action the board may already have changed (e.g. a destroyed
+	# creature is gone and the others have shifted).
+	if ev.fx == "spell" or ev.fx == "stun":
+		for t in ev.targets:
+			item.targets.append(_slot_rect(int(t.player), int(t.slot)))
+		if ev.fx == "stun" and int(ev.from_slot) >= 0:
+			item["origin"] = _slot_rect(ev.player, ev.from_slot).get_center()
 	_fx_queue.append(item)
 	var key := _fx_hide_key(ev)
 	if key != "":
@@ -946,20 +979,19 @@ func _fx_source_rect(ev: Dictionary) -> Rect2:
 		return _pile_rect(int(ev.player), "discard")
 	var idx := int(ev.hand)
 	if mine:
-		if idx >= 0 and idx < _hand_box.get_child_count():
-			return _hand_box.get_child(idx).get_global_rect()
-		return Rect2(Vector2(size.x / 2.0, size.y), Vector2(150, 250))
+		return _hand_view.card_rect(idx)
 	var n := _opp_hand_row.get_child_count()
 	if n == 0:
 		return Rect2(Vector2(size.x / 2.0 - 35.0, -60.0), Vector2(70, 100))
 	return _opp_hand_row.get_child(clampi(idx, 0, n - 1)).get_global_rect()
 
 
+## The top card of the creature in `slot` (effects aim at the card, not the whole stack).
 func _slot_rect(seat: int, slot: int) -> Rect2:
-	var node: Control = _slot_nodes.get("%d:%d" % [seat, slot])
+	var node: BoardCreature = _slot_nodes.get("%d:%d" % [seat, slot])
 	if node != null and is_instance_valid(node):
-		return node.get_global_rect()
-	return Rect2(size / 2.0, SLOT_SIZE)
+		return node.top_card_rect()
+	return Rect2(size / 2.0, BoardCreature.CARD_SIZE)
 
 
 func _run_fx_queue() -> void:
@@ -967,7 +999,7 @@ func _run_fx_queue() -> void:
 	await get_tree().process_frame
 	while not _fx_queue.is_empty():
 		var item: Dictionary = _fx_queue.pop_front()
-		await _play_fx(item.ev, item.src)
+		await _play_fx(item.ev, item.src, item)
 		var key := _fx_hide_key(item.ev)
 		if key != "":
 			_hidden_slots[key] = maxi(int(_hidden_slots.get(key, 1)) - 1, 0)
@@ -977,7 +1009,7 @@ func _run_fx_queue() -> void:
 	_fx_running = false
 
 
-func _play_fx(ev: Dictionary, src: Rect2) -> void:
+func _play_fx(ev: Dictionary, src: Rect2, item: Dictionary) -> void:
 	var mine: bool = int(ev.player) == ME
 	match ev.fx:
 		"play_creature":
@@ -987,29 +1019,18 @@ func _play_fx(ev: Dictionary, src: Rect2) -> void:
 			else:
 				await _fx.play_card(ev.card, src, 0.0 if mine else 2.0, [target], not mine)
 		"spell":
-			var targets: Array = []
-			for t in ev.targets:
-				targets.append(_slot_rect(int(t.player), int(t.slot)))
-			await _fx.play_card(ev.card, src, 2.0, targets, not mine)
+			await _fx.play_card(ev.card, src, 2.0, item.targets, not mine)
 		"attach":
 			await _play_attach(ev, src, mine)
 		"ability":
-			var panel: Control = _slot_nodes.get("%d:%d" % [ev.player, ev.slot])
+			var creature: BoardCreature = _slot_nodes.get("%d:%d" % [ev.player, ev.slot])
 			var rect := _slot_rect(ev.player, ev.slot)
-			if panel != null and is_instance_valid(panel) and panel.has_meta("abilities"):
-				var nodes: Array = panel.get_meta("abilities")
-				if int(ev.ability) < nodes.size() and is_instance_valid(nodes[int(ev.ability)]):
-					rect = nodes[int(ev.ability)].get_global_rect()
+			if creature != null and is_instance_valid(creature):
+				rect = creature.ability_rect(int(ev.ability))
 			await _fx.flash(rect, 1.5)
 		"stun":
-			var origin: Vector2
-			if int(ev.from_slot) >= 0:
-				origin = _slot_rect(ev.player, ev.from_slot).get_center()
-			else:  # a spell: the bolt starts on the caster's side of the table
-				origin = Vector2(size.x / 2.0 - 160.0, size.y - 30.0 if mine else 20.0)
-			var points: Array = []
-			for t in ev.targets:
-				points.append(_slot_rect(int(t.player), int(t.slot)).get_center())
+			var origin: Vector2 = item.get("origin", Vector2(size.x / 2.0 - 160.0, size.y - 30.0 if mine else 20.0))
+			var points: Array = item.targets.map(func(r: Rect2): return r.get_center())
 			await _fx.stun_bolts(origin, points)
 		"swap":
 			await _fx.show_pair(ev.hand_card, ev.discard_card, "From hand", "From discard", 2.0)
@@ -1022,12 +1043,10 @@ func _play_attach(ev: Dictionary, src: Rect2, mine: bool) -> void:
 		await _fx.play_card(ev.card, src, 0.0, [target], false, 1.3)
 	else:
 		await _fx.play_card(ev.card, src, 0.0 if mine else 0.7, [target], not mine, 1.3)
-	var panel: Control = _slot_nodes.get("%d:%d" % [ev.player, ev.slot])
+	var creature: BoardCreature = _slot_nodes.get("%d:%d" % [ev.player, ev.slot])
 	var spot := target.get_center()
-	if panel != null and is_instance_valid(panel) and panel.has_meta("chips"):
-		var chips: Control = panel.get_meta("chips")
-		if is_instance_valid(chips) and chips.get_child_count() > 0:
-			spot = chips.get_child(chips.get_child_count() - 1).get_global_rect().get_center()
+	if creature != null and is_instance_valid(creature):
+		spot = creature.newest_berry_pos()
 	_fx.burst(spot + Vector2(0, -8), Rules.element_color(CardDB.element_of(ev.card)), 30, 170.0, 0.7)
 	_fx.blink(_slot_rect(ev.player, ev.slot))
 	await get_tree().create_timer(0.8).timeout

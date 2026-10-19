@@ -1,85 +1,105 @@
 class_name PileView
 extends Control
-## A pile of cards (deck / discard / exile) drawn as a little stack with the card count.
-## Discard and exile piles are clickable; the deck is hidden information.
+## A pile of cards: a few card backs peeking out under the top card, with the count on a plate.
+## Deck shows the card back; discard shows the last discarded card; exile shows the last exiled
+## card turned sideways. Discard and exile can be clicked to browse them; the deck is hidden.
 
 signal clicked
 
-const SIZE_PILE := Vector2(92, 122)
-const CARD_AREA := Vector2(84, 96)
+const CARD := Vector2(78, 109)
+const SIZE_PILE := Vector2(108, 160)
 
 var kind := "deck"
-var count := 0
 var clickable := false
-var _hover := false
+var count := 0
+var top_id := ""
+var _stack: Control
+var _top_card: Control
 
 
 func setup(p_kind: String, p_clickable: bool) -> PileView:
 	kind = p_kind
 	clickable = p_clickable
 	custom_minimum_size = SIZE_PILE
+	size = SIZE_PILE
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	if clickable:
 		mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	tooltip_text = "%s%s" % [kind.capitalize(), " (click to view)" if clickable else " (hidden)"]
-	mouse_entered.connect(func():
-		_hover = true
-		queue_redraw())
-	mouse_exited.connect(func():
-		_hover = false
-		queue_redraw())
+	_stack = Control.new()
+	_stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_stack)
+	set_pile(0, "")
 	return self
 
 
-func set_count(n: int) -> void:
-	if n != count:
-		count = n
-		queue_redraw()
-
-
-func _face_style(top: bool) -> StyleBoxFlat:
-	var sb := StyleBoxFlat.new()
-	sb.set_corner_radius_all(7)
-	sb.set_border_width_all(2)
-	match kind:
-		"deck":
-			sb.bg_color = Color(0.16, 0.20, 0.36)
-			sb.border_color = Color(0.86, 0.70, 0.30)
-		"discard":
-			sb.bg_color = Color(0.26, 0.28, 0.30)
-			sb.border_color = Color(0.55, 0.58, 0.62)
-		_:
-			sb.bg_color = Color(0.30, 0.18, 0.40)
-			sb.border_color = Color(0.72, 0.45, 0.95)
-	if not top:
-		sb.bg_color = sb.bg_color.darkened(0.25)
-	if _hover and clickable:
-		sb.border_color = sb.border_color.lightened(0.45)
-	return sb
-
-
-func _draw() -> void:
-	var layers := 0 if count == 0 else clampi(int(ceil(count / 8.0)), 1, 5)
+## `top` is the card id shown on top (discard / exile); ignored for the deck.
+func set_pile(p_count: int, top_card_id: String) -> void:
+	if _stack.get_child_count() > 0 and p_count == count and top_card_id == top_id:
+		return
+	count = p_count
+	top_id = top_card_id
+	for c in _stack.get_children():
+		_stack.remove_child(c)
+		c.queue_free()
+	var origin := Vector2((SIZE_PILE.x - CARD.x) / 2.0, 14.0)
 	if count == 0:
-		var empty := StyleBoxFlat.new()
-		empty.bg_color = Color(1, 1, 1, 0.04)
-		empty.set_corner_radius_all(7)
-		empty.set_border_width_all(2)
-		empty.border_color = Color(1, 1, 1, 0.2)
-		draw_style_box(empty, Rect2(Vector2(4, 8), CARD_AREA))
-	for i in layers:
-		var off := Vector2(4, 8) - Vector2(2.5, 2.5) * (layers - 1 - i)
-		draw_style_box(_face_style(i == layers - 1), Rect2(off, CARD_AREA))
-	var font := get_theme_default_font()
-	var top_left := Vector2(4, 8)
-	var num := str(count)
-	var fs := 34
-	var tsize := font.get_string_size(num, HORIZONTAL_ALIGNMENT_CENTER, -1, fs)
-	draw_string(font, top_left + Vector2((CARD_AREA.x - tsize.x) / 2.0, CARD_AREA.y / 2.0 + fs * 0.35), num,
-		HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(1, 1, 1, 0.95))
-	var cap := kind.capitalize()
-	var csize := font.get_string_size(cap, HORIZONTAL_ALIGNMENT_CENTER, -1, 13)
-	draw_string(font, Vector2((size.x - csize.x) / 2.0, size.y - 3), cap, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(1, 1, 1, 0.75))
+		var empty := Panel.new()
+		empty.position = origin
+		empty.size = CARD
+		empty.add_theme_stylebox_override("panel", UiStyle.box(Color(1, 1, 1, 0.06), 10, Color(1, 1, 1, 0.3), 2))
+		empty.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_stack.add_child(empty)
+	else:
+		var layers := clampi(int(ceil(count / 12.0)), 1, 3)  # 1-2 extra card edges under the top card
+		for i in range(layers - 1, 0, -1):
+			var under := CardBack.new().setup(CARD)
+			under.position = origin + Vector2(-3.5, 3.5) * i
+			under.modulate = Color(0.78, 0.78, 0.82)
+			_stack.add_child(under)
+		var top: Control
+		if kind == "deck" or top_id == "":
+			top = CardBack.new().setup(CARD)
+			top.position = origin
+		else:
+			top = CardView.new().setup(top_id, CardView.Mark.NONE, CARD)
+			top.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			top.position = origin
+			if kind == "exile":
+				# Sideways, so it can't be mistaken for the discard pile.
+				top.pivot_offset = CARD / 2.0
+				top.rotation = PI / 2.0
+				top.position = origin + Vector2(0, 4)
+		_stack.add_child(top)
+		_top_card = top
+	# Count plate and caption.
+	var plate := Panel.new()
+	plate.size = Vector2(46, 26)
+	plate.position = Vector2((SIZE_PILE.x - 46) / 2.0, 14.0 + CARD.y - 8.0)
+	plate.add_theme_stylebox_override("panel", UiStyle.box(Color(0.1, 0.13, 0.18, 0.92), 13, Color(0.9, 0.78, 0.4), 2))
+	plate.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_stack.add_child(plate)
+	var l := Label.new()
+	l.text = str(count)
+	l.size = plate.size
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	l.add_theme_font_size_override("font_size", 17)
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	plate.add_child(l)
+	var cap := Label.new()
+	cap.text = kind.capitalize()
+	cap.position = Vector2(0, 0)
+	cap.size = Vector2(SIZE_PILE.x, 14)
+	cap.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	cap.add_theme_font_size_override("font_size", 12)
+	cap.modulate = Color(1, 1, 1, 0.75)
+	cap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_stack.add_child(cap)
+
+
+func top_rect() -> Rect2:
+	return _top_card.get_global_rect() if _top_card != null and is_instance_valid(_top_card) else get_global_rect()
 
 
 func _gui_input(event: InputEvent) -> void:

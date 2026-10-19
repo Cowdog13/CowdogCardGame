@@ -48,7 +48,7 @@ func _init() -> void:
 	check(r.ok, "reinforce castable for 3 fire berries: %s" % r.get("error", ""))
 	check(e.submit(a, {"type": "play_creature", "hand": 0, "slot": 2}).ok, "second creature after Reinforce")
 	check(not e.submit(a, {"type": "play_creature", "hand": 0, "slot": 3}).ok, "only one extra creature per Reinforce")
-	check(pl.board[2] != null and pl.board[2].cards == ["firepup"], "creature in play")
+	check(pl.board.any(func(c): return c != null and c.cards == ["firepup"]), "creature in play (placed in the first free space)")
 	# One ability per creature per turn (turn 3+ so abilities are unlocked).
 	e.state.turn = 5
 	e.state.active = a
@@ -196,5 +196,30 @@ func _init() -> void:
 	e3.state.players[1 - u].deck = ["removal", "removal"]
 	e3.submit(u, {"type": "use_ability", "slot": 0, "ability": 0})
 	check(not e3.is_over() and e3.state.players[1 - u].deck.is_empty(), "plunder exactly emptying the deck does not end the game")
+	# Board: no gaps. New creatures join at the end; destroying one shifts the others left; max 5.
+	var e6 := GameEngine.new()
+	e6.setup(["scorching_fire", "crashing_wave"], 6)
+	for p in 2:
+		e6.submit(p, {"type": "mulligan", "cards": []})
+	var u6: int = e6.state.first_player
+	e6.state.turn = 5
+	e6.state.active = u6
+	var p6: Dictionary = e6.state.players[u6]
+	p6.hand = ["firespore", "firespore", "firespore", "firespore", "firespore", "firespore", "removal"]
+	p6.creature_plays_left = 5
+	for k in 5:
+		check(e6.submit(u6, {"type": "play_creature", "hand": 0, "slot": 3}).ok, "play creature %d (slot argument is ignored)" % k)
+	check(p6.board.all(func(c): return c != null), "five creatures fill the board left to right")
+	check(not e6.submit(u6, {"type": "play_creature", "hand": 0, "slot": 0}).ok, "a sixth creature can't be played")
+	p6.board[1].berries = ["fire_berry", "fire_berry", "fire_berry"]
+	p6.board[1].exhausted = [false, false, false]
+	var victim: Dictionary = e6.state.players[1 - u6]
+	victim.board[0] = {"cards": ["water_spirit"], "berries": [], "exhausted": [], "stun_until": -1, "ability_used_turn": -1}
+	victim.board[1] = {"cards": ["water_sprite"], "berries": [], "exhausted": [], "stun_until": -1, "ability_used_turn": -1}
+	victim.board[2] = {"cards": ["water_ruler"], "berries": [], "exhausted": [], "stun_until": -1, "ability_used_turn": -1}
+	p6.hand = ["removal"]
+	var pay6 := [{"src": "attached", "slot": 1, "index": 0}, {"src": "attached", "slot": 1, "index": 1}, {"src": "attached", "slot": 1, "index": 2}]
+	check(e6.submit(u6, {"type": "play_spell", "hand": 0, "payment": pay6, "params": {"target": {"player": 1 - u6, "slot": 0}}}).ok, "destroy the first creature")
+	check(victim.board[0] != null and victim.board[0].cards == ["water_sprite"] and victim.board[1].cards == ["water_ruler"] and victim.board[2] == null, "the others shifted left")
 	print("rules_test failures=%d" % fails)
 	quit(1 if fails > 0 else 0)

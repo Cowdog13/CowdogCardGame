@@ -4,7 +4,7 @@ extends Control
 ## zap lines and blinking borders. Everything here is cosmetic and uses global
 ## (viewport) coordinates; GameScreen decides what to play and when.
 
-const CARD_SIZE := Vector2(150, 250)
+const CARD_SIZE := Vector2(150, 210)
 const FLIP_TIME := 0.16
 
 
@@ -12,40 +12,18 @@ func _init() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 
-## Style shared by the blank card back (opponent hand, face-down flights).
-static func back_style(corner := 8) -> StyleBoxFlat:
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.16, 0.20, 0.36)
-	sb.border_color = Color(0.86, 0.70, 0.30)
-	sb.set_border_width_all(3)
-	sb.set_corner_radius_all(corner)
-	return sb
-
-
-## A card-sized node with a face (CardView) and a blank back; pivot is its centre.
+## A card-sized node with a face (CardView) and a card back; pivot is its centre.
 func make_card(card_id: String, face_up: bool) -> Control:
 	var wrapper := Control.new()
 	wrapper.size = CARD_SIZE
 	wrapper.custom_minimum_size = CARD_SIZE
 	wrapper.pivot_offset = CARD_SIZE / 2.0
 	wrapper.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var back := Panel.new()
+	var back := CardBack.new().setup(CARD_SIZE)
 	back.name = "Back"
-	back.size = CARD_SIZE
-	back.add_theme_stylebox_override("panel", back_style(10))
-	back.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var mark := Label.new()
-	mark.text = "COWDOG"
-	mark.add_theme_font_size_override("font_size", 20)
-	mark.modulate = Color(0.86, 0.70, 0.30)
-	mark.size = CARD_SIZE
-	mark.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	mark.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	back.add_child(mark)
 	wrapper.add_child(back)
-	var face := CardView.new().setup(card_id)
+	var face := CardView.new().setup(card_id, CardView.Mark.NONE, CARD_SIZE)
 	face.name = "Face"
-	face.size = CARD_SIZE
 	face.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	wrapper.add_child(face)
 	back.visible = not face_up

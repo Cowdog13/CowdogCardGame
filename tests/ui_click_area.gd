@@ -29,8 +29,8 @@ func _init() -> void:
 	# Click probing: begin targeting then click at several y offsets inside slot 2.
 	screen._begin_targeting("test", func(p, s): return p == 0, 1, func(t): pass)
 	await process_frame
-	var slot: Control = screen._my_board.get_child(2)
-	var r := slot.get_global_rect()
+	var slot: BoardCreature = screen._my_board.get_child(2)
+	var r := slot.top_card_rect()  # the whole card, including its ability boxes, must select the creature
 	for f in [0.05, 0.3, 0.45, 0.6, 0.8, 0.95]:
 		screen._pending.targets = []
 		var pos := r.position + Vector2(r.size.x * 0.5, r.size.y * f)
@@ -48,5 +48,6 @@ func _init() -> void:
 			screen._begin_targeting("test", func(p, s): return p == 0, 1, func(t): pass)
 			await process_frame
 			slot = screen._my_board.get_child(2)
+			r = slot.top_card_rect()
 	print("click_area failures=%d" % fails)
 	quit(fails)

@@ -6,8 +6,7 @@ var _game: GameScreen
 
 
 func _ready() -> void:
-	theme = Theme.new()
-	theme.default_font_size = 16
+	theme = UiStyle.build_theme()
 	_show_menu()
 
 

@@ -21,6 +21,15 @@ func _ready() -> void:
 	box.custom_minimum_size = Vector2(420, 0)
 	box.add_theme_constant_override("separation", 12)
 	center.add_child(box)
+	var logo := ArtDB.card_back_logo()
+	if logo != null:
+		var tr := TextureRect.new()
+		tr.texture = logo
+		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		tr.custom_minimum_size = Vector2(0, 120)
+		box.add_child(tr)
+		tr.modulate = Color(0.93, 0.85, 0.6)
 	var title := Label.new()
 	title.text = "Cowdog Card Game"
 	title.add_theme_font_size_override("font_size", 40)

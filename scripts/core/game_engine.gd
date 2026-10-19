@@ -288,6 +288,11 @@ func _do_play_creature(player: int, action: Dictionary) -> Dictionary:
 	var id: String = pl.hand[hi]
 	if pl.creature_plays_left <= 0:
 		return _err("You already played a creature this turn")
+	if CardDB.is_creature(id) and int(CardDB.card(id).tier) <= 1:
+		# New creatures always join at the end of the row (the board has no fixed spaces).
+		slot = Rules.first_free_slot(pl.board)
+		if slot < 0:
+			return _err("You can't have more than %d creatures" % Rules.BOARD_SLOTS)
 	var why := Rules.place_error(pl.board, id, slot)
 	if why != "":
 		return _err(why)
@@ -485,6 +490,15 @@ func _release_berries(owner: int, creature: Dictionary, indices: Array) -> void:
 		_release_berry(owner, creature, i)
 
 
+## Creatures sit left to right with no gaps, so slot numbers match what players see.
+func _compact_board(owner: int) -> void:
+	var pl := _P(owner)
+	var packed: Array = pl.board.filter(func(c): return c != null)
+	while packed.size() < pl.board.size():
+		packed.append(null)
+	pl.board = packed
+
+
 func _destroy_creature(owner: int, slot: int) -> void:
 	var pl := _P(owner)
 	var c: Dictionary = pl.board[slot]
@@ -492,6 +506,7 @@ func _destroy_creature(owner: int, slot: int) -> void:
 	while not c.berries.is_empty():
 		_release_berry(owner, c, c.berries.size() - 1)
 	pl.board[slot] = null
+	_compact_board(owner)
 	_say("%s and its attached berries go to the discard." % Rules.creature_name(c), owner)
 
 
