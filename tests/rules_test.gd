@@ -243,5 +243,11 @@ func _init() -> void:
 	var pay6 := [{"src": "attached", "slot": 1, "index": 0}, {"src": "attached", "slot": 1, "index": 1}, {"src": "attached", "slot": 1, "index": 2}]
 	check(e6.submit(u6, {"type": "play_spell", "hand": 0, "payment": pay6, "params": {"target": {"player": 1 - u6, "slot": 0}}}).ok, "destroy the first creature")
 	check(victim.board[0] != null and victim.board[0].cards == ["water_sprite"] and victim.board[1].cards == ["water_ruler"] and victim.board[2] == null, "the others shifted left")
+	# Conceding ends the game for the other player's benefit, at any time.
+	var e8 := GameEngine.new()
+	e8.setup(["scorching_fire", "crashing_wave"], 8, ["Ann", "Bo"])
+	check(e8.state.names == ["Ann", "Bo"], "player names are kept")
+	check(e8.submit(1, {"type": "concede"}).ok and e8.is_over() and e8.state.winner == 0, "conceding hands the game to the other player")
+	check(not e8.submit(0, {"type": "concede"}).ok, "nothing can be done after the game is over")
 	print("rules_test failures=%d" % fails)
 	quit(1 if fails > 0 else 0)

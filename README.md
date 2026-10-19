@@ -23,6 +23,10 @@ Open the folder in Godot 4.7 and press Play (main scene `scenes/main.tscn`).
 - Used abilities flash for 1.5s so it's clear what was activated. Creature spaces are numbered 1-5 (shown on the board and in the payment list).
 - Hover any card (hand, board, piles) to see it large in the right-hand column. **Log** shows the full game log. **Swap** is the once-per-game hand/discard creature swap.
 
+## Multiplayer
+Peer-to-peer games (one player hosts, no server) are in **Multiplayer (beta)** on the main menu; single player is unchanged. How to host/join, how it works and the plan for 4 players are in
+`docs/MULTIPLAYER.md`. The last single-player-only commit is `84bb8dc`.
+
 ## Art and look
 - Cards are drawn in code at a fixed 300x420 size (frame, name, `Basic` / `Evolves from X`, element badge, art window, ability boxes with cost badges, spell text) and
   scaled to wherever they are shown. The frame is a **placeholder** built from element colours; the art, symbols, font (Gluten, OFL licence in `assets/fonts`) and board
@@ -42,6 +46,7 @@ Open the folder in Godot 4.7 and press Play (main scene `scenes/main.tscn`).
 - `scripts/core/` - `GameEngine` (authoritative rules), `Rules` (helpers/constants), `CardDB`.
 - `scripts/agents/` - `PlayerAgent` interface, `AIAgent` (computer), `HumanAgent`.
 - `scripts/game_controller.gd` - connects the engine to one agent per seat.
+- `scripts/net/` - peer-to-peer multiplayer (`NetSession`, `RemoteController`).
 - `scripts/ui/`, `scripts/main.gd` - menu and table UI; `fx_layer.gd` holds the visual effects. The engine's log events carry an optional `fx` payload that the UI plays.
 - `tests/` - `fx_demo.gd` (screenshots of every effect), `run_sim.gd` (AI vs AI, rule invariants), `ui_smoke.gd`, `ui_interact.gd`, `screenshot.gd`.
 
@@ -64,6 +69,10 @@ godot --headless -s tests/ui_payment.gd
 xvfb-run godot --rendering-driver opengl3 -s tests/ui_ability_click.gd   # clicking an ability box on a board card
 xvfb-run godot --rendering-driver opengl3 -s tests/ui_click_area.gd   # needs a display for real mouse events
 godot --headless -s tests/ui_smoke.gd
+godot --headless -s tests/net_test.gd        # host + client over a real local connection play a full game
+godot --headless -s tests/net_ui_test.gd     # both screens over the network
+godot --headless -s tests/net_disconnect_test.gd  # a dropped player concedes
+xvfb-run godot --rendering-driver opengl3 -s tests/ui_lobby.gd -- /tmp/out   # lobby screenshots
 xvfb-run godot --rendering-driver opengl3 -s tests/ui_look.gd -- /tmp/out   # screenshots of the menu and a full table
 xvfb-run godot --rendering-driver opengl3 -s tests/ui_pile_hover.gd    # big card preview in pile lists
 xvfb-run godot --rendering-driver opengl3 -s tests/ui_picker_preview.gd  # ...and in the other pickers

@@ -10,16 +10,18 @@ extends Control
 signal exit_requested
 signal rematch_requested
 
-const ME := 0
+var ME := 0  # the seat shown at the bottom of the screen (your seat)
+var OPP := 1
 const RIGHT_W := 332.0
 
-var controller: GameController
+var controller: Node  # GameController, or a RemoteController when joined to someone else's game
 var view: Dictionary = {}
 
 var _pending: Dictionary = {}  # active targeting: prompt, valid, max, targets, done
 var _mull_sel := {}
 var _status := ""
 var _over_shown := false
+var _allow_rematch := true
 
 var _opp_info: Label
 var _last_event: Label
@@ -54,11 +56,37 @@ func start(deck_ids: Array, agents: Array, ai_delay: float, effects := true) -> 
 	controller = GameController.new()
 	controller.ai_delay = ai_delay
 	add_child(controller)
+	_connect_controller()
+	controller.start(deck_ids, agents)
+	_refresh()
+
+
+## Shows a game that is run elsewhere: the host's own controller, or a RemoteController that mirrors
+## the host's game. `my_seat` is the seat shown at the bottom. Rematch needs a local game, so it is
+## offered only when `allow_rematch` is set.
+func attach(p_controller: Node, my_seat: int, effects := true, allow_rematch := false) -> void:
+	ME = my_seat
+	OPP = 1 - my_seat
+	fx_enabled = effects
+	_allow_rematch = allow_rematch
+	_build_ui()
+	controller = p_controller
+	if controller.get_parent() == null:
+		add_child(controller)
+	# Replay what already happened (the opening log lines) without effects, then follow live.
+	var past: Array = controller.get("history") if controller.get("history") != null else []
+	for ev in past:
+		_log_event(ev)
+	_connect_controller()
+	_refresh()
+
+
+func _connect_controller() -> void:
 	controller.event_logged.connect(_on_event)
 	controller.view_updated.connect(_refresh)
 	controller.game_over.connect(_on_game_over)
-	controller.start(deck_ids, agents)
-	_refresh()
+	if controller.has_signal("action_rejected"):
+		controller.action_rejected.connect(_toast)
 
 
 # --- Layout ----------------------------------------------------------------------------
@@ -165,7 +193,7 @@ func _build_ui() -> void:
 	right.offset_right = -8
 	right.offset_top = 6
 	right.offset_bottom = -6
-	right.add_child(_make_pile_row(ME + 1))
+	right.add_child(_make_pile_row(OPP))
 	var preview_panel := PanelContainer.new()
 	preview_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	preview_panel.add_theme_stylebox_override("panel", UiStyle.box(Color(0.05, 0.09, 0.13, 0.62), 14, Color(0.85, 0.72, 0.38, 0.5), 2, 8))
@@ -208,7 +236,11 @@ func _build_ui() -> void:
 	var menu_btn := Button.new()
 	menu_btn.text = "Menu"
 	menu_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	menu_btn.pressed.connect(func(): exit_requested.emit())
+	menu_btn.pressed.connect(func():
+		if _allow_rematch or (view.get("phase", "over") == "over"):
+			exit_requested.emit()
+		else:
+			_confirm("Leave the game?", "Leaving counts as a concession.", func(): exit_requested.emit()))
 	small.add_child(menu_btn)
 
 	# Opponent's hand as card backs peeking in from the top of the screen.
@@ -232,12 +264,14 @@ func _board_row(parent: Control) -> HBoxContainer:
 # --- Refresh -----------------------------------------------------------------------------
 func _refresh() -> void:
 	view = controller.get_view(ME)
+	if view.is_empty():
+		return  # a networked game before the host's first update
 	var you: Dictionary = view.you
 	var opp: Dictionary = view.opponent
-	_opp_info.text = "Opponent  -  %d card(s) in hand" % opp.hand_count
-	_set_piles(ME + 1, opp)
+	_opp_info.text = "%s  -  %d card(s) in hand" % [_opp_name(), opp.hand_count]
+	_set_piles(OPP, opp)
 	_set_piles(ME, you)
-	_rebuild_board(_opp_board, ME + 1)
+	_rebuild_board(_opp_board, OPP)
 	_rebuild_board(_my_board, ME)
 	_rebuild_hand()
 	_rebuild_opp_hand()
@@ -247,7 +281,7 @@ func _refresh() -> void:
 	match view.phase:
 		"mulligan": _turn_label.text = "Mulligan"
 		"over": _turn_label.text = "Game over"
-		_: _turn_label.text = "Turn %d - %s%s" % [view.turn, "YOUR TURN" if acting else "Opponent's turn", _turn_flags(you)]
+		_: _turn_label.text = "Turn %d - %s%s" % [view.turn, "YOUR TURN" if acting else "%s's turn" % _opp_name(), _turn_flags(you)]
 	_update_banner()
 	if not view.pending.is_empty() and view.pending.player == ME and _pending.is_empty() and not _fx_busy():
 		if not view.pending.berries.is_empty():
@@ -260,6 +294,11 @@ func _refresh() -> void:
 				_ask_order(view.pending.ordering)
 			else:
 				_ask_recycle(int(view.pending.recycle))
+
+
+func _opp_name() -> String:
+	var names: Array = view.get("names", [])
+	return String(names[OPP]) if _allow_rematch == false and OPP < names.size() else "Opponent"
 
 
 func _turn_flags(you: Dictionary) -> String:
@@ -392,10 +431,14 @@ func _show_creature_detail(creature: Dictionary) -> void:
 func _on_event(ev: Dictionary) -> void:
 	if fx_enabled and ev.has("fx"):
 		_enqueue_fx(ev)
+	_log_event(ev)
+
+
+func _log_event(ev: Dictionary) -> void:
 	var color := "#cfd8d3"
 	match int(ev.player):
 		ME: color = "#8fc7ff"
-		ME + 1: color = "#ffb27a"
+		OPP: color = "#ffb27a"
 	match ev.kind:
 		"turn": _log_bbcode += "\n[b][color=#ffe27a]%s[/color][/b]\n" % ev.text
 		"win": _log_bbcode += "[b][color=#ff7a7a]%s[/color][/b]\n" % ev.text
@@ -535,7 +578,7 @@ func _submit_action_only(action: Dictionary) -> void:
 
 
 func _submit(action: Dictionary) -> bool:
-	var res := controller.submit(ME, action)
+	var res: Dictionary = controller.submit(ME, action)
 	_status = "" if res.ok else String(res.error)
 	_refresh()
 	return res.ok
@@ -1073,9 +1116,16 @@ func _on_game_over(winner: int) -> void:
 	_over_shown = true
 	var d := AcceptDialog.new()
 	d.title = "Game over"
-	d.dialog_text = "You win!" if winner == ME else "The computer wins."
-	d.ok_button_text = "Rematch"
-	d.add_button("Main Menu", false, "menu")
-	d.confirmed.connect(func(): rematch_requested.emit())
-	d.custom_action.connect(func(_a): exit_requested.emit())
+	if winner == ME:
+		d.dialog_text = "You win!"
+	else:
+		d.dialog_text = "The computer wins." if _allow_rematch else "You lose."
+	if _allow_rematch:
+		d.ok_button_text = "Rematch"
+		d.add_button("Main Menu", false, "menu")
+		d.confirmed.connect(func(): rematch_requested.emit())
+		d.custom_action.connect(func(_a): exit_requested.emit())
+	else:
+		d.ok_button_text = "Main Menu"
+		d.confirmed.connect(func(): exit_requested.emit())
 	_popup(d)

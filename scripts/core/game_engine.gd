@@ -14,6 +14,7 @@ extends RefCounted
 ##   {"type":"place_berry",  "slot":s}                        (only while state.pending has berries: where a revealed berry goes)
 ##   {"type":"order_recycle","order":[indices]}               (only while state.pending.ordering is set: Fire Famine's order)
 ##   {"type":"recycle",      "cards":[discard indices]}       (only while state.pending.recycle > 0: Firewolf's choice, in order)
+##   {"type":"concede"}                                         (any time; the other player wins)
 ##   {"type":"end_turn"}
 ## Results are {"ok":true} or {"ok":false,"error":"..."}.
 
@@ -26,7 +27,7 @@ var seed_value := 0
 var rng := RandomNumberGenerator.new()
 
 
-func setup(deck_ids: Array, seed_val: int = -1) -> void:
+func setup(deck_ids: Array, seed_val: int = -1, names: Array = []) -> void:
 	if seed_val < 0:
 		rng.randomize()
 	else:
@@ -41,10 +42,10 @@ func setup(deck_ids: Array, seed_val: int = -1) -> void:
 		"winner": -1,
 		"doomed": {},  # set when a Plunder could not be completed; applied once everything has resolved
 		"pending": {},  # {"player": p, "berries": [ids], "ordering": [ids], "recycle": n} while a player must place berries / choose recycles
-		"names": ["Player 1", "Player 2"],
+		"names": [names[0] if names.size() > 0 else "Player 1", names[1] if names.size() > 1 else "Player 2"],
 		"players": [_new_player(deck_ids[0]), _new_player(deck_ids[1])],
 	}
-	_say("Player %d wins the roll and goes first." % (state.first_player + 1))
+	_say("%s wins the roll and goes first." % _pname(state.first_player))
 	for p in 2:
 		for i in Rules.HAND_SIZE:
 			_draw_card(p)
@@ -77,6 +78,11 @@ func submit(player: int, action: Dictionary) -> Dictionary:
 		return _err("The game is over")
 	var t: String = action.get("type", "")
 	var res: Dictionary
+	if t == "concede":  # allowed at any time, including during the opponent's turn
+		_say("%s concedes the game." % _pname(player), player)
+		_win(1 - player, "%s conceded." % _pname(player))
+		state_changed.emit()
+		return _ok()
 	if not state.pending.is_empty():
 		var wanted := "place_berry"
 		if state.pending.berries.is_empty():
@@ -119,6 +125,7 @@ func get_view(player: int) -> Dictionary:
 		"active": state.active,
 		"first_player": state.first_player,
 		"winner": state.winner,
+		"names": state.names.duplicate(),
 		"pending": state.pending.duplicate(true),
 		"awaiting": awaiting(),
 		"you": _public_player(me).merged({"hand": me.hand.duplicate()}),

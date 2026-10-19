@@ -24,11 +24,11 @@ var _failures := {}
 var _over_emitted := false
 
 
-func start(deck_ids: Array, p_agents: Array, seed_val: int = -1) -> void:
+func start(deck_ids: Array, p_agents: Array, seed_val: int = -1, names: Array = []) -> void:
 	agents = p_agents
 	engine.event_logged.connect(func(ev): event_logged.emit(ev))
 	engine.state_changed.connect(_on_state_changed)
-	engine.setup(deck_ids, seed_val)
+	engine.setup(deck_ids, seed_val, names)
 	_pump.call_deferred()
 
 

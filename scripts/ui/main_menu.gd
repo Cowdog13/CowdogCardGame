@@ -2,6 +2,7 @@ class_name MainMenu
 extends Control
 
 signal start_requested(deck0: String, deck1: String, ai_delay: float, effects: bool)
+signal multiplayer_requested
 
 var _you: OptionButton
 var _opp: OptionButton
@@ -60,6 +61,10 @@ func _ready() -> void:
 	start.pressed.connect(func():
 		start_requested.emit(CardDB.deck_ids()[_you.selected], CardDB.deck_ids()[_opp.selected], _speed.value, _effects.button_pressed))
 	box.add_child(start)
+	var mp := Button.new()
+	mp.text = "Multiplayer (beta)"
+	mp.pressed.connect(func(): multiplayer_requested.emit())
+	box.add_child(mp)
 	var quit := Button.new()
 	quit.text = "Quit"
 	quit.pressed.connect(func(): get_tree().quit())
