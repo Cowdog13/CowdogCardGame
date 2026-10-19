@@ -289,3 +289,42 @@ func stun_bolts(origin: Vector2, targets: Array) -> void:
 	await fade.finished
 	holder.queue_free()
 	await get_tree().create_timer(0.3).timeout  # let the last sparks finish
+
+
+## Briefly shows cards that were found in a deck (Super Berries, or berries with Fire Famine).
+func show_reveal(ids: Array, caption: String, hold: float) -> void:
+	var holder := Control.new()
+	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	holder.modulate.a = 0.0
+	add_child(holder)
+	var n := ids.size()
+	var s := minf(1.3, 1100.0 / maxf(n, 1) / CARD_SIZE.x - 0.1)
+	var step := CARD_SIZE.x * s + 14.0
+	var centers: Array = []
+	for i in n:
+		var card := make_card(ids[i], true)
+		holder.add_child(card)
+		var c := screen_center() + Vector2((i - (n - 1) / 2.0) * step, 10.0)
+		card.position = c - global_position - CARD_SIZE / 2.0
+		card.scale = Vector2(s * 0.7, s * 0.7)
+		centers.append(c)
+		var pop := create_tween().set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		pop.tween_property(card, "scale", Vector2(s, s), 0.3)
+	var label := Label.new()
+	label.text = caption
+	label.size = Vector2(800, 50)
+	label.position = screen_center() - global_position + Vector2(-400, -CARD_SIZE.y * s / 2.0 - 70.0)
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.add_theme_font_size_override("font_size", 34)
+	label.add_theme_color_override("font_color", Color(1, 0.95, 0.7))
+	label.add_theme_color_override("font_outline_color", Color(0.1, 0.05, 0.2))
+	label.add_theme_constant_override("outline_size", 8)
+	holder.add_child(label)
+	var tw := create_tween()
+	tw.tween_property(holder, "modulate:a", 1.0, 0.2)
+	await tw.finished
+	for i in n:
+		burst(centers[i], Rules.element_color(CardDB.element_of(ids[i])), 26, 190.0, 0.8)
+	await get_tree().create_timer(hold).timeout
+	await fade_out(holder, 0.3)
+	holder.queue_free()

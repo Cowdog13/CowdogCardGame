@@ -159,6 +159,28 @@ func _init() -> void:
 	check(not e5.submit(u5, {"type": "order_recycle", "order": [0, 0]}).ok, "order must be a permutation")
 	check(e5.submit(u5, {"type": "order_recycle", "order": [1, 0]}).ok, "order chosen")
 	check(p5.deck.slice(-2) == ["firespore", "removal"] and e5.state.pending.is_empty(), "cards placed on the bottom in the chosen order")
+	# Revealed berries are announced to clients (Super Berries; berries too with Fire Famine).
+	var e7 := GameEngine.new()
+	e7.setup(["scorching_fire", "crashing_wave"], 7)
+	for p in 2:
+		e7.submit(p, {"type": "mulligan", "cards": []})
+	var u7: int = e7.state.first_player
+	e7.state.turn = 5
+	e7.state.active = u7
+	var reveals: Array = []
+	e7.event_logged.connect(func(ev): if ev.get("fx", "") == "reveal": reveals.append(ev.cards))
+	var p7: Dictionary = e7.state.players[u7]
+	p7.board[0] = {"cards": ["firespore"], "berries": ["fire_berry"], "exhausted": [false], "stun_until": -1, "ability_used_turn": -1}
+	e7.state.players[1 - u7].deck = ["super_berry", "removal", "removal", "removal"]
+	e7.submit(u7, {"type": "use_ability", "slot": 0, "ability": 0})
+	check(reveals == [["super_berry"]], "plundering a Super Berry is announced: %s" % [reveals])
+	e7.submit(u7, {"type": "place_berry", "slot": 0})
+	reveals.clear()
+	p7.board[1] = {"cards": ["fire_famine"], "berries": ["super_berry"], "exhausted": [false], "stun_until": -1, "ability_used_turn": -1}
+	p7.board[2] = {"cards": ["firepup"], "berries": ["fire_berry", "fire_berry"], "exhausted": [false, false], "stun_until": -1, "ability_used_turn": -1}
+	p7.deck = ["fire_berry", "removal", "fire_berry", "removal", "removal"]
+	e7.submit(u7, {"type": "use_ability", "slot": 2, "ability": 0})
+	check(reveals == [["fire_berry"]], "berries found by the Fire Famine pillage are announced: %s" % [reveals])
 	# Plundering more cards than are left in the deck wins immediately.
 	var e2 := GameEngine.new()
 	e2.setup(["scorching_fire", "crashing_wave"], 3)

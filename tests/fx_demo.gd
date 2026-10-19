@@ -57,5 +57,12 @@ func _init() -> void:
 	await create_timer(0.5).timeout
 	root.get_texture().get_image().save_png(out + "/fx7b_stun.png")
 	await create_timer(1.5).timeout
+	e.state.players[1].deck = ["super_berry", "removal", "removal", "removal", "removal"]
+	e.state.players[0].board[0] = {"cards": ["firespore"], "berries": ["fire_berry"], "exhausted": [false], "stun_until": -1, "ability_used_turn": -1}
+	e.state.players[0].abilities_used = 0
+	print("plunder reveal: ", e.submit(0, {"type": "use_ability", "slot": 0, "ability": 0, "params": {}}))
+	await create_timer(2.5).timeout
+	root.get_texture().get_image().save_png(out + "/fx8_reveal.png")
+	await create_timer(1.5).timeout
 	print("queue empty: ", screen._fx_queue.is_empty(), " hold_ai=", screen.controller.hold_ai)
 	quit()

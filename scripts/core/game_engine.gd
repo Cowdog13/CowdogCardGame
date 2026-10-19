@@ -530,6 +530,7 @@ func _plunder(initiator: int, target: int, n: int) -> void:
 	var tp := _P(target)
 	var count := 0
 	var stolen := 0
+	var revealed: Array = []
 	for i in n:
 		if tp.deck.is_empty():
 			break
@@ -537,10 +538,12 @@ func _plunder(initiator: int, target: int, n: int) -> void:
 		count += 1
 		if CardDB.element_of(id) == Rules.SUPER:
 			stolen += 1
+			revealed.append(id)
 			_reveal_berry(initiator, id)
 		else:
 			tp.discard.append(id)
 	_say("%s is plundered by %s: %d card(s) discarded from the top of their deck%s." % [_pname(target), _pname(initiator), count, " (%d Super Berry stolen)" % stolen if stolen > 0 else ""], target)
+	_announce_reveal(target, revealed)
 	if count < n:
 		# The plunder couldn't be completed, so the target loses. The plunder still resolves in
 		# full first (revealed Super Berries are placed), and the loss is applied afterwards in
@@ -633,6 +636,15 @@ func _clear_pending_if_done() -> void:
 ##    other cards are recycled to the bottom of the deck instead of being discarded.
 ## With Firewolf's Active effect the player then chooses as many cards to recycle as went to
 ## the discard (berries attached to creatures don't count).
+## Tells clients that berries were found in `deck_owner`'s deck so they can show them on screen.
+func _announce_reveal(deck_owner: int, ids: Array) -> void:
+	if ids.is_empty():
+		return
+	var names: Array = ids.map(func(id): return CardDB.card_name(id))
+	_say("%s's deck reveals: %s." % [_pname(deck_owner), ", ".join(names)], deck_owner, "info",
+		{"fx": "reveal", "cards": ids.duplicate()})
+
+
 func _pillage(p: int, n: int) -> void:
 	var pl := _P(p)
 	var famine := _active_count(p, "attach_pillaged_berries") > 0
@@ -640,12 +652,14 @@ func _pillage(p: int, n: int) -> void:
 	var taken := 0
 	var discarded := 0  # cards that actually went to the discard (attached berries don't count)
 	var recycled: Array = []  # Fire Famine: non-berry cards go straight to the bottom of the deck
+	var revealed: Array = []  # berries the player gets to place (Super Berries; every berry with Fire Famine)
 	for i in n:
 		if pl.deck.is_empty():
 			break
 		var id: String = pl.deck.pop_front()
 		taken += 1
 		if CardDB.element_of(id) == Rules.SUPER or (famine and CardDB.is_berry(id)):
+			revealed.append(id)
 			_reveal_berry(p, id)
 			continue
 		if famine:
@@ -659,6 +673,7 @@ func _pillage(p: int, n: int) -> void:
 	elif recycled.size() > 1:
 		_pending_for(p).ordering = recycled
 	_say("%s pillages %d card(s) from their own deck%s." % [_pname(p), taken, " (%d recycled to the bottom)" % recycled.size() if not recycled.is_empty() else ""], p)
+	_announce_reveal(p, revealed)
 	var recycle := mini(discarded, pl.discard.size()) if wolves else 0
 	if recycle > 0:
 		_pending_for(p).recycle = recycle

@@ -28,6 +28,7 @@ var _opp_board: HBoxContainer
 var _my_board: HBoxContainer
 var _hand_view: HandView
 var _banner: Label
+var _banner_panel: PanelContainer
 var _confirm_btn: Button
 var _cancel_btn: Button
 var _end_btn: Button
@@ -117,7 +118,8 @@ func _build_ui() -> void:
 	_turn_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.8))
 	_turn_label.add_theme_constant_override("outline_size", 5)
 	mid.add_child(_turn_label)
-	var banner_panel := PanelContainer.new()
+	_banner_panel = PanelContainer.new()
+	var banner_panel := _banner_panel
 	banner_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	banner_panel.add_theme_stylebox_override("panel", UiStyle.box(Color(0.06, 0.1, 0.14, 0.7), 12, Color(0.85, 0.72, 0.38, 0.6), 2, 6))
 	mid.add_child(banner_panel)
@@ -247,7 +249,7 @@ func _refresh() -> void:
 		"over": _turn_label.text = "Game over"
 		_: _turn_label.text = "Turn %d - %s%s" % [view.turn, "YOUR TURN" if acting else "Opponent's turn", _turn_flags(you)]
 	_update_banner()
-	if not view.pending.is_empty() and view.pending.player == ME and _pending.is_empty():
+	if not view.pending.is_empty() and view.pending.player == ME and _pending.is_empty() and not _fx_busy():
 		if not view.pending.berries.is_empty():
 			var id: String = view.pending.berries.back()
 			_begin_targeting("Choose a creature to receive the revealed %s (%d left)." % [CardDB.card_name(id), view.pending.berries.size()],
@@ -285,6 +287,7 @@ func _update_banner() -> void:
 	if _status != "":
 		text = (text + "\n" if text != "" else "") + _status
 	_banner.text = text
+	_banner_panel.visible = text != ""  # no shaded box when there is nothing to say
 	_confirm_btn.visible = show_confirm
 	_cancel_btn.visible = not _pending.is_empty() and not _pending.get("locked", false)
 
@@ -964,7 +967,12 @@ func _enqueue_fx(ev: Dictionary) -> void:
 		_hidden_slots[key] = int(_hidden_slots.get(key, 0)) + 1
 	controller.hold_ai = true
 	if not _fx_running:
+		_fx_running = true  # claim it now: several events from one action must share a single runner
 		_run_fx_queue.call_deferred()
+
+
+func _fx_busy() -> bool:
+	return _fx_running or not _fx_queue.is_empty()
 
 
 func _fx_hide_key(ev: Dictionary) -> String:
@@ -973,7 +981,7 @@ func _fx_hide_key(ev: Dictionary) -> String:
 
 func _fx_source_rect(ev: Dictionary) -> Rect2:
 	var mine: bool = int(ev.player) == ME
-	if ev.fx == "swap" or ev.fx == "ability" or ev.fx == "stun":
+	if ev.fx == "swap" or ev.fx == "ability" or ev.fx == "stun" or ev.fx == "reveal":
 		return Rect2()
 	if ev.fx == "attach" and ev.from == "discard" or ev.fx == "play_creature" and int(ev.hand) < 0:
 		return _pile_rect(int(ev.player), "discard")
@@ -1007,6 +1015,8 @@ func _run_fx_queue() -> void:
 				_refresh()
 	controller.hold_ai = false
 	_fx_running = false
+	if view != {}:
+		_refresh()  # choices that were waiting for the effects (e.g. where a revealed berry goes) appear now
 
 
 func _play_fx(ev: Dictionary, src: Rect2, item: Dictionary) -> void:
@@ -1032,6 +1042,10 @@ func _play_fx(ev: Dictionary, src: Rect2, item: Dictionary) -> void:
 			var origin: Vector2 = item.get("origin", Vector2(size.x / 2.0 - 160.0, size.y - 30.0 if mine else 20.0))
 			var points: Array = item.targets.map(func(r: Rect2): return r.get_center())
 			await _fx.stun_bolts(origin, points)
+		"reveal":
+			var all_super: bool = ev.cards.all(func(id): return CardDB.element_of(id) == Rules.SUPER)
+			var caption := "Super Berry found!" if all_super and ev.cards.size() == 1 else ("Super Berries found!" if all_super else "Berries found!")
+			await _fx.show_reveal(ev.cards, caption, 1.2)
 		"swap":
 			await _fx.show_pair(ev.hand_card, ev.discard_card, "From hand", "From discard", 2.0)
 
