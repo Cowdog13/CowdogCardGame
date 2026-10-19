@@ -17,6 +17,7 @@ func _show_menu() -> void:
 	_menu.start_requested.connect(_start_game)
 	_menu.multiplayer_requested.connect(_show_multiplayer)
 	_menu.tutorial_requested.connect(_start_tutorial)
+	_menu.rulebook_requested.connect(_show_rulebook)
 	add_child(_menu)
 	_menu.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
@@ -31,6 +32,15 @@ func _start_game(deck0: String, deck1: String, ai_delay: float, effects: bool) -
 	_game.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	# The human always sits in seat 0; seat 1 is the computer.
 	_game.start([deck0, deck1], [HumanAgent.new(0), AIAgent.new(1)], ai_delay, effects)
+
+
+func _show_rulebook() -> void:
+	_clear()
+	var book := RulebookScreen.new()
+	book.back_requested.connect(_show_menu)
+	_menu = book
+	add_child(book)
+	book.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
 
 # --- Tutorial -----------------------------------------------------------------------------------

@@ -4,6 +4,7 @@ extends Control
 signal start_requested(deck0: String, deck1: String, ai_delay: float, effects: bool)
 signal multiplayer_requested
 signal tutorial_requested
+signal rulebook_requested
 
 var _you: OptionButton
 var _opp: OptionButton
@@ -66,6 +67,10 @@ func _ready() -> void:
 	tut.text = "Tutorial (learn to play)"
 	tut.pressed.connect(func(): tutorial_requested.emit())
 	box.add_child(tut)
+	var rules := Button.new()
+	rules.text = "Rulebook"
+	rules.pressed.connect(func(): rulebook_requested.emit())
+	box.add_child(rules)
 	var mp := Button.new()
 	mp.text = "Multiplayer (beta)"
 	mp.pressed.connect(func(): multiplayer_requested.emit())

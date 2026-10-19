@@ -40,7 +40,7 @@ func _init() -> void:
 		# Highlight targets must resolve to something on screen.
 		for t in step.get("highlight", []):
 			check(screen.tutorial_target_rect(String(t)).size != Vector2.ZERO, "step %d: no target for %s" % [i, t])
-		if OS.get_environment("SHOTS") != "" and [1, 3, 9, 10, 13, 14, 17, 20, 22, 24, 25, 26, 27].has(i):
+		if OS.get_environment("SHOTS") != "" and [1, 3, 9, 10, 11, 14, 15, 18, 21, 23, 25, 26, 27, 28].has(i):
 			await create_timer(0.6).timeout
 			root.get_viewport().get_texture().get_image().save_png("%s/step%02d.png" % [OS.get_environment("SHOTS"), i])
 		if step.has("expect"):

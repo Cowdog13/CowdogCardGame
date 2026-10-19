@@ -1103,7 +1103,7 @@ func _fx_hide_key(ev: Dictionary) -> String:
 
 func _fx_source_rect(ev: Dictionary) -> Rect2:
 	var mine: bool = int(ev.player) == ME
-	if ev.fx == "swap" or ev.fx == "ability" or ev.fx == "stun" or ev.fx == "reveal" or ev.fx == "plunder":
+	if ev.fx == "swap" or ev.fx == "ability" or ev.fx == "stun" or ev.fx == "reveal" or ev.fx == "plunder" or ev.fx == "pillage":
 		return Rect2()
 	if ev.fx == "attach" and ev.from == "discard" or ev.fx == "play_creature" and int(ev.hand) < 0:
 		return _pile_rect(int(ev.player), "discard")
@@ -1173,6 +1173,8 @@ func _play_fx(ev: Dictionary, src: Rect2, item: Dictionary) -> void:
 			await _fx.stun_bolts(origin, points)
 		"plunder":
 			await _fx.show_plunder(ev.cards, _pile_rect(int(ev.target), "discard"), 0.55)
+		"pillage":
+			await _fx.show_plunder(ev.cards, _pile_rect(int(ev.target), "discard"), 0.55, ev.discard)
 		"reveal":
 			if ev.cards.is_empty():
 				await _fx.show_message("No berries found", 1.0)

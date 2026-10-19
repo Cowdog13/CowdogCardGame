@@ -7,7 +7,7 @@ extends RefCounted
 ## Turn plan (turns are numbered across both players):
 ##   1  you      mulligan, play a creature, attach a berry
 ##   2  opponent plays Water Constrictor
-##   3  you      second creature, Plunder (steals a Super Berry)
+##   3  you      second creature, Plunder 2 (steals a Super Berry), Plunder 1: two abilities
 ##   4  opponent stuns your Firespore
 ##   5  you      evolve (removes the stun), Plunder 3, Pillage 2
 ##   6  opponent quiet turn
@@ -27,6 +27,7 @@ const OPPONENT_START := [
 	"water_constrictor", "water_berry", "water_berry", "water_spirit", "removal", "water_berry", "disable",
 	"water_berry",  # turn 2
 	"water_berry", "super_berry",  # turn 3 Plunder 2 (the Super Berry is stolen)
+	"water_berry",  # turn 3 Plunder 1
 	"water_berry",  # turn 4
 	"water_berry", "water_sprite", "water_berry",  # turn 5 Plunder 3
 	"water_berry",  # turn 6
@@ -93,8 +94,11 @@ static func steps() -> Array:
 		{"title": "Stolen Super Berry!", "highlight": ["mine:firespore"],
 			"text": "A [b]Super Berry[/b] was in the plundered cards. Super Berries aren't discarded: [b]you steal them[/b] and attach them to any of your creatures. A Super Berry counts as a berry of any element.\n\nClick [b]Firespore[/b] to attach it.",
 			"expect": {"type": "place_berry", "to": "firespore"}, "hint": "Put the Super Berry on Firespore."},
-		{"title": "Ability limits", "highlight": ["end_turn"],
-			"text": "Each creature can use [b]one ability per turn[/b], and you can use [b]two abilities per turn[/b] in total. Firespore has used its ability for this turn. Press [b]End Turn[/b].",
+		{"title": "Two abilities", "highlight": ["mine:firepup"],
+			"text": "You can use [b]two abilities per turn[/b], but each creature can use only [b]one ability per turn[/b]. Firespore has used its ability, so use your second one with [b]Firepup[/b]: its [b]Plunder 1[/b] costs 1 Fire Berry, and Firepup has one.",
+			"expect": {"type": "use_ability", "creature": "firepup", "ability": 1}, "hint": "Use Firepup's Plunder 1 (the second ability on the card)."},
+		{"title": "End your turn", "highlight": ["end_turn"],
+			"text": "That's the two abilities you get each turn, so you're done. Press [b]End Turn[/b].",
 			"expect": {"type": "end_turn"}, "hint": "Press End Turn."},
 		{"title": "The opponent's turn", "text": "Watch what the opponent does with their Water Constrictor.", "bot": true, "button": "Watch the opponent's turn"},
 		{"title": "Stun", "highlight": ["mine:firespore", "theirs:water_constrictor"],

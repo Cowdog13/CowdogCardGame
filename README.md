@@ -55,6 +55,9 @@ Peer-to-peer games (one player hosts, no server) are in **Multiplayer (beta)** o
 - `scripts/ui/`, `scripts/main.gd` - menu and table UI; `fx_layer.gd` holds the visual effects. The engine's log events carry an optional `fx` payload that the UI plays.
 - `tests/` - `fx_demo.gd` (screenshots of every effect), `run_sim.gd` (AI vs AI, rule invariants), `ui_smoke.gd`, `ui_interact.gd`, `screenshot.gd`.
 
+## Rulebook
+Main menu -> "Rulebook": the full rules as text (`scripts/ui/rulebook_screen.gd`). Keep it in sync when rules change.
+
 ## Tutorial
 Main menu -> "Tutorial (learn to play)". A scripted game (stacked decks, a practice opponent that follows a script) where a
 dialog walks through the mulligan, creatures, evolving, berries (hand and discard), abilities, Plunder, Pillage, Stun, Super
@@ -85,6 +88,7 @@ godot --headless -s tests/net_test.gd        # host + client over a real local c
 godot --headless -s tests/net_ui_test.gd     # both screens over the network
 godot --headless -s tests/net_surrender_test.gd   # Menu -> confirm surrenders in multiplayer
 godot --headless -s tests/tutorial_test.gd        # plays the whole tutorial through the controller
+godot --headless -s tests/rulebook_test.gd
 godot --headless -s tests/ui_double_click.gd      # no accidental ability use after a click
 godot --headless -s tests/ui_removal_ghost.gd     # a destroyed creature stays until the Removal animation ends
 godot --headless -s tests/net_disconnect_test.gd  # a dropped player concedes

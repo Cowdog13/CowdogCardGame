@@ -133,6 +133,8 @@ func show_pair(left_id: String, right_id: String, left_caption: String, right_ca
 		var cap := Label.new()
 		cap.text = left_caption if i == 0 else right_caption
 		cap.add_theme_font_size_override("font_size", 22)
+		cap.add_theme_color_override("font_outline_color", Color.BLACK)
+		cap.add_theme_constant_override("outline_size", 8)
 		cap.size = Vector2(300, 30)
 		cap.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		cap.position = screen_center() - global_position + Vector2(x * 190.0 - 150.0, -CARD_SIZE.y * s / 2.0 - 36.0)
@@ -354,10 +356,12 @@ func show_message(text: String, hold: float) -> void:
 
 ## Plunder: lay the plundered cards out in a row in the middle of the screen, then send the ones
 ## that go to the discard flying there. Super Berries stay behind (the player places them next).
-func show_plunder(ids: Array, discard_rect: Rect2, hold: float) -> void:
+## `to_discard` (Pillage) says per card whether it flies to the discard; without it every card but Super Berries does.
+func show_plunder(ids: Array, discard_rect: Rect2, hold: float, to_discard: Array = []) -> void:
 	var n := ids.size()
 	if n == 0:
-		await show_message("No berries found", 1.0)
+		if to_discard.is_empty():
+			await show_message("No berries found", 1.0)
 		return
 	var s := minf(0.95, 1080.0 / (n * CARD_SIZE.x + 10.0 * n))
 	var step := minf(CARD_SIZE.x * s + 12.0, 1080.0 / n)
@@ -383,7 +387,7 @@ func show_plunder(ids: Array, discard_rect: Rect2, hold: float) -> void:
 	await get_tree().create_timer(hold).timeout
 	var flights: Array = []
 	for i in n:
-		if CardDB.element_of(ids[i]) == Rules.SUPER:
+		if _stays(ids, to_discard, i):
 			continue
 		flights.append(_to_discard(cards[i], discard_rect, 0.05 * i))
 	for tw in flights:
@@ -391,11 +395,16 @@ func show_plunder(ids: Array, discard_rect: Rect2, hold: float) -> void:
 			await tw.finished
 	var supers: Array = cards.filter(func(c): return is_instance_valid(c) and c.modulate.a > 0.5)
 	if supers.is_empty():
-		await show_message("No berries found", 0.9)
+		if to_discard.is_empty():
+			await show_message("No berries found", 0.9)
 	else:
 		await get_tree().create_timer(0.35).timeout
 		for c in supers:
 			c.queue_free()
+
+
+func _stays(ids: Array, to_discard: Array, i: int) -> bool:
+	return not bool(to_discard[i]) if not to_discard.is_empty() else CardDB.element_of(ids[i]) == Rules.SUPER
 
 
 func _to_discard(card: Control, target: Rect2, delay: float) -> Tween:

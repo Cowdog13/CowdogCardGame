@@ -86,7 +86,8 @@ func hide_panel() -> void:
 ## kind: "next" (plain Next), "action" (the player plays a move), "bot" (watch button), "end" (finish / quit).
 func show_step(step: Dictionary, index: int, total: int, kind: String) -> void:
 	_title.text = step.title
-	_text.text = step.text
+	# The font has no bold or italic face, so emphasis is shown with colour.
+	_text.text = String(step.text).replace("[b]", "[color=#f2d065]").replace("[/b]", "[/color]").replace("[i]", "[color=#9fd3ff]").replace("[/i]", "[/color]")
 	_count.text = "Step %d of %d" % [index + 1, total]
 	_next.visible = kind == "next" or kind == "bot"
 	_next.text = String(step.get("button", "Next"))

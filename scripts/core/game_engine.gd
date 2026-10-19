@@ -664,11 +664,15 @@ func _pillage(p: int, n: int) -> void:
 	var discarded := 0  # cards that actually went to the discard (attached berries don't count)
 	var recycled: Array = []  # Fire Famine: non-berry cards go straight to the bottom of the deck
 	var revealed: Array = []  # berries the player gets to place (Super Berries; every berry with Fire Famine)
+	var shown: Array = []  # every card pillaged, in order, and whether it goes to the discard (for the table's effects)
+	var to_discard: Array = []
 	for i in n:
 		if pl.deck.is_empty():
 			break
 		var id: String = pl.deck.pop_front()
 		taken += 1
+		shown.append(id)
+		to_discard.append(not (CardDB.element_of(id) == Rules.SUPER or famine))
 		if CardDB.element_of(id) == Rules.SUPER or (famine and CardDB.is_berry(id)):
 			revealed.append(id)
 			_reveal_berry(p, id)
@@ -683,7 +687,8 @@ func _pillage(p: int, n: int) -> void:
 		pl.deck.append_array(recycled)
 	elif recycled.size() > 1:
 		_pending_for(p).ordering = recycled
-	_say("%s pillages %d card(s) from their own deck%s." % [_pname(p), taken, " (%d recycled to the bottom)" % recycled.size() if not recycled.is_empty() else ""], p)
+	_say("%s pillages %d card(s) from their own deck%s." % [_pname(p), taken, " (%d recycled to the bottom)" % recycled.size() if not recycled.is_empty() else ""], p, "info",
+		{"fx": "pillage", "cards": shown, "discard": to_discard, "target": p})
 	_announce_reveal(p, revealed)
 	var recycle := mini(discarded, pl.discard.size()) if wolves else 0
 	if recycle > 0:
