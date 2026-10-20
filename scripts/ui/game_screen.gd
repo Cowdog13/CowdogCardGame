@@ -831,72 +831,87 @@ func _multi_pick(title: String, labels: Array, need: int, preselect: Array, verb
 ## Firewolf: choose which cards from the discard go to the bottom of the deck, and in what order.
 func _ask_recycle(n: int) -> void:
 	var discard: Array = view.you.discard
-	var order: Array = range(discard.size() - 1, -1, -1)  # newest first
-	var labels: Array = order.map(func(i): return CardDB.card_name(discard[i]))
-	var recycle_ids: Array = order.map(func(i): return discard[i])
-	var suggested := Rules.recycle_pick(discard, n).map(func(i): return order.find(i))
 	_recycle_open = true
-	_ordered_pick("Recycle: choose %d card(s) and the order they go on the bottom of your deck" % n, labels, n, suggested, "Recycle",
+	_ordered_pick("Recycle: choose %d card(s) and the order they go on the bottom of your deck" % n, discard, n, Rules.recycle_pick(discard, n), "Recycle",
 		func(picked: Array):
 			_recycle_open = false
-			_submit({"type": "recycle", "cards": picked.map(func(k): return order[k])}),
+			_submit({"type": "recycle", "cards": picked}),
 		func():
 			_recycle_open = false
-			_refresh.call_deferred(),  # a recycle choice can't be skipped; ask again
-		recycle_ids)
+			_refresh.call_deferred())  # a recycle choice can't be skipped; ask again
 
 
 ## Fire Famine: the pillaged non-berry cards are recycled; the player picks their order.
 func _ask_order(ids: Array) -> void:
-	var labels: Array = ids.map(func(id): return CardDB.card_name(id))
 	_recycle_open = true
-	_ordered_pick("Recycle: put the %d pillaged cards in order" % ids.size(), labels, ids.size(), range(ids.size()), "Recycle",
+	_ordered_pick("Recycle: put the %d pillaged cards in order" % ids.size(), ids, ids.size(), range(ids.size()), "Recycle",
 		func(picked: Array):
 			_recycle_open = false
 			_submit({"type": "order_recycle", "order": picked}),
 		func():
 			_recycle_open = false
-			_refresh.call_deferred(),
-		ids)
+			_refresh.call_deferred())
 
 
-## Dialog where clicking a card numbers it 1, 2, 3... in the order clicked; clicking a numbered
-## card removes its number (the later ones renumber). `need` cards must be numbered. The numbers are
-## the order the cards are put on the bottom of the deck: 1 first, so the highest number ends up at
-## the very bottom. `on_ok` receives the chosen list indices in order.
-func _ordered_pick(title: String, labels: Array, need: int, initial: Array, verb: String, on_ok: Callable, on_cancel: Callable, card_ids: Array = []) -> void:
+## Dialog for choosing cards in an order. Identical cards are grouped like the pile viewers ("Firespore x3");
+## each click on a group numbers one more copy (1, 2, 3... in click order). Clicking a group whose copies are
+## all numbered, or right-clicking, removes its last number; Clear removes all. `need` cards must be numbered.
+## The numbers are the order the cards go on the bottom of the deck: 1 first, so the highest number ends up
+## at the very bottom. `initial` lists cards (indices into `card_ids`) that start out numbered. `on_ok` receives
+## the chosen indices into `card_ids`, in order.
+func _ordered_pick(title: String, card_ids: Array, need: int, initial: Array, verb: String, on_ok: Callable, on_cancel: Callable) -> void:
 	var d := ConfirmationDialog.new()
 	d.title = title
 	var box := VBoxContainer.new()
 	var list := ItemList.new()
-	list.custom_minimum_size = Vector2(380, 520 if not card_ids.is_empty() else 300)
-	for l in labels:
-		list.add_item(l)
-	box.add_child(_list_with_preview(list, func(k: int) -> String: return card_ids[k]) if not card_ids.is_empty() else list)
+	list.custom_minimum_size = Vector2(380, 520)
+	var rows := _pile_rows(card_ids)
+	_fill_pile_list(list, rows)
+	var copies := {}  # row -> indices into card_ids of its cards, newest (highest index) first
+	for k in rows.size():
+		if rows[k].has("id"):
+			var idx: Array = []
+			for i in range(card_ids.size() - 1, -1, -1):
+				if card_ids[i] == rows[k].id:
+					idx.append(i)
+			copies[k] = idx
+	box.add_child(_list_with_preview(list, func(k: int) -> String: return rows[k].get("id", "")))
 	var hint := Label.new()
-	hint.text = "Click cards to number them in the order they go on the bottom of the deck: 1 goes first (closest to the top), the highest number ends up at the very bottom. Click a numbered card to remove it."
+	hint.text = "Click a card to number it: 1 goes on the bottom of the deck first (closest to the top), the highest number ends up at the very bottom. Click a stack again to number another copy. Right-click (or click a stack whose copies are all numbered) to remove the last number."
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	hint.custom_minimum_size = Vector2(620, 0)
 	hint.add_theme_font_size_override("font_size", 12)
 	box.add_child(hint)
 	d.add_child(box)
-	var order: Array = Array(initial)
+	var order: Array = []  # row indices, one entry per numbered card
+	for ci in initial:
+		for k in rows.size():
+			if rows[k].get("id", "") == card_ids[ci] and order.count(k) < rows[k].count:
+				order.append(k)
+				break
 	var refresh := func():
-		for i in labels.size():
-			var pos := order.find(i)
-			list.set_item_text(i, ("%d.  %s" % [pos + 1, labels[i]]) if pos >= 0 else ("      " + labels[i]))
-			list.set_item_custom_bg_color(i, Color(0.25, 0.5, 0.25, 0.7) if pos >= 0 else Color(0, 0, 0, 0))
+		for k in rows.size():
+			if rows[k].has("header"):
+				continue
+			var nums: Array = []
+			for pos in order.size():
+				if order[pos] == k:
+					nums.append(str(pos + 1))
+			var name_text := "%s  x%d" % [CardDB.card_name(rows[k].id), rows[k].count]
+			list.set_item_text(k, ("%s.  %s" % [", ".join(nums), name_text]) if not nums.is_empty() else ("      " + name_text))
+			list.set_item_custom_bg_color(k, Color(0.25, 0.5, 0.25, 0.7) if not nums.is_empty() else Color(0, 0, 0, 0))
 		list.deselect_all()
 		d.get_ok_button().disabled = order.size() != need
 		d.get_ok_button().text = "%s (%d/%d)" % [verb, order.size(), need]
-	list.item_clicked.connect(func(i: int, _pos: Vector2, button: int):
-		if button != MOUSE_BUTTON_LEFT:
+	list.item_clicked.connect(func(k: int, _pos: Vector2, button: int):
+		if not rows[k].has("id"):
 			return
-		var at := order.find(i)
-		if at >= 0:
-			order.remove_at(at)
-		elif order.size() < need:
-			order.append(i)
+		var picked := order.count(k)
+		if button == MOUSE_BUTTON_RIGHT or (button == MOUSE_BUTTON_LEFT and picked >= rows[k].count):
+			if picked > 0:
+				order.remove_at(order.rfind(k))
+		elif button == MOUSE_BUTTON_LEFT and order.size() < need:
+			order.append(k)
 		refresh.call())
 	d.add_button("Clear", false, "clear")
 	d.custom_action.connect(func(_a):
@@ -904,7 +919,13 @@ func _ordered_pick(title: String, labels: Array, need: int, initial: Array, verb
 		refresh.call())
 	d.confirmed.connect(func():
 		d.queue_free()
-		on_ok.call(order.duplicate()))
+		var used := {}
+		var result: Array = []
+		for k in order:
+			var n := int(used.get(k, 0))
+			result.append(copies[k][n])
+			used[k] = n + 1
+		on_ok.call(result))
 	d.canceled.connect(func():
 		d.queue_free()
 		if on_cancel.is_valid():
