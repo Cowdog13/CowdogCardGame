@@ -109,7 +109,7 @@ func _init() -> void:
 	check(pl.discard == ["fire_berry", "removal"] and e.state.pending.berries.is_empty() and int(e.state.pending.recycle) == 2, "wolf only: berry discarded, two recycles pending")
 	e.submit(a, {"type": "recycle", "cards": [1, 0]})
 	check(e.state.pending.is_empty() and pl.deck.slice(-2) == ["removal", "fire_berry"], "recycle order respected")
-	# Firewolf + Famine, every pillaged card is a berry that gets attached: nothing to recycle.
+	# Firewolf + Famine, every pillaged card is a berry that gets attached: only the free Recycle 1 remains.
 	pl.board[2] = {"cards": ["fire_famine"], "berries": ["super_berry"], "exhausted": [false], "stun_until": -1, "ability_used_turn": -1}
 	pl.board[1] = {"cards": ["firewolf"], "berries": ["super_berry", "super_berry"], "exhausted": [false, false], "stun_until": -1, "ability_used_turn": -1}
 	pl.discard = ["removal", "firespore"]
@@ -117,10 +117,11 @@ func _init() -> void:
 	pl.board[0].ability_used_turn = -1
 	pl.abilities_used = 0
 	e.submit(a, {"type": "use_ability", "slot": 0, "ability": 0})
-	check(e.state.pending.berries.size() == 2 and int(e.state.pending.recycle) == 0, "attached berries do not count toward recycling")
+	check(e.state.pending.berries.size() == 2 and int(e.state.pending.recycle) == 1, "attached berries do not count toward recycling (just Recycle 1)")
 	e.submit(a, {"type": "place_berry", "slot": 0})
 	e.submit(a, {"type": "place_berry", "slot": 0})
-	check(e.state.pending.is_empty(), "no recycle prompt when no card was discarded")
+	check(int(e.state.pending.recycle) == 1, "the free Recycle 1 is still asked for")
+	check(e.submit(a, {"type": "recycle", "cards": [0]}).ok and e.state.pending.is_empty(), "Recycle 1 done")
 	# Two Firewolves don't stack.
 	pl.board[2] = {"cards": ["firewolf"], "berries": ["super_berry", "super_berry"], "exhausted": [false, false], "stun_until": -1, "ability_used_turn": -1}
 	pl.discard = ["removal", "firespore", "fire_berry", "fire_berry"]
@@ -128,19 +129,21 @@ func _init() -> void:
 	pl.board[0].ability_used_turn = -1
 	pl.abilities_used = 0
 	e.submit(a, {"type": "use_ability", "slot": 0, "ability": 0})
-	check(int(e.state.pending.recycle) == 2, "two Firewolves recycle only as many as were discarded")
-	e.submit(a, {"type": "recycle", "cards": [0, 1]})
+	check(int(e.state.pending.recycle) == 3, "two Firewolves recycle only as many as were discarded, plus Recycle 1")
+	e.submit(a, {"type": "recycle", "cards": [0, 1, 2]})
 	pl.board[2] = null
 	# Fire Famine alone: all berries are attached by choice; no recycle.
 	pl.board[1] = null
 	pl.board[2] = {"cards": ["fire_famine"], "berries": ["super_berry", "fire_berry"], "exhausted": [false, false], "stun_until": -1, "ability_used_turn": -1}
 	pl.deck = ["fire_berry", "removal", "fire_berry"]
+	pl.discard = ["firespore"]
 	pl.board[0].ability_used_turn = -1
 	pl.abilities_used = 0
 	check(e.submit(a, {"type": "use_ability", "slot": 0, "ability": 0}).ok, "pillage with famine only")
-	check(e.state.pending.berries == ["fire_berry"] and int(e.state.pending.recycle) == 0, "famine only: berry placed by choice, no recycle")
+	check(e.state.pending.berries == ["fire_berry"] and int(e.state.pending.recycle) == 1, "famine only: berry placed by choice, Recycle 1 only")
 	check(pl.deck.back() == "removal", "famine only: the non-berry went to the bottom of the deck")
 	e.submit(a, {"type": "place_berry", "slot": 0})
+	check(e.submit(a, {"type": "recycle", "cards": [0]}).ok, "famine only: Recycle 1")
 	# Fire Famine: several recycled cards wait for the player to choose their order.
 	var e5 := GameEngine.new()
 	e5.setup(["scorching_fire", "crashing_wave"], 5)

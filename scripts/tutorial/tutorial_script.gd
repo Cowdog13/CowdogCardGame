@@ -9,9 +9,9 @@ extends RefCounted
 ##   2  opponent plays Water Constrictor
 ##   3  you      second creature, Plunder 2 (steals a Super Berry), Plunder 1: two abilities
 ##   4  opponent stuns your Firespore
-##   5  you      evolve (removes the stun), Plunder 3, Pillage 2
+##   5  you      evolve (removes the stun), Plunder 3, Pillage 2 + Recycle 1
 ##   6  opponent quiet turn
-##   7  you      Pillage, once-per-game swap, evolve again, berry from the discard, Removal
+##   7  you      once-per-game swap, Pillage + Recycle 1, evolve again, berry from the discard, Removal
 
 const PLAYER_START := [
 	"firespore", "fire_berry", "firepup", "firespitter", "fireking", "removal", "fire_berry",  # opening hand
@@ -19,9 +19,9 @@ const PLAYER_START := [
 	"firespore",  # turn 1 draw
 	"fire_berry",  # turn 3
 	"firewolf",  # turn 5
-	"fireking", "fire_berry",  # turn 5 Pillage 2
+	"fireking", "fire_berry",  # turn 5 Pillage 2 (then Recycle 1: the berry goes back to the deck)
 	"fire_famine",  # turn 7
-	"fire_berry", "fire_berry",  # turn 7 Pillage 2
+	"fire_berry", "fire_berry",  # turn 7 Pillage 2 (then Recycle 1: the spare Firespore goes back)
 ]
 const OPPONENT_START := [
 	"water_constrictor", "water_berry", "water_berry", "water_spirit", "removal", "water_berry", "disable",
@@ -115,16 +115,22 @@ static func steps() -> Array:
 		{"title": "Pillage", "highlight": ["mine:firepup"],
 			"text": "[b]Pillage[/b] is like Plunder, but it hits [b]your own deck[/b]: the top cards go to your discard pile. That sounds bad, but your discard pile is a resource: you can attach berries from it, swap creatures with it and pay for spells with its berries. Any Super Berry you pillage is yours to attach.\n\nUse Firepup's [b]Pillage 2[/b]. That is your second ability, the most you can use in a turn.",
 			"expect": {"type": "use_ability", "creature": "firepup", "ability": 0}, "hint": "Use Firepup's Pillage 2."},
+		{"title": "Recycle 1", "highlight": ["discard"],
+			"text": "Every Pillage ends with a free [b]Recycle 1[/b]: you put one card from your discard pile on the [b]bottom of your deck[/b], so it isn't lost for good. The pillage put a [b]Fireking[/b] and a [b]Fire Berry[/b] in your discard. Keep the Fireking, you'll want it soon: recycle the [b]Fire Berry[/b].\n\nClick the Fire Berry in the list, then press Recycle.",
+			"expect": {"type": "recycle", "cards": ["fire_berry"]}, "hint": "Recycle the Fire Berry and keep the Fireking."},
 		{"title": "Your discard pile", "highlight": ["discard"],
-			"text": "Look at your discard pile on the right: the pillage put a [b]Fireking[/b] and a [b]Fire Berry[/b] there. You can click the pile at any time to see the cards in it (the exile pile works the same way - cards there are gone for good).\n\nWe'll use both of them on your next turn."},
+			"text": "Click your discard pile on the right to see what's in it: the Fireking. You can browse the exile pile the same way (cards there are gone for good).\n\nWe'll use the Fireking on your next turn."},
 		{"title": "End your turn", "highlight": ["end_turn"], "text": "Press [b]End Turn[/b].", "expect": {"type": "end_turn"}, "hint": "Press End Turn."},
 		{"title": "The opponent's turn", "text": "A quiet turn for the opponent.", "bot": true, "button": "Watch the opponent's turn"},
-		{"title": "Pillage again", "highlight": ["mine:firepup"],
-			"text": "Another round of [b]Pillage 2[/b] with Firepup to stock your discard pile with berries.",
-			"expect": {"type": "use_ability", "creature": "firepup", "ability": 0}, "hint": "Use Firepup's Pillage 2."},
 		{"title": "The once-per-game swap", "highlight": ["swap"],
-			"text": "Once per game you may [b]swap[/b] a creature in your hand with a creature in your discard pile. Your spare [b]Firespore[/b] isn't much use, but the Fireking that was pillaged is great. Press [b]Swap[/b], give the Firespore and take the Fireking.",
+			"text": "Once per game you may [b]swap[/b] a creature in your hand with a creature in your discard pile. Your spare [b]Firespore[/b] isn't much use, but the Fireking in your discard is great. Press [b]Swap[/b], give the Firespore and take the Fireking.",
 			"expect": {"type": "swap", "hand_card": "firespore", "discard_card": "fireking"}, "hint": "Swap your Firespore for the Fireking in your discard."},
+		{"title": "Pillage again", "highlight": ["mine:firepup"],
+			"text": "Another [b]Pillage 2[/b] with Firepup, to stock your discard pile with berries.",
+			"expect": {"type": "use_ability", "creature": "firepup", "ability": 0}, "hint": "Use Firepup's Pillage 2."},
+		{"title": "Recycle the spare", "highlight": ["discard"],
+			"text": "Recycle 1 again: send the spare [b]Firespore[/b] back to the bottom of your deck and keep the berries.",
+			"expect": {"type": "recycle", "cards": ["firespore"]}, "hint": "Recycle the Firespore."},
 		{"title": "Evolve again", "highlight": ["hand:fireking", "mine:firespitter"],
 			"text": "Play [b]Fireking[/b] on top of Firespitter: Tier 1, then Tier 2, now Tier 3. Evolved creatures keep all their berries.",
 			"expect": {"type": "play_creature", "card": "fireking"}, "hint": "Evolve Firespitter with Fireking."},
@@ -132,7 +138,7 @@ static func steps() -> Array:
 			"text": "You haven't attached a berry this turn. You can use one from your [b]discard pile[/b] instead of your hand: click your discard pile, select a Fire Berry, press [b]Play berry from discard[/b] and choose Fireking.\n\nA berry attached this way enters [b]exhausted[/b] (sideways, red outline). Exhausted berries still count for ability costs, but when one is spent on a spell it is [b]exiled[/b] instead of discarded.",
 			"expect": {"type": "attach_berry", "from": "discard", "card": "fire_berry", "to": "fireking"}, "hint": "Play a Fire Berry from your discard onto Fireking."},
 		{"title": "Spells", "highlight": ["hand:removal", "theirs:water_constrictor"],
-			"text": "Last, a [b]spell[/b]. [b]Removal[/b] sends a creature and all its attached berries to the discard pile. Spells cost berries: Removal costs 3 berries of any kind. You choose which ones pay: berries in your discard pile are the cheapest, and any berry attached to a creature works too (exhausted ones are exiled).\n\nCast Removal on the opponent's [b]Water Constrictor[/b], paying with your two discard berries and the exhausted one on Fireking.",
+			"text": "Last, a [b]spell[/b]. [b]Removal[/b] sends a creature and all its attached berries to the discard pile. Spells cost berries: Removal costs 3 berries of any kind. You choose which ones pay: berries in your discard pile are the cheapest, and any berry attached to a creature works too (exhausted ones are exiled).\n\nCast Removal on the opponent's [b]Water Constrictor[/b]. Pay with the Fire Berry left in your discard, the exhausted berry on Fireking and one more berry from Fireking.",
 			"expect": {"type": "play_spell", "card": "removal", "target": "water_constrictor"}, "hint": "Cast Removal on the opponent's Water Constrictor."},
 		{"title": "More to discover", "text": "That covers the basics: [b]mulligan, creatures, evolving, berries, abilities, Plunder, Pillage, Stun, Super Berries, the swap and spells[/b].\n\nThere is more in the decks: [b]Reinforce[/b] (pay 3 Fire Berries to play a second creature this turn), [b]Fire Famine[/b] and [b]Firewolf[/b] (their [i]Active[/i] abilities are always on and change what Pillage does), the Water deck's [b]Disable[/b] and [b]Berry Trade[/b], and more. Hover any card to read it."},
 		{"title": "Tutorial complete", "end": true,

@@ -7,7 +7,7 @@ There are 2 different kinds of berries. Element Berries that include Fire, Water
 
 Keywords:
 Plunder X: target opponent discards X cards from the top of their deck
-Pillage X: player discards X cards from the top of their deck
+Pillage X: player discards X cards from the top of their deck, then Recycles 1
 Stun X: up to X target creatures cannot use any abilities until the end of their next turn. Active effects remain
 Active: As long as the creature has the required berries then that abilities effect is always on
 Recycle X: put X cards from your discard on the bottom of the deck in any order

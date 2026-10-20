@@ -40,7 +40,7 @@ func _init() -> void:
 		# Highlight targets must resolve to something on screen.
 		for t in step.get("highlight", []):
 			check(screen.tutorial_target_rect(String(t)).size != Vector2.ZERO, "step %d: no target for %s" % [i, t])
-		if OS.get_environment("SHOTS") != "" and [1, 3, 9, 10, 11, 14, 15, 18, 21, 23, 25, 26, 27, 28].has(i):
+		if OS.get_environment("SHOTS") != "" and [1, 3, 9, 10, 11, 14, 15, 18, 19, 22, 23, 24, 26, 27, 28, 29].has(i):
 			await create_timer(0.6).timeout
 			root.get_viewport().get_texture().get_image().save_png("%s/step%02d.png" % [OS.get_environment("SHOTS"), i])
 		if step.has("expect"):
@@ -92,6 +92,11 @@ func _action_for(exp: Dictionary, view: Dictionary) -> Dictionary:
 			return {"type": "use_ability", "slot": _slot(you, exp.creature), "ability": exp.ability, "params": {}}
 		"place_berry":
 			return {"type": "place_berry", "slot": _slot(you, exp.to)}
+		"recycle":
+			var idx: Array = []
+			for id in exp.cards:
+				idx.append(you.discard.find(id))
+			return {"type": "recycle", "cards": idx}
 		"swap":
 			return {"type": "swap", "hand": you.hand.find(exp.hand_card), "discard": you.discard.find(exp.discard_card)}
 		"play_spell":
@@ -99,11 +104,13 @@ func _action_for(exp: Dictionary, view: Dictionary) -> Dictionary:
 			for i in you.discard.size():
 				if CardDB.is_berry(you.discard[i]) and payment.size() < 3:
 					payment.append({"src": "discard", "index": i})
-			for s in you.board.size():
-				if you.board[s] != null:
-					for k in you.board[s].berries.size():
-						if payment.size() < 3 and you.board[s].exhausted[k]:
-							payment.append({"src": "attached", "slot": s, "index": k})
+			for exhausted_first in [true, false]:
+				for s in you.board.size():
+					if you.board[s] != null:
+						for k in you.board[s].berries.size():
+							if payment.size() < 3 and you.board[s].exhausted[k] == exhausted_first \
+									and not payment.any(func(p): return p.src == "attached" and p.slot == s and p.index == k):
+								payment.append({"src": "attached", "slot": s, "index": k})
 			return {"type": "play_spell", "hand": you.hand.find(exp.card), "payment": payment,
 				"params": {"target": {"player": 1, "slot": _slot(view.opponent, exp.target)}}}
 		"end_turn":

@@ -644,8 +644,8 @@ func _clear_pending_if_done() -> void:
 ##  - Super Berries, which are always attached to a creature of the player's choice, and
 ##  - with Fire Famine's Active effect, every berry is attached (player's choice) and all
 ##    other cards are recycled to the bottom of the deck instead of being discarded.
-## With Firewolf's Active effect the player then chooses as many cards to recycle as went to
-## the discard (berries attached to creatures don't count).
+## Afterwards the player always recycles 1 card from their discard, and with Firewolf's Active effect
+## also as many cards as went to the discard (berries attached to creatures don't count).
 ## Tells clients that berries were found in `deck_owner`'s deck so they can show them on screen.
 func _announce_reveal(deck_owner: int, ids: Array) -> void:
 	if ids.is_empty():
@@ -690,7 +690,8 @@ func _pillage(p: int, n: int) -> void:
 	_say("%s pillages %d card(s) from their own deck%s." % [_pname(p), taken, " (%d recycled to the bottom)" % recycled.size() if not recycled.is_empty() else ""], p, "info",
 		{"fx": "pillage", "cards": shown, "discard": to_discard, "target": p})
 	_announce_reveal(p, revealed)
-	var recycle := mini(discarded, pl.discard.size()) if wolves else 0
+	# Every Pillage also Recycles 1 (Firewolf's Active adds one for each card that went to the discard).
+	var recycle := mini((discarded if wolves else 0) + 1, pl.discard.size())
 	if recycle > 0:
 		_pending_for(p).recycle = recycle
 

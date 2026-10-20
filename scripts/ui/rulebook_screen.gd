@@ -63,7 +63,7 @@ Evolving also [b]removes a stun[/b] from the creature.
 [b]Active abilities[/b] are marked [i]Active[/i]. They are not used; they are always on, as long as the creature has the berries they need."""],
 	["Keywords", """[b]Plunder X[/b] - the opponent puts the top X cards of their deck into their discard pile. Every [b]Super Berry[/b] found this way is not discarded: you take it and attach it to one of your creatures (you choose which). If you have no creature, it goes to your hand. If the opponent's deck has fewer than X cards, they discard everything they have, you still take any Super Berries, and then they lose the game.
 
-[b]Pillage X[/b] - the same, but to [i]your own[/i] deck: you put your top X cards into your discard pile. This fills your discard pile with berries (to attach from the discard pile or pay for spells) and creatures (for the swap). Super Berries you pillage are yours to attach to a creature too. Careful: it empties your own deck.
+[b]Pillage X[/b] - the same, but to [i]your own[/i] deck: you put your top X cards into your discard pile. This fills your discard pile with berries (to attach from the discard pile or pay for spells) and creatures (for the swap). Super Berries you pillage are yours to attach to a creature too. [b]Every Pillage ends with a free Recycle 1[/b]: you put one card of your choice from your discard pile on the bottom of your deck (if your discard pile is empty there is nothing to recycle). Careful: pillaging still thins your own deck.
 
 [b]Stun X[/b] - choose up to X creatures. They can't use abilities until the end of their controller's next turn. Active abilities keep working. A stunned creature is shown greyed out and marked STUNNED. [b]Evolving a stunned creature removes the stun.[/b]
 
@@ -87,11 +87,11 @@ Berries must match the cost: [i]Colorless[/i] accepts any berry, and an element 
 [b]Firespitter[/b] (Tier 2, on Firespore): 2 Fire Berries, Plunder 3.
 [b]Fireking[/b] (Tier 3, on Firespitter): 3 Fire Berries, Plunder 5; or 2 Super Berries, Inferno: Plunder 1 for each berry attached to this creature.
 [b]Firepup[/b] (Tier 1): 2 Fire Berries, Pillage 2; or 1 Fire Berry, Plunder 1.
-[b]Firewolf[/b] (Tier 2, on Firepup): 2 Super Berries, [i]Active:[/i] when you pillage, [b]recycle[/b] as many cards as went to your discard pile (berries attached to creatures don't count; several Firewolves don't stack); or 2 Fire Berries, Pillage 3.
+[b]Firewolf[/b] (Tier 2, on Firepup): 2 Super Berries, [i]Active:[/i] when you pillage, [b]recycle[/b] as many cards as went to your discard pile (berries attached to creatures don't count; several Firewolves don't stack), in addition to the free Recycle 1 of every Pillage; or 2 Fire Berries, Pillage 3.
 [b]Fire Famine[/b] (Tier 1): 1 Super Berry, [i]Active:[/i] when you pillage, every pillaged berry can be attached to any of your creatures, and all other pillaged cards are recycled to the bottom of your deck (you choose their order); or 2 Fire Berries, Pillage 4.
 [b]Removal[/b], [b]Reinforce[/b]: see Spells.
 
-[b]Strategy:[/b] Firespore and Fireking plunder; Firepup, Firewolf and Fire Famine pillage and then recycle, so your deck lasts longer than your opponent's."""],
+[b]Strategy:[/b] Firespore and Fireking plunder; Firepup, Firewolf and Fire Famine pillage and then recycle, so your deck lasts longer than your opponent's. Every pillage recycles at least one card."""],
 	["Crashing Wave cards", """[b]Water Spirit[/b] (Tier 1): 1 Water Berry, Plunder 2.
 [b]Water Sprite[/b] (Tier 2, on Water Spirit): 2 Water Berries, Plunder 3; or 2 Water Berries, Stun 1.
 [b]Water Ruler[/b] (Tier 3, on Water Sprite): 1 Super Berry, Berry Trade; or 2 Water Berries, Plunder 3.

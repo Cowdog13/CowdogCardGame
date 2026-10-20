@@ -91,7 +91,7 @@ func _step_is_reachable(step: Dictionary) -> bool:
 	match step.expect.type:
 		"mulligan":
 			return v.phase == "mulligan" and not v.you.mulligan_done
-		"place_berry":
+		"place_berry", "recycle":
 			return not v.pending.is_empty() and v.pending.player == 0
 		_:
 			return v.phase == "main" and v.active == 0 and v.pending.is_empty()
@@ -171,6 +171,12 @@ func _filter(seat: int, action: Dictionary, view: Dictionary) -> String:
 				return hint
 		"place_berry":
 			return "" if _creature_at(you, action.get("slot", -1)) == exp.to else hint
+		"recycle":
+			var ids: Array = []
+			for i in action.get("cards", []):
+				if int(i) >= 0 and int(i) < you.discard.size():
+					ids.append(you.discard[int(i)])
+			return "" if ids == exp.cards else hint
 		"swap":
 			var hi := int(action.get("hand", -1))
 			var di := int(action.get("discard", -1))
