@@ -29,6 +29,9 @@ CARD_FILES = {
     "NatureCards/Spore_Spreader.png": "spore_spreader", "NatureCards/Spore_Mucher.png": "spore_muncher",
     "NatureCards/Moosh.png": "moosh", "NatureCards/Trash.png": "trash",
     "NatureCards/Nature_Berry.png": "nature_berry",
+    "LightCards/Lightling.png": "lightling", "LightCards/Lighturn.png": "lighturn", "LightCards/Lightium.png": "lightium",
+    "LightCards/Lanturn.png": "lanturn", "LightCards/Lighttable.png": "lighttable", "LightCards/Lightning.png": "lightning",
+    "LightCards/Lightor.png": "lightor", "LightCards/Gather.png": "gather", "LightCards/Light_Berry.png": "light_berry",
 }
 SYMBOL_FILES = {
     "Symbols/Fire_Symbol.png": "fire", "Symbols/Water_Symbol.png": "water", "Symbols/Nature_Symbol.png": "nature",

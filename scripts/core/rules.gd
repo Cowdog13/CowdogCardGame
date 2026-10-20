@@ -5,7 +5,7 @@ extends RefCounted
 ##
 ## A creature on the board is: {"cards": [ids, base first], "berries": [ids],
 ## "exhausted": [bool per berry, true = sideways], "stun_until": int,
-## "ability_used_turn": int}
+## "ability_used_turn": int, "ability_used_idx": ["card_id:index", ...] (optional: the abilities used on that turn)}
 
 # --- Tunable rules (the rules document leaves these open) -------------------
 const BOARD_SLOTS := 5  # a Tier 2/3 creature still occupies just one space
@@ -56,6 +56,7 @@ static func ability_text(ability: Dictionary) -> String:
 			"pillage": parts.append("Pillage %d" % int(e.amount))
 			"stun": parts.append("Stun %d" % int(e.count))
 			"recycle": parts.append("Recycle %d" % int(e.amount))
+			"draw": parts.append("Draw %d" % int(e.amount))
 			_: parts.append(String(e.type))
 	return ", ".join(parts)
 
@@ -73,9 +74,50 @@ static func is_stunned(creature: Dictionary, turn: int) -> bool:
 	return int(creature.stun_until) >= turn
 
 
-## Each creature may use only one ability per turn.
+## Has this creature used any ability this turn?
 static func used_ability_this_turn(creature: Dictionary, turn: int) -> bool:
 	return int(creature.get("ability_used_turn", -1)) == turn
+
+
+## "" when `creature` may use its ability number `ai` now, otherwise why not. Normally a creature uses only one
+## ability per turn; with `double` (an Active "two different abilities" effect on the player's board) it may use
+## two different ones.
+static func ability_blocked(creature: Dictionary, ai: int, turn: int, double: bool) -> String:
+	if not used_ability_this_turn(creature, turn):
+		return ""
+	var used: Array = creature.get("ability_used_idx", ["?"])  # a creature without the list used exactly one
+	if not double:
+		return "Each creature can use only one ability per turn"
+	if used.has(ability_key(creature, ai)):
+		return "A creature can't use the same ability twice in a turn"
+	if used.size() >= 2:
+		return "Each creature can use at most two abilities per turn"
+	return ""
+
+
+static func ability_key(creature: Dictionary, ai: int) -> String:
+	return "%s:%d" % [top_card(creature).id, ai]
+
+
+## Does a creature on `board` with a satisfied Active ability of this effect type exist? (Stun doesn't turn it off.)
+static func has_active(board: Array, effect_type: String) -> bool:
+	for c in board:
+		if c == null:
+			continue
+		for ab in top_card(c).abilities:
+			if ab.get("active", false) and meets_cost(c.berries, ab.cost):
+				for e in ab.effects:
+					if e.type == effect_type:
+						return true
+	return false
+
+
+## Lightium: creatures with a Super Berry attached can't be targeted by the opponent while the Active effect is on.
+static func is_protected(board: Array, slot: int) -> bool:
+	var c = board[slot]
+	if c == null or not has_active(board, "protect_super"):
+		return false
+	return c.berries.any(func(b): return CardDB.element_of(b) == SUPER)
 
 
 static func berry_matches(berry_id: String, needed: String) -> bool:
@@ -151,11 +193,15 @@ static func has_move(view: Dictionary, count_swap := true) -> bool:
 	if count_swap and can_swap(view):
 		return true
 	if me.abilities_used < ABILITIES_PER_TURN and not abilities_locked(int(view.turn)):
+		var double := has_active(me.board, "double_ability")
 		for c in me.board:
-			if c == null or is_stunned(c, int(view.turn)) or used_ability_this_turn(c, int(view.turn)):
+			if c == null or is_stunned(c, int(view.turn)):
 				continue
-			for ab in top_card(c).abilities:
-				if not ab.get("active", false) and meets_cost(c.berries, ab.cost) and _ability_can_resolve(ab, c, me, opp):
+			var abilities: Array = top_card(c).abilities
+			for ai in abilities.size():
+				var ab: Dictionary = abilities[ai]
+				if not ab.get("active", false) and ability_blocked(c, ai, int(view.turn), double) == "" \
+						and meets_cost(c.berries, ab.cost) and _ability_can_resolve(ab, c, me, opp):
 					return true
 	return false
 
@@ -169,15 +215,23 @@ static func can_swap(view: Dictionary) -> bool:
 static func _spell_has_target(spell: Dictionary, me: Dictionary, opp: Dictionary) -> bool:
 	match spell.effects[0].type:
 		"destroy", "stun":
-			return me.board.any(func(c): return c != null) or opp.board.any(func(c): return c != null)
+			if me.board.any(func(c): return c != null):
+				return true
+			for slot in opp.board.size():
+				if opp.board[slot] != null and not is_protected(opp.board, slot):
+					return true
+			return false
 	return true
 
 
 static func _ability_can_resolve(ab: Dictionary, creature: Dictionary, me: Dictionary, opp: Dictionary) -> bool:
 	for e in ab.effects:
 		match e.type:
-			"recycle":
+			"recycle", "discard_to_top":
 				if me.discard.is_empty():
+					return false
+			"search_to_top":
+				if int(me.deck_count) == 0:
 					return false
 			"plunder":
 				if e.has("per_exile") and int(me.exile_count) == 0:
@@ -203,11 +257,17 @@ static func effect_value(effect: Dictionary, creature: Dictionary) -> float:
 		"plunder":
 			if effect.has("per_attached_berry"):
 				return float(int(effect.per_attached_berry) * creature.berries.size())
-			if effect.has("per_exile"):
-				return 2.0  # grows as the exile pile does
+			if effect.has("per_exile") or effect.has("per_hand"):
+				return 2.0  # grows with the exile pile / the hand
 			return float(int(effect.amount))
 		"recycle":
 			return 0.3
+		"draw":
+			return 0.9 * float(int(effect.amount))
+		"discard_to_top":
+			return 0.4
+		"search_to_top":
+			return 1.0
 		"cast_from_discard":
 			return 1.5
 		"stun":

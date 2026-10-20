@@ -130,9 +130,16 @@ func get_view(player: int) -> Dictionary:
 		"names": state.names.duplicate(),
 		"pending": state.pending.duplicate(true),
 		"awaiting": awaiting(),
-		"you": _public_player(me).merged({"hand": me.hand.duplicate()}),
+		"you": _public_player(me).merged({"hand": me.hand.duplicate(), "deck_cards": _sorted_ids(me.deck)}),
 		"opponent": _public_player(opp).merged({"hand_count": opp.hand.size()}),
 	}
+
+
+## The cards of a deck without their order (a player may look at their own deck's contents, e.g. to search it).
+func _sorted_ids(ids: Array) -> Array:
+	var out := ids.duplicate()
+	out.sort()
+	return out
 
 
 func _public_player(pl: Dictionary) -> Dictionary:
@@ -249,6 +256,8 @@ func _draw_card(p: int) -> bool:
 	if pl.deck.is_empty():
 		return false
 	pl.hand.append(pl.deck.pop_front())
+	if state.phase != "over" and _active_count(p, "plunder_on_draw") > 0:
+		_plunder(p, 1 - p, 1)  # Lightor: whenever its owner draws a card
 	return true
 
 
@@ -315,7 +324,7 @@ func _place_creature(player: int, id: String, slot: int, counts_as_play: bool, h
 	var pl := _P(player)
 	var c := CardDB.card(id)
 	if pl.board[slot] == null:
-		pl.board[slot] = {"cards": [id], "berries": [], "exhausted": [], "stun_until": -1, "ability_used_turn": -1}
+		pl.board[slot] = {"cards": [id], "berries": [], "exhausted": [], "stun_until": -1, "ability_used_turn": -1, "ability_used_idx": []}
 		_say("%s plays %s." % [_pname(player), c.name], player, "info", {"fx": "play_creature", "card": id, "slot": slot, "hand": hand_index})
 	else:
 		var prev := Rules.creature_name(pl.board[slot])
@@ -368,8 +377,9 @@ func _do_ability(player: int, action: Dictionary) -> Dictionary:
 		return _err("Abilities can't be used on a player's first turn")
 	if Rules.is_stunned(creature, state.turn):
 		return _err("This creature is stunned")
-	if Rules.used_ability_this_turn(creature, state.turn):
-		return _err("Each creature can use only one ability per turn")
+	var blocked := Rules.ability_blocked(creature, ai, state.turn, _active_count(player, "double_ability") > 0)
+	if blocked != "":
+		return _err(blocked)
 	if pl.abilities_used >= Rules.ABILITIES_PER_TURN:
 		return _err("You can only use %d abilities per turn" % Rules.ABILITIES_PER_TURN)
 	if not Rules.meets_cost(creature.berries, ab.cost):
@@ -379,7 +389,10 @@ func _do_ability(player: int, action: Dictionary) -> Dictionary:
 		if why != "":
 			return _err(why)
 	pl.abilities_used += 1
+	if int(creature.get("ability_used_turn", -1)) != state.turn:
+		creature["ability_used_idx"] = []
 	creature.ability_used_turn = state.turn
+	creature["ability_used_idx"].append(Rules.ability_key(creature, ai))
 	_say("%s uses %s's %s." % [_pname(player), Rules.creature_name(creature), Rules.ability_text(ab)], player, "ability",
 		{"fx": "ability", "slot": slot, "ability": ai})
 	for e in ab.effects:
@@ -395,12 +408,32 @@ func _creature_ref_error(ref: Dictionary) -> String:
 	return ""
 
 
+## A target that `player` may choose: it must exist, and an opponent's creature must not be protected (Lightium).
+func _target_error(player: int, ref: Dictionary) -> String:
+	var why := _creature_ref_error(ref)
+	if why != "":
+		return why
+	var tp := int(ref.player)
+	if tp != player and Rules.is_protected(_P(tp).board, int(ref.slot)):
+		return "That creature can't be targeted (a Lightium protects it)"
+	return ""
+
+
 func _check_effect(e: Dictionary, player: int, params: Dictionary, reserved: Array = []) -> String:
 	var pl := _P(player)
 	match e.type:
 		"recycle":
 			if pl.discard.is_empty():
 				return "Your discard pile is empty"
+		"draw":
+			if e.get("target", "") == "player" and int(params.get("player", -1)) not in [0, 1]:
+				return "Choose which player draws"
+		"discard_to_top":
+			if not params.get("card", "") is String or not pl.discard.has(params.get("card", "")):
+				return "Choose a card in your discard pile"
+		"search_to_top":
+			if not params.get("card", "") is String or not pl.deck.has(params.get("card", "")):
+				return "Choose a card that is in your deck"
 		"plunder":
 			if e.has("per_exile") and pl.exile.is_empty():
 				return "Your exile pile is empty"
@@ -446,7 +479,7 @@ func _check_effect(e: Dictionary, player: int, params: Dictionary, reserved: Arr
 				return "Choose 1 to %d target creature(s)" % int(e.count)
 			var seen := {}
 			for t in targets:
-				var why := _creature_ref_error(t)
+				var why := _target_error(player, t)
 				if why != "":
 					return why
 				var key := "%d:%d" % [int(t.player), int(t.slot)]
@@ -456,11 +489,11 @@ func _check_effect(e: Dictionary, player: int, params: Dictionary, reserved: Arr
 		"destroy":
 			if not params.has("target"):
 				return "Choose a target creature"
-			return _creature_ref_error(params.target)
+			return _target_error(player, params.target)
 		"berry_trade":
 			if not params.has("target") or not params.has("source_slot"):
 				return "Choose an enemy creature"
-			var why := _creature_ref_error(params.target)
+			var why := _target_error(player, params.target)
 			if why != "":
 				return why
 			if int(params.target.player) == player:
@@ -487,6 +520,8 @@ func _indices_invalid(indices: Array, size: int) -> bool:
 
 
 func _apply_effect(e: Dictionary, player: int, slot: int, params: Dictionary) -> void:
+	if state.phase == "over":
+		return
 	var opp := 1 - player
 	match e.type:
 		"plunder":
@@ -495,6 +530,8 @@ func _apply_effect(e: Dictionary, player: int, slot: int, params: Dictionary) ->
 				n = int(e.per_attached_berry) * _P(player).board[slot].berries.size()
 			elif e.has("per_exile"):
 				n = _P(player).exile.size()
+			elif e.has("per_hand"):
+				n = int(e.per_hand) * _P(player).hand.size()
 			_plunder(player, opp, n)
 		"pillage":
 			_pillage(player, int(e.amount))
@@ -516,6 +553,29 @@ func _apply_effect(e: Dictionary, player: int, slot: int, params: Dictionary) ->
 			_release_berries(player, mine, params.own)
 			_release_berries(tp, enemy, params.theirs)
 			_say("%d berr%s discarded from each side." % [params.own.size(), "y" if params.own.size() == 1 else "ies"], player)
+		"draw":
+			var target := int(params.get("player", player)) if e.get("target", "") == "player" else player
+			var drawn := 0
+			for i in int(e.amount):
+				if not _draw_card(target):
+					_say("%s has no card to draw." % _pname(target), target)
+					_win(1 - target, "%s has no card to draw." % _pname(target))
+					break
+				drawn += 1
+				if state.phase == "over":
+					break
+			if drawn > 0:
+				_say("%s draws %d card(s)." % [_pname(target), drawn], target)
+		"discard_to_top":
+			var pl := _P(player)
+			pl.discard.remove_at(pl.discard.find(params.card))
+			pl.deck.push_front(params.card)
+			_say("%s puts %s from the discard on top of their deck." % [_pname(player), CardDB.card_name(params.card)], player)
+		"search_to_top":
+			var pl := _P(player)
+			pl.deck.remove_at(pl.deck.find(params.card))
+			pl.deck.push_front(params.card)
+			_say("%s searches their deck and puts a card on top of it." % _pname(player), player)
 		"recycle":
 			var pl := _P(player)
 			var n := mini(int(e.amount), pl.discard.size())

@@ -49,7 +49,7 @@ When you are done, press [b]End Turn[/b]. Then your opponent's turn begins.
 
 Evolving also [b]removes a stun[/b] from the creature.
 
-[b]One ability per creature per turn.[/b] Evolving does not give a creature another ability use: if it already used an ability this turn, the evolved card can't use one until your next turn.
+[b]One ability per creature per turn.[/b] (Lightning's Active allows two different ones.) Evolving does not give a creature another ability use: if it already used an ability this turn, the evolved card can't use one until your next turn.
 
 [b]Reinforce[/b] and similar effects can let you play a second creature in a turn."""],
 	["Berries and abilities", """[b]Attaching berries.[/b] Once per turn you attach a berry from your hand to a creature, or from your discard pile (see below). Berries stay on the creature until something removes them (a spell cost, Removal, a Berry Trade, ...).
@@ -84,6 +84,7 @@ Berries must match the cost: [i]Colorless[/i] accepts any berry, and an element 
 [b]Removal[/b] (3 Colorless) sends a creature and all berries attached to it to the discard pile.
 [b]Reinforce[/b] (3 Fire) lets you play a second creature this turn.
 [b]Disable[/b] (1 Colorless) is Stun 1.
+[b]Gather[/b] (2 Colorless) makes the player you choose draw 2 cards.
 [b]Trash[/b] (2 Nature) exiles 3 cards of your choice from your discard pile. The berries that pay for it can't also be the cards it exiles."""],
 	["The swap", """Once per [b]game[/b], on your turn, you may swap a creature card in your hand with a creature card in your discard pile. Press [b]Swap[/b], choose the creature from your hand to give, then the creature from your discard pile to take. Both cards are shown to everyone. The button is disabled once you have used the swap."""],
 	["Scorching Fire cards", """[b]Firespore[/b] (Tier 1): 1 Fire Berry, Plunder 2.
@@ -115,6 +116,24 @@ Berries must match the cost: [i]Colorless[/i] accepts any berry, and an element 
 Exiled cards never come back, but they are counted by Spore Spreader. An ability that needs an empty pile to do anything (Recycle with no discard pile, Spore Cloud with no exile) can't be used. Recycle 6 with fewer than 6 cards in your discard pile recycles all of them.
 
 [b]Strategy:[/b] fill your exile pile with Trash, Mulch, Rot and spent berries, then let Spore Spreader plunder for it, and keep your deck healthy by recycling."""],
+	["Light cards", """[b]Lightling[/b] (Tier 1): 1 Light Berry, Plunder 2.
+[b]Lighturn[/b] (Tier 2, on Lightling): 2 Light Berries, Draw 1; or 2 Light Berries, Plunder 3.
+[b]Lightium[/b] (Tier 3, on Lighturn): [i]Aegis[/i], 2 Super Berries, [i]Active:[/i] your creatures that have a Super Berry attached can't be targeted by your opponent; or [i]Flare[/i], 2 Light Berries: Plunder 3, then draw 1.
+[b]Lanturn[/b] (Tier 1): 2 Light Berries, put a card from your discard pile on top of your deck; or 1 Light Berry, Plunder 2.
+[b]Lighttable[/b] (Tier 2, on Lanturn): 2 Super Berries, search your deck for a card and put it on top; or 2 Light Berries, Plunder 3.
+[b]Lightning[/b] (Tier 1): [i]Overclock[/i], 1 Super Berry, [i]Active:[/i] each of your creatures can use two [b]different[/b] abilities per turn; 2 Light Berries, Plunder 3; 2 Light Berries, Draw 1.
+[b]Lightor[/b] (Tier 2, on Lightning): [i]Static[/i], 1 Super Berry, [i]Active:[/i] whenever you draw a card, Plunder 1; or [i]Overload[/i], 3 Super Berries: draw 4 cards, then Plunder 1 for each card in your hand.
+[b]Gather[/b] (spell, 2 of any berry): target player draws 2 cards. [b]Removal[/b]: see Spells.
+
+[b]Drawing[/b] adds cards to your hand (there is no hand limit). If a player has to draw and has no card left, they lose, so the game asks before you draw more cards than your deck holds. Lightor's Active triggers on every card [i]you[/i] draw, including your draw at the start of your turn and each card of a Draw 4, but not on cards your opponent draws.
+
+[b]Two abilities on one creature.[/b] With Lightning's Active on, a creature may use two different abilities in a turn, but you still can't use more than 2 abilities in total per turn.
+
+[b]Protected creatures.[/b] While Lightium's Aegis is on, an opponent can't pick your creatures with a Super Berry attached as the target of Stun, Removal or Berry Trade. Plunder doesn't target creatures, and you can still target your own creatures.
+
+[b]Search.[/b] Lighttable shows your deck's contents (not their order) and puts the chosen card on top without shuffling.
+
+[b]Strategy:[/b] draw cards, plunder with several small abilities a turn, and let Lightor's Static punish every draw."""],
 	["Using the screen", """[b]Playing cards.[/b] Click a card in your hand. A berry goes on a creature (if you have several, click which one); a creature is played or evolves; a spell asks for its target and payment. Hover a card to see it large in the right-hand panel.
 
 [b]Using abilities.[/b] Click the ability on the creature. Ability boxes only react when the creature can use that ability.

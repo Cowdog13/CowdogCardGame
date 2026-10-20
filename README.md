@@ -93,6 +93,8 @@ godot --headless -s tests/ui_end_flash.gd      # End Turn flashes only when no m
 godot --headless -s tests/has_move_test.gd
 godot --headless -s tests/nature_test.gd       # the Nature Exile deck's effects on the engine
 godot --headless -s tests/ui_nature.gd         # its pickers (Trash, Decompose, Rot)
+godot --headless -s tests/light_test.gd        # the Light deck's effects on the engine
+godot --headless -s tests/ui_light.gd          # its pickers (Search, Gather, empty-deck warning)
 godot --headless -s tests/ui_double_click.gd      # no accidental ability use after a click
 godot --headless -s tests/ui_removal_ghost.gd     # a destroyed creature stays until the Removal animation ends
 godot --headless -s tests/net_disconnect_test.gd  # a dropped player concedes

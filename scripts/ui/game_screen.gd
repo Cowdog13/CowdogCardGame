@@ -450,6 +450,7 @@ func _rebuild_board(row: HBoxContainer, seat: int) -> void:
 		if seat == ME:
 			w.ability_pressed.connect(func(i): _on_ability_pressed(slot, i))
 			var abilities: Array = Rules.top_card(creature).abilities
+			var double := Rules.has_active(view.you.board, "double_ability")
 			var usable: Array = []
 			var affordable: Array = []
 			for ai in abilities.size():
@@ -457,7 +458,7 @@ func _rebuild_board(row: HBoxContainer, seat: int) -> void:
 				var met := Rules.meets_cost(creature.berries, ab.cost)
 				affordable.append(met or ab.get("active", false))
 				usable.append(not ab.get("active", false) and _can_act() and _pending.is_empty() and met
-					and not Rules.abilities_locked(view.turn) and not Rules.used_ability_this_turn(creature, view.turn)
+					and not Rules.abilities_locked(view.turn) and Rules.ability_blocked(creature, ai, view.turn, double) == ""
 					and not Rules.is_stunned(creature, view.turn) and view.you.abilities_used < Rules.ABILITIES_PER_TURN)
 			w.set_ability_states(usable, affordable)
 		_slot_nodes["%d:%d" % [seat, slot]] = w
@@ -780,7 +781,7 @@ func _on_hand_clicked(i: int) -> void:
 
 func _any_creature(p: int, s: int) -> bool:
 	var side: Dictionary = view.you if p == ME else view.opponent
-	return side.board[s] != null
+	return side.board[s] != null and not (p != ME and Rules.is_protected(side.board, s))  # Lightium: not targetable
 
 
 func _begin_spell(i: int, id: String) -> void:
@@ -796,6 +797,8 @@ func _begin_spell(i: int, id: String) -> void:
 			var n := int(effect.count)
 			_begin_targeting("%s: choose up to %d creature(s)." % [spell.name, n], _any_creature, n,
 				func(t): _cast(i, {"targets": t}))
+		"draw":
+			_ask_draw_target(i, spell, effect)
 		"exile_discard":
 			_ask_exile_cards(spell, view.you.discard, func(chosen: Array):
 				# The payment may not use the very cards that are being exiled.
@@ -990,9 +993,29 @@ func _on_ability_pressed(slot: int, ai: int) -> void:
 		return  # a double-click aimed at something else, or a click meant to choose a target
 	var creature: Dictionary = view.you.board[slot]
 	var ab: Dictionary = Rules.top_card(creature).abilities[ai]
-	var effect: Dictionary = ab.effects[0]
 	_pending = {}
+	var draws := 0
+	for e in ab.effects:
+		if e.type == "draw":
+			draws += int(e.amount)
+	if draws > int(view.you.deck_count):
+		_confirm("Not enough cards", "Your deck has only %d card(s) but this draws %d. You lose when you can't draw. Do it anyway?" % [view.you.deck_count, draws],
+			func(): _start_ability(slot, ai))
+	else:
+		_start_ability(slot, ai)
+
+
+func _start_ability(slot: int, ai: int) -> void:
+	var creature: Dictionary = view.you.board[slot]
+	var ab: Dictionary = Rules.top_card(creature).abilities[ai]
+	var effect: Dictionary = ab.effects[0]
 	match effect.type:
+		"discard_to_top":
+			_pick_grouped("Put which card from your discard pile on top of your deck?", view.you.discard, "Put on top",
+				func(id): _submit({"type": "use_ability", "slot": slot, "ability": ai, "params": {"card": id}}))
+		"search_to_top":
+			_pick_grouped("Search your deck: which card goes on top?", view.you.deck_cards, "Put on top",
+				func(id): _submit({"type": "use_ability", "slot": slot, "ability": ai, "params": {"card": id}}))
 		"stun":
 			var n := int(effect.count)
 			_begin_targeting("Stun: choose up to %d creature(s)." % n, _any_creature, n,
@@ -1070,6 +1093,45 @@ func _ask_cast_from_discard(slot: int, ai: int) -> void:
 			_:
 				go.call(di, {})
 	_pick_from_list("Exile which spell to play it?", labels, on_spell, ids)
+
+
+## Gather: which player draws. Warns when that player's deck is too small (they would lose).
+func _ask_draw_target(i: int, spell: Dictionary, effect: Dictionary) -> void:
+	if effect.get("target", "") != "player":
+		return _cast(i, {})
+	var n := int(effect.amount)
+	_pick_from_list("%s: which player draws %d cards?" % [spell.name, n], ["You (%d cards in your deck)" % view.you.deck_count, "Opponent (%d cards in their deck)" % view.opponent.deck_count],
+		func(k: int):
+			var deck_size: int = view.you.deck_count if k == 0 else view.opponent.deck_count
+			var go := func(): _cast(i, {"player": ME if k == 0 else OPP})
+			if deck_size < n:
+				_confirm("Not enough cards", "That deck has fewer than %d cards, so that player loses the game when they can't draw. Do it anyway?" % n, go)
+			else:
+				go.call())
+
+
+## A single-choice list of distinct cards (grouped by type, with counts) with a big preview. `on_pick` gets the card id.
+func _pick_grouped(title: String, ids: Array, verb: String, on_pick: Callable) -> void:
+	if ids.is_empty():
+		return _toast("There are no cards to choose from.")
+	var d := ConfirmationDialog.new()
+	d.title = title
+	var list := ItemList.new()
+	list.custom_minimum_size = Vector2(380, 520)
+	var rows := _pile_rows(ids)
+	_fill_pile_list(list, rows)
+	d.add_child(_list_with_preview(list, func(k: int) -> String: return rows[k].get("id", "")))
+	d.get_ok_button().text = verb
+	d.get_ok_button().disabled = true
+	list.item_selected.connect(func(_k): d.get_ok_button().disabled = false)
+	list.item_activated.connect(func(_k): d.get_ok_button().pressed.emit())
+	d.confirmed.connect(func():
+		var sel := list.get_selected_items()
+		d.queue_free()
+		if not sel.is_empty():
+			on_pick.call(rows[sel[0]].id))
+	d.canceled.connect(d.queue_free)
+	_popup(d)
 
 
 ## Discard indices (newest copies first) holding the card ids in `chosen`, skipping index `skip`.

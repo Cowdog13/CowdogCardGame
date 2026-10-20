@@ -136,5 +136,55 @@
     2
    ]
   ]
+ },
+ "light": {
+  "name": "Light",
+  "format": "preconstructed",
+  "cards": [
+   [
+    "super_berry",
+    7
+   ],
+   [
+    "light_berry",
+    16
+   ],
+   [
+    "lightling",
+    4
+   ],
+   [
+    "lighturn",
+    4
+   ],
+   [
+    "lightium",
+    2
+   ],
+   [
+    "lanturn",
+    4
+   ],
+   [
+    "lighttable",
+    3
+   ],
+   [
+    "lightning",
+    3
+   ],
+   [
+    "lightor",
+    2
+   ],
+   [
+    "gather",
+    3
+   ],
+   [
+    "removal",
+    2
+   ]
+  ]
  }
 }

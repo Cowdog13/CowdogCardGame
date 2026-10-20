@@ -658,5 +658,284 @@
     "amount": 3
    }
   ]
+ },
+ "light_berry": {
+  "name": "Light Berry",
+  "kind": "berry",
+  "element": "light"
+ },
+ "lightling": {
+  "name": "Lightling",
+  "kind": "creature",
+  "tier": 1,
+  "evolves_from": "",
+  "element": "light",
+  "abilities": [
+   {
+    "name": "Plunder 2",
+    "cost": {
+     "element": "light",
+     "amount": 1
+    },
+    "effects": [
+     {
+      "type": "plunder",
+      "amount": 2
+     }
+    ]
+   }
+  ]
+ },
+ "lighturn": {
+  "name": "Lighturn",
+  "kind": "creature",
+  "tier": 2,
+  "evolves_from": "lightling",
+  "element": "light",
+  "abilities": [
+   {
+    "name": "Draw 1",
+    "cost": {
+     "element": "light",
+     "amount": 2
+    },
+    "effects": [
+     {
+      "type": "draw",
+      "amount": 1
+     }
+    ]
+   },
+   {
+    "name": "Plunder 3",
+    "cost": {
+     "element": "light",
+     "amount": 2
+    },
+    "effects": [
+     {
+      "type": "plunder",
+      "amount": 3
+     }
+    ]
+   }
+  ]
+ },
+ "lightium": {
+  "name": "Lightium",
+  "kind": "creature",
+  "tier": 3,
+  "evolves_from": "lighturn",
+  "element": "light",
+  "abilities": [
+   {
+    "name": "Aegis",
+    "cost": {
+     "element": "super",
+     "amount": 2
+    },
+    "effects": [
+     {
+      "type": "protect_super"
+     }
+    ],
+    "text": "Active: Your Super Berry creatures can't be targeted",
+    "active": true
+   },
+   {
+    "name": "Flare",
+    "cost": {
+     "element": "light",
+     "amount": 2
+    },
+    "effects": [
+     {
+      "type": "plunder",
+      "amount": 3
+     },
+     {
+      "type": "draw",
+      "amount": 1
+     }
+    ],
+    "text": "Plunder 3, then draw 1"
+   }
+  ]
+ },
+ "lanturn": {
+  "name": "Lanturn",
+  "kind": "creature",
+  "tier": 1,
+  "evolves_from": "",
+  "element": "light",
+  "abilities": [
+   {
+    "name": "Relight",
+    "cost": {
+     "element": "light",
+     "amount": 2
+    },
+    "effects": [
+     {
+      "type": "discard_to_top"
+     }
+    ],
+    "text": "Put a card from your discard on top of your deck"
+   },
+   {
+    "name": "Plunder 2",
+    "cost": {
+     "element": "light",
+     "amount": 1
+    },
+    "effects": [
+     {
+      "type": "plunder",
+      "amount": 2
+     }
+    ]
+   }
+  ]
+ },
+ "lighttable": {
+  "name": "Lighttable",
+  "kind": "creature",
+  "tier": 2,
+  "evolves_from": "lanturn",
+  "element": "light",
+  "abilities": [
+   {
+    "name": "Search",
+    "cost": {
+     "element": "super",
+     "amount": 2
+    },
+    "effects": [
+     {
+      "type": "search_to_top"
+     }
+    ],
+    "text": "Search your deck for a card, put it on top"
+   },
+   {
+    "name": "Plunder 3",
+    "cost": {
+     "element": "light",
+     "amount": 2
+    },
+    "effects": [
+     {
+      "type": "plunder",
+      "amount": 3
+     }
+    ]
+   }
+  ]
+ },
+ "lightning": {
+  "name": "Lightning",
+  "kind": "creature",
+  "tier": 1,
+  "evolves_from": "",
+  "element": "light",
+  "abilities": [
+   {
+    "name": "Overclock",
+    "cost": {
+     "element": "super",
+     "amount": 1
+    },
+    "effects": [
+     {
+      "type": "double_ability"
+     }
+    ],
+    "text": "Active: Your creatures can use 2 different abilities",
+    "active": true
+   },
+   {
+    "name": "Plunder 3",
+    "cost": {
+     "element": "light",
+     "amount": 2
+    },
+    "effects": [
+     {
+      "type": "plunder",
+      "amount": 3
+     }
+    ]
+   },
+   {
+    "name": "Draw 1",
+    "cost": {
+     "element": "light",
+     "amount": 2
+    },
+    "effects": [
+     {
+      "type": "draw",
+      "amount": 1
+     }
+    ]
+   }
+  ]
+ },
+ "lightor": {
+  "name": "Lightor",
+  "kind": "creature",
+  "tier": 2,
+  "evolves_from": "lightning",
+  "element": "light",
+  "abilities": [
+   {
+    "name": "Static",
+    "cost": {
+     "element": "super",
+     "amount": 1
+    },
+    "effects": [
+     {
+      "type": "plunder_on_draw"
+     }
+    ],
+    "text": "Active: When you draw a card, Plunder 1",
+    "active": true
+   },
+   {
+    "name": "Overload",
+    "cost": {
+     "element": "super",
+     "amount": 3
+    },
+    "effects": [
+     {
+      "type": "draw",
+      "amount": 4
+     },
+     {
+      "type": "plunder",
+      "per_hand": 1
+     }
+    ],
+    "text": "Draw 4, then Plunder 1 per card in hand"
+   }
+  ]
+ },
+ "gather": {
+  "name": "Gather",
+  "kind": "spell",
+  "cost": {
+   "element": "colorless",
+   "amount": 2
+  },
+  "text": "Target player draws 2 cards",
+  "effects": [
+   {
+    "type": "draw",
+    "amount": 2,
+    "target": "player"
+   }
+  ]
  }
 }

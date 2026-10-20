@@ -164,6 +164,12 @@ func _spell(view: Dictionary) -> Dictionary:
 				params = {"targets": [{"player": 1 - view.me, "slot": t}]}
 				if worth < 3.0:
 					continue
+			"draw":
+				# Gather on ourselves when the hand is small and the deck is safe.
+				if me.deck_count < 15 or me.hand.size() > 5:
+					continue
+				params = {"player": view.me}
+				worth = 2.0
 			"exile_discard":
 				# Only worth a card when something on our board gets stronger from a bigger exile pile.
 				if not _has_exile_synergy(me):
@@ -220,7 +226,7 @@ func _strongest_enemy(opp: Dictionary, turn: int, skip_stunned: bool) -> int:
 	var best_t := 0.0
 	for s in opp.board.size():
 		var c = opp.board[s]
-		if c == null or (skip_stunned and Rules.is_stunned(c, turn)):
+		if c == null or (skip_stunned and Rules.is_stunned(c, turn)) or Rules.is_protected(opp.board, s):
 			continue
 		var t := _threat(c, turn)
 		if t > best_t:
@@ -235,14 +241,16 @@ func _ability(view: Dictionary) -> Dictionary:
 	var opp: Dictionary = view.opponent
 	var best := {}
 	var best_value := 0.0
+	var double := Rules.has_active(me.board, "double_ability")
 	for slot in me.board.size():
 		var c = me.board[slot]
-		if c == null or Rules.is_stunned(c, view.turn) or Rules.used_ability_this_turn(c, view.turn):
+		if c == null or Rules.is_stunned(c, view.turn):
 			continue
 		var abilities: Array = Rules.top_card(c).abilities
 		for ai in abilities.size():
 			var ab: Dictionary = abilities[ai]
-			if ab.get("active", false) or not Rules.meets_cost(c.berries, ab.cost):
+			if ab.get("active", false) or not Rules.meets_cost(c.berries, ab.cost) \
+					or Rules.ability_blocked(c, ai, view.turn, double) != "":
 				continue
 			var evaluated := _evaluate_ability(view, slot, c, ab, me, opp)
 			if evaluated.is_empty() or evaluated.value <= best_value:
@@ -256,7 +264,28 @@ func _ability(view: Dictionary) -> Dictionary:
 func _evaluate_ability(view: Dictionary, slot: int, c: Dictionary, ab: Dictionary, me: Dictionary, opp: Dictionary) -> Dictionary:
 	var effect: Dictionary = ab.effects[0]
 	var enemy := 1 - int(view.me)
+	var draws := 0
+	for e in ab.effects:
+		if e.type == "draw":
+			draws += int(e.amount)
+	if draws > 0 and me.deck_count <= draws + 4:
+		return {}  # drawing from an empty deck loses the game
 	match effect.type:
+		"draw":
+			var value := 0.9 * draws
+			if ab.effects.size() > 1 and ab.effects[1].has("per_hand"):
+				value = float(me.hand.size() + draws)  # Overload: Plunder 1 per card in hand afterwards
+				if _has_active(me, "plunder_on_draw"):
+					value += draws  # and every drawn card plunders as well
+			elif me.hand.size() >= 9:
+				return {}
+			return {"value": value, "params": {}}
+		"discard_to_top":
+			var card := _best_to_top(me, me.discard)
+			return {} if card == "" else {"value": 0.5, "params": {"card": card}}
+		"search_to_top":
+			var card := _best_to_top(me, me.deck_cards)
+			return {} if card == "" else {"value": 1.0, "params": {"card": card}}
 		"recycle":
 			if me.discard.is_empty():
 				return {}
@@ -299,7 +328,7 @@ func _evaluate_ability(view: Dictionary, slot: int, c: Dictionary, ab: Dictionar
 			var total := 0.0
 			for s in order:
 				var t := _slot_threat(opp, s, view.turn)
-				if opp.board[s] == null or Rules.is_stunned(opp.board[s], view.turn) or t < 1.5 or targets.size() >= int(effect.count):
+				if opp.board[s] == null or Rules.is_protected(opp.board, s) or Rules.is_stunned(opp.board[s], view.turn) or t < 1.5 or targets.size() >= int(effect.count):
 					continue
 				targets.append({"player": enemy, "slot": s})
 				total += t
@@ -335,6 +364,26 @@ func _evaluate_cast(view: Dictionary, me: Dictionary, opp: Dictionary) -> Dictio
 	return {}
 
 
+## A card worth putting on top of the deck: the evolution of something on the board, else a Super Berry, else a berry.
+func _best_to_top(me: Dictionary, pool: Array) -> String:
+	var best := ""
+	var best_score := -1.0
+	for id in pool:
+		var score := 0.5
+		if CardDB.is_creature(id):
+			for c in me.board:
+				if c != null and CardDB.card(id).evolves_from == Rules.top_card(c).id:
+					score = 5.0 + int(CardDB.card(id).tier)
+		elif CardDB.element_of(id) == Rules.SUPER:
+			score = 3.0
+		elif CardDB.is_berry(id):
+			score = 1.0
+		if score > best_score:
+			best_score = score
+			best = id
+	return best
+
+
 func _slot_threat(opp: Dictionary, s: int, turn: int) -> float:
 	return 0.0 if opp.board[s] == null else _threat(opp.board[s], turn)
 
@@ -356,7 +405,7 @@ func _evaluate_trade(c: Dictionary, slot: int, opp: Dictionary, enemy: int) -> D
 	var best_value := 0.5
 	for s in opp.board.size():
 		var target = opp.board[s]
-		if target == null or target.berries.is_empty():
+		if target == null or target.berries.is_empty() or Rules.is_protected(opp.board, s):
 			continue
 		for n in range(1, mini(c.berries.size(), target.berries.size()) + 1):
 			var plan := Rules.plan_trade(c, target, n)
