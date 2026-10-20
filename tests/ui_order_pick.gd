@@ -39,17 +39,17 @@ func _init() -> void:
 		await _click(list, i)
 	var texts := _texts(list)
 	print(texts, " ok disabled=", d.get_ok_button().disabled)
-	if texts != ["- Creatures (3) -", "4.  Firepup  x1", "1, 2.  Firespore  x2", "- Spells (1) -", "3.  Removal  x1"] or d.get_ok_button().disabled:
+	if texts != ["- Creatures (3) -", "x1   Firepup      > 4", "x2   Firespore      > 1, 2", "- Spells (1) -", "x1   Removal      > 3"] or d.get_ok_button().disabled:
 		fails += 1
 	var args := OS.get_cmdline_user_args()
 	if args.size() > 0:
 		root.get_texture().get_image().save_png(args[0] + "/order_pick.png")
 	await _click(list, 2)  # every copy numbered: a click removes the last number (2)
 	print(_texts(list))
-	if _texts(list)[2] != "1.  Firespore  x2" or not d.get_ok_button().disabled:
+	if _texts(list)[2] != "x2   Firespore      > 1" or not d.get_ok_button().disabled:
 		fails += 1
 	await _click(list, 1, MOUSE_BUTTON_RIGHT)  # right-click removes Firepup's number
-	if _texts(list)[1] != "Firepup  x1" or _texts(list)[4] != "2.  Removal  x1":
+	if _texts(list)[1] != "x1   Firepup" or _texts(list)[4] != "x1   Removal      > 2":
 		fails += 1
 	await _click(list, 2)
 	await _click(list, 1)

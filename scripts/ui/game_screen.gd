@@ -566,7 +566,7 @@ func _fill_pile_list(list: ItemList, rows: Array) -> void:
 			var k := list.add_item("- %s -" % r.header, null, false)
 			list.set_item_custom_fg_color(k, Color(0.95, 0.82, 0.4))
 		else:
-			list.add_item("%s  x%d" % [CardDB.card_name(r.id), r.count])
+			list.add_item("x%d   %s" % [r.count, CardDB.card_name(r.id)])
 
 
 func _show_pile(title: String, ids: Array) -> void:
@@ -897,8 +897,8 @@ func _ordered_pick(title: String, card_ids: Array, need: int, initial: Array, ve
 			for pos in order.size():
 				if order[pos] == k:
 					nums.append(str(pos + 1))
-			var name_text := "%s  x%d" % [CardDB.card_name(rows[k].id), rows[k].count]
-			list.set_item_text(k, ("%s.  %s" % [", ".join(nums), name_text]) if not nums.is_empty() else ("      " + name_text))
+			var name_text := "x%d   %s" % [rows[k].count, CardDB.card_name(rows[k].id)]
+			list.set_item_text(k, ("%s      > %s" % [name_text, ", ".join(nums)]) if not nums.is_empty() else name_text)
 			list.set_item_custom_bg_color(k, Color(0.25, 0.5, 0.25, 0.7) if not nums.is_empty() else Color(0, 0, 0, 0))
 		list.deselect_all()
 		d.get_ok_button().disabled = order.size() != need
