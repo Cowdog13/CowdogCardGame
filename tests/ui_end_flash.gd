@@ -41,5 +41,19 @@ func _init() -> void:
 	if screen._end_flash != null:
 		print("still flashing with a move available")
 		fails += 1
+	# Swap is the only move left: both buttons flash.
+	pl.hand = ["fireking"]
+	pl.discard = ["firespore"]
+	e.state_changed.emit()
+	await create_timer(0.9).timeout
+	if screen._end_flash == null or not screen._swap_flash:
+		print("End Turn and Swap should both flash when swapping is the only move")
+		fails += 1
+	pl.hand = ["fireking", "firespore"]  # a creature to play as well: nothing flashes
+	e.state_changed.emit()
+	await create_timer(0.9).timeout
+	if screen._end_flash != null:
+		print("flashing although a creature can be played")
+		fails += 1
 	print("end_flash failures=%d" % fails)
 	quit(fails)

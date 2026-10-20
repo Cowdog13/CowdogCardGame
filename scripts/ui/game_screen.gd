@@ -51,7 +51,8 @@ var _fx_queue: Array = []
 var _fx_running := false
 var _recycle_open := false
 var _ability_lock_until := 0  # ms; ignores ability clicks right after another click (double-click protection)
-var _end_flash: Tween  # pulses the End Turn button when there is nothing left to do
+var _end_flash: Tween  # pulses End Turn (and Swap, when it is the only move left) when there is nothing else to do
+var _swap_flash := false
 var _ghosts := {}  # destroyed creatures kept on screen until the spell that destroys them has landed
 
 
@@ -279,19 +280,38 @@ func _board_row(parent: Control) -> HBoxContainer:
 
 
 # --- Refresh -----------------------------------------------------------------------------
-## Flashes End Turn while it is the player's turn and no other move is possible. Checked on a short timer so it
-## also notices when the effects of the last move have finished playing.
+## Flashes End Turn while it is the player's turn and no other move is possible; when the swap is the only
+## move left, the Swap button flashes with it. Checked on a short timer so it also notices when the effects
+## of the last move have finished playing.
 func _update_end_flash() -> void:
-	var flash := not tutorial_mode and not view.is_empty() and _can_act() and _pending.is_empty() and not _fx_busy() \
-		and not Rules.has_move(view)
-	if flash and _end_flash == null:
-		_end_flash = create_tween().set_loops()
-		_end_flash.tween_property(_end_btn, "modulate", Color(1.7, 1.45, 0.45), 0.35).set_trans(Tween.TRANS_SINE)
-		_end_flash.tween_property(_end_btn, "modulate", Color(1, 1, 1), 0.35).set_trans(Tween.TRANS_SINE)
-	elif not flash and _end_flash != null:
+	var idle := not tutorial_mode and not view.is_empty() and _can_act() and _pending.is_empty() and not _fx_busy()
+	var flash := idle and not Rules.has_move(view, false)
+	var swap := flash and Rules.can_swap(view)
+	if flash == (_end_flash != null) and swap == _swap_flash:
+		return
+	_stop_flash()
+	if flash:
+		_start_flash(swap)
+
+
+func _stop_flash() -> void:
+	if _end_flash != null:
 		_end_flash.kill()
 		_end_flash = null
-		_end_btn.modulate = Color(1, 1, 1)
+	_swap_flash = false
+	_end_btn.modulate = Color(1, 1, 1)
+	_swap_btn.modulate = Color(1, 1, 1)
+
+
+func _start_flash(with_swap: bool) -> void:
+	_swap_flash = with_swap
+	var buttons: Array = [_end_btn, _swap_btn] if with_swap else [_end_btn]
+	var apply := func(t: float):
+		for b in buttons:
+			b.modulate = Color(1, 1, 1).lerp(Color(1.7, 1.45, 0.45), t)
+	_end_flash = create_tween().set_loops()
+	_end_flash.tween_method(apply, 0.0, 1.0, 0.35).set_trans(Tween.TRANS_SINE)
+	_end_flash.tween_method(apply, 1.0, 0.0, 0.35).set_trans(Tween.TRANS_SINE)
 
 
 func _refresh() -> void:

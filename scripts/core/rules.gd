@@ -130,7 +130,7 @@ static func place_error(board: Array, card_id: String, slot: int) -> String:
 ## True when the player whose `view` this is has at least one legal action left this turn besides ending it
 ## (used to flash the End Turn button). Judged from the view only, and a little generous: a spell counts if it
 ## can be paid for, an ability if its berries and what it needs (cards to recycle, ...) are there.
-static func has_move(view: Dictionary) -> bool:
+static func has_move(view: Dictionary, count_swap := true) -> bool:
 	var me: Dictionary = view.you
 	var opp: Dictionary = view.opponent
 	var has_creature: bool = me.board.any(func(c): return c != null)
@@ -148,7 +148,7 @@ static func has_move(view: Dictionary) -> bool:
 			var spell := CardDB.card(id)
 			if not plan_payment(me, spell.cost).is_empty() and _spell_has_target(spell, me, opp):
 				return true
-	if not me.swap_used and me.hand.any(func(id): return CardDB.is_creature(id)) and me.discard.any(func(id): return CardDB.is_creature(id)):
+	if count_swap and can_swap(view):
 		return true
 	if me.abilities_used < ABILITIES_PER_TURN and not abilities_locked(int(view.turn)):
 		for c in me.board:
@@ -158,6 +158,12 @@ static func has_move(view: Dictionary) -> bool:
 				if not ab.get("active", false) and meets_cost(c.berries, ab.cost) and _ability_can_resolve(ab, c, me, opp):
 					return true
 	return false
+
+
+## The once-per-game swap is still available and there is a creature on both sides of it.
+static func can_swap(view: Dictionary) -> bool:
+	var me: Dictionary = view.you
+	return not me.swap_used and me.hand.any(func(id): return CardDB.is_creature(id)) and me.discard.any(func(id): return CardDB.is_creature(id))
 
 
 static func _spell_has_target(spell: Dictionary, me: Dictionary, opp: Dictionary) -> bool:
