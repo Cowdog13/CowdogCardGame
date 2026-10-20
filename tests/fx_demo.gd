@@ -42,7 +42,7 @@ func _init() -> void:
 	await create_timer(1.2).timeout
 	root.get_texture().get_image().save_png(out + "/fx5_spell.png")
 	await create_timer(2.5).timeout
-	print("swap: ", e.submit(0, {"type": "swap", "hand": 0, "discard": 0}))
+	print("swap: ", e.submit(0, {"type": "swap", "cards": [0], "discard": 0}))
 	await create_timer(1.0).timeout
 	root.get_texture().get_image().save_png(out + "/fx6_swap.png")
 	await create_timer(2.5).timeout

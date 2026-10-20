@@ -78,6 +78,25 @@ func setup(p_creature: Dictionary, p_slot: int, mine: bool, turn: int, valid: bo
 		sl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		add_child(sl)
 
+	if Rules.is_dormant(creature, turn) and not Rules.is_stunned(creature, turn):
+		var dorm := Panel.new()
+		dorm.position = Vector2(6, top_y)
+		dorm.size = CARD_SIZE
+		dorm.add_theme_stylebox_override("panel", UiStyle.box(Color(0.25, 0.22, 0.12, 0.38), 12, Color(0.9, 0.78, 0.4), 3))
+		dorm.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(dorm)
+		var dl := Label.new()
+		dl.text = "DORMANT\nuntil turn %d" % int(creature.dormant_until)
+		dl.position = Vector2(6, top_y + CARD_SIZE.y * 0.34)
+		dl.size = Vector2(CARD_SIZE.x, 60)
+		dl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		dl.add_theme_font_size_override("font_size", 20)
+		dl.add_theme_color_override("font_color", Color(1.0, 0.95, 0.75))
+		dl.add_theme_color_override("font_outline_color", Color(0.3, 0.2, 0.05))
+		dl.add_theme_constant_override("outline_size", 6)
+		dl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(dl)
+
 	# Attached berries: upright icons, exhausted ones lie sideways. They overlap when there are many.
 	berry_strip = Control.new()
 	berry_strip.position = Vector2(6, top_y + CARD_SIZE.y + 4)

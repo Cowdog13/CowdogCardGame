@@ -68,6 +68,12 @@ static func deck_name(deck_id: String) -> String:
 	return _decks[deck_id].name
 
 
+## The Tier 1 creature a deck's player starts the game with on the board (an extra card, not part of the 50).
+static func deck_starter(deck_id: String) -> String:
+	_ensure_loaded()
+	return String(_decks[deck_id].get("starter", ""))
+
+
 ## Expands a deck definition into a flat list of card ids (unshuffled).
 static func build_deck_list(deck_id: String) -> Array:
 	_ensure_loaded()

@@ -23,7 +23,7 @@ func _init() -> void:
 	e.state_changed.emit()
 	await process_frame
 	await process_frame
-	screen._submit({"type": "swap", "hand": 0, "discard": 0})
+	screen._submit({"type": "swap", "cards": [0], "discard": 0})
 	await process_frame
 	await process_frame
 	# Click probing: begin targeting then click at several y offsets inside slot 2.

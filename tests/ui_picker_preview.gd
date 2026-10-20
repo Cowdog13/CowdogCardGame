@@ -21,9 +21,9 @@ func _init() -> void:
 	var fails := 0
 	var args := OS.get_cmdline_user_args()
 	var cases := [
-		["swap", func(): screen._on_swap(), "water_ruler", 1],
+		["swap", func(): screen._on_swap(), "water_sprite", 2],
 		["payment", func(): screen._choose_payment(CardDB.card("removal"), func(_p): pass), "super_berry", 1],
-		["recycle", func(): screen._ask_recycle(1), "water_spirit", 2],
+		["recycle", func(): screen._ask_recycle(1), "water_sprite", 2],
 	]
 	for case in cases:
 		case[1].call()

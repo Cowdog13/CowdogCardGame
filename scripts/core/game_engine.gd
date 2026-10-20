@@ -10,7 +10,7 @@ extends RefCounted
 ##   {"type":"play_creature","hand":i, "slot":s}                (places tier 1 / evolves tier 2+)
 ##   {"type":"use_ability",  "slot":s, "ability":a, "params":{}}
 ##   {"type":"play_spell",   "hand":i, "payment":[...], "params":{}}
-##   {"type":"swap",         "hand":i, "discard":j}             (once per game)
+##   {"type":"swap",         "cards":[hand indices], "discard":j}  (once per turn: give N cards, take creature j; N = swaps made + 1)
 ##   {"type":"place_berry",  "slot":s}                        (only while state.pending has berries: where a revealed berry goes)
 ##   {"type":"order_recycle","order":[indices]}               (only while state.pending.ordering is set: Fire Famine's order)
 ##   {"type":"recycle",      "cards":[discard indices]}       (only while state.pending.recycle > 0: Firewolf's choice, in order)
@@ -151,7 +151,9 @@ func _public_player(pl: Dictionary) -> Dictionary:
 		"exile_count": pl.exile.size(),
 		"board": pl.board.duplicate(true),
 		"mulligan_done": pl.mulligan_done,
-		"swap_used": pl.swap_used,
+		"swaps_made": pl.swaps_made,
+		"swapped_this_turn": pl.swapped_this_turn,
+		"swap_cost": pl.swaps_made + 1,
 		"berry_attached": pl.berry_attached,
 		"creature_played": pl.creature_plays_left <= 0,
 		"creature_plays_left": pl.creature_plays_left,
@@ -170,9 +172,13 @@ func _new_player(deck_id: String, fixed: Array = []) -> Dictionary:
 			deck[j] = tmp
 	var board: Array = []
 	board.resize(Rules.BOARD_SLOTS)
+	var starter := CardDB.deck_starter(deck_id)
+	if starter != "":  # the free starting creature: an extra card, not drawn from the deck
+		board[0] = {"cards": [starter], "berries": [], "exhausted": [], "stun_until": -1, "ability_used_turn": -1,
+			"ability_used_idx": [], "dormant_until": Rules.STARTER_DORMANT_UNTIL}
 	return {
 		"deck_id": deck_id, "deck": deck, "hand": [], "discard": [], "exile": [],
-		"board": board, "mulligan_done": false, "swap_used": false,
+		"board": board, "mulligan_done": false, "swaps_made": 0, "swapped_this_turn": false,
 		"berry_attached": false, "creature_plays_left": 1, "abilities_used": 0,
 	}
 
@@ -234,6 +240,7 @@ func _begin_turn() -> void:
 	var p: int = state.active
 	var pl := _P(p)
 	pl.berry_attached = false
+	pl.swapped_this_turn = false
 	pl.creature_plays_left = 1
 	pl.abilities_used = 0
 	_say("Turn %d: %s" % [state.turn, _pname(p)], p, "turn")
@@ -337,23 +344,33 @@ func _place_creature(player: int, id: String, slot: int, counts_as_play: bool, h
 		pl.creature_plays_left -= 1
 
 
+## Swap: once per turn, put N cards from your hand into the discard pile and take one creature from the
+## discard pile. N is 1 for your first swap of the game, 2 for the next, and so on.
 func _do_swap(player: int, action: Dictionary) -> Dictionary:
 	var pl := _P(player)
-	var hi := int(action.get("hand", -1))
+	var picks: Array = action.get("cards", [])
 	var di := int(action.get("discard", -1))
-	if pl.swap_used:
-		return _err("You already used your once-per-game swap")
-	if hi < 0 or hi >= pl.hand.size() or not CardDB.is_creature(pl.hand[hi]):
-		return _err("Choose a creature from your hand")
+	var cost: int = pl.swaps_made + 1
+	if pl.swapped_this_turn:
+		return _err("You can only swap once per turn")
+	if picks.size() != cost or _indices_invalid(picks, pl.hand.size()):
+		return _err("This swap costs %d card(s) from your hand" % cost)
 	if di < 0 or di >= pl.discard.size() or not CardDB.is_creature(pl.discard[di]):
 		return _err("Choose a creature from your discard")
-	var from_hand: String = pl.hand[hi]
-	var from_discard: String = pl.discard[di]
-	pl.hand[hi] = from_discard
-	pl.discard[di] = from_hand
-	pl.swap_used = true
-	_say("%s swaps %s from hand with %s from the discard." % [_pname(player), CardDB.card_name(from_hand), CardDB.card_name(from_discard)], player, "info",
-		{"fx": "swap", "hand_card": from_hand, "discard_card": from_discard})
+	var taken: String = pl.discard[di]
+	var given: Array = picks.map(func(i): return pl.hand[int(i)])
+	var sorted := picks.map(func(i): return int(i))
+	sorted.sort()
+	sorted.reverse()
+	for i in sorted:
+		pl.hand.remove_at(i)
+	pl.discard.remove_at(di)
+	pl.discard.append_array(given)
+	pl.hand.append(taken)
+	pl.swaps_made += 1
+	pl.swapped_this_turn = true
+	_say("%s swaps %d card(s) from their hand for %s from the discard." % [_pname(player), cost, CardDB.card_name(taken)], player, "info",
+		{"fx": "swap", "given": given, "taken": taken})
 	return _ok()
 
 
@@ -375,6 +392,8 @@ func _do_ability(player: int, action: Dictionary) -> Dictionary:
 		return _err("That ability is always on")
 	if Rules.abilities_locked(state.turn):
 		return _err("Abilities can't be used on a player's first turn")
+	if Rules.is_dormant(creature, state.turn):
+		return _err("Your starting creature is dormant until turn %d (you can still attach berries to it)" % Rules.STARTER_DORMANT_UNTIL)
 	if Rules.is_stunned(creature, state.turn):
 		return _err("This creature is stunned")
 	var blocked := Rules.ability_blocked(creature, ai, state.turn, _active_count(player, "double_ability") > 0)

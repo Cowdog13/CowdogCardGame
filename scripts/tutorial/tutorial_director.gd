@@ -178,10 +178,15 @@ func _filter(seat: int, action: Dictionary, view: Dictionary) -> String:
 					ids.append(you.discard[int(i)])
 			return "" if ids == exp.cards else hint
 		"swap":
-			var hi := int(action.get("hand", -1))
+			var given: Array = []
+			for i in action.get("cards", []):
+				if int(i) >= 0 and int(i) < you.hand.size():
+					given.append(you.hand[int(i)])
+			given.sort()
+			var want_given: Array = exp.hand_cards.duplicate()
+			want_given.sort()
 			var di := int(action.get("discard", -1))
-			var ok: bool = hi >= 0 and hi < you.hand.size() and di >= 0 and di < you.discard.size() \
-				and you.hand[hi] == exp.hand_card and you.discard[di] == exp.discard_card
+			var ok: bool = di >= 0 and di < you.discard.size() and given == want_given and you.discard[di] == exp.discard_card
 			return "" if ok else hint
 		"play_spell":
 			if _hand_card(you, action) != exp.card:

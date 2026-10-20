@@ -30,19 +30,20 @@ On screen your piles are at the lower right and the opponent's at the upper righ
 	["Starting the game", """1. Each player shuffles their deck. The players roll to see who goes first.
 2. Each player draws [b]7 cards[/b].
 3. [b]Mulligan:[/b] once, each player may choose any number of cards from their hand and put them on the [b]bottom[/b] of their deck; they then draw that many cards. Pressing Confirm with nothing selected keeps the hand.
-4. The first player takes turn 1."""],
+4. [b]Starting creature:[/b] each deck also comes with a free Tier 1 creature that builds up to a Tier 3 (Firespore, Water Spirit, Leafer or Lightling). It is an extra card placed on your board before the game starts, it is not one of the 50 cards in your deck. It is [b]dormant[/b]: it can't use abilities until turn 5 (each player's first two turns), but you can attach berries to it, and evolve it, right away.
+5. The first player takes turn 1."""],
 	["Your turn", """Every turn starts with you [b]drawing a card[/b] (the first player draws too). If you can't draw, you lose.
 
 Then, in any order you like, you may:
 - [b]Attach one berry[/b] to one of your creatures, from your hand or from your discard pile (once per turn).
 - [b]Play one creature[/b], or [b]evolve[/b] one (once per turn). Putting a new creature on the board and evolving both count as your creature play.
 - [b]Use abilities:[/b] up to [b]2 per turn in total[/b], and each creature can use [b]only one[/b] ability per turn.
-- Use the [b]swap[/b] (once per [i]game[/i]).
+- [b]Swap[/b] (once per turn, the cost grows each time).
 - Play [b]any number of spells[/b] you can pay for.
 
 When you are done, press [b]End Turn[/b]. Then your opponent's turn begins.
 
-[b]The first-turn rule:[/b] nobody can use abilities on their own first turn. In practice abilities are locked on turns 1 and 2 of the game (the first turn of each player), and you can start using them from your second turn."""],
+[b]The first-turn rule:[/b] nobody can use abilities on their own first turn. In practice abilities are locked on turns 1 and 2 of the game (the first turn of each player), and you can start using them from your second turn. Your [b]starting creature[/b] stays dormant a little longer: until turn 5."""],
 	["Creatures and evolving", """[b]Playing a creature.[/b] A Tier 1 creature goes into an empty place on your board. The board is packed to the left: new creatures join at the right end, and when a creature leaves, the others close up. You can't have more than 5 creatures.
 
 [b]Evolving.[/b] A Tier 2 creature is played [i]on top of[/i] the Tier 1 creature named on the card, and a Tier 3 creature on top of the named Tier 2. The creature keeps all its attached berries, and only the top card counts: you see its name and abilities, while the cards underneath show as name strips. A creature still takes just one place on the board.
@@ -86,7 +87,11 @@ Berries must match the cost: [i]Colorless[/i] accepts any berry, and an element 
 [b]Disable[/b] (1 Colorless) is Stun 1.
 [b]Gather[/b] (2 Colorless) makes the player you choose draw 2 cards.
 [b]Trash[/b] (2 Nature) exiles 3 cards of your choice from your discard pile. The berries that pay for it can't also be the cards it exiles."""],
-	["The swap", """Once per [b]game[/b], on your turn, you may swap a creature card in your hand with a creature card in your discard pile. Press [b]Swap[/b], choose the creature from your hand to give, then the creature from your discard pile to take. Both cards are shown to everyone. The button is disabled once you have used the swap."""],
+	["The swap", """Once per [b]turn[/b] you may [b]swap[/b]: put cards from your hand into your discard pile and take one [b]creature[/b] card from your discard pile into your hand. The cards you give can be [i]any[/i] cards (berries, spells, creatures).
+
+[b]The cost grows each time:[/b] your first swap of the game costs 1 card, your second swap (on a later turn) costs 2 cards, your third costs 3, and so on. The Swap button shows the cost.
+
+Press [b]Swap[/b], choose the creature you take from your discard pile, then choose the cards you give. Everyone sees the cards that were exchanged."""],
 	["Scorching Fire cards", """[b]Firespore[/b] (Tier 1): 1 Fire Berry, Plunder 2.
 [b]Firespitter[/b] (Tier 2, on Firespore): 2 Fire Berries, Plunder 3.
 [b]Fireking[/b] (Tier 3, on Firespitter): 3 Fire Berries, Plunder 5; or 2 Super Berries, Inferno: Plunder 1 for each berry attached to this creature.

@@ -147,6 +147,45 @@ func show_pair(left_id: String, right_id: String, left_caption: String, right_ca
 	holder.queue_free()
 
 
+## Swap: the cards given to the discard on the left, the creature taken from it on the right.
+func show_swap(given: Array, taken: String, hold: float) -> void:
+	var holder := Control.new()
+	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	holder.modulate.a = 0.0
+	add_child(holder)
+	var n := given.size()
+	var s := 1.5 if n <= 2 else 1.15
+	var step := minf(CARD_SIZE.x * s * 0.62, 560.0 / maxf(n, 1))
+	var left_center := screen_center() - global_position + Vector2(-330.0, 0.0)
+	var right_center := screen_center() - global_position + Vector2(330.0, 0.0)
+	for i in n:
+		var card := make_card(given[i], true)
+		holder.add_child(card)
+		card.scale = Vector2(s, s)
+		card.position = left_center + Vector2((i - (n - 1) / 2.0) * step, 0.0) - CARD_SIZE / 2.0
+		card.z_index = i
+	var take := make_card(taken, true)
+	holder.add_child(take)
+	take.scale = Vector2(s, s)
+	take.position = right_center - CARD_SIZE / 2.0
+	for k in 2:
+		var cap := Label.new()
+		cap.text = "To the discard pile" if k == 0 else "Taken from the discard pile"
+		cap.add_theme_font_size_override("font_size", 22)
+		cap.add_theme_color_override("font_outline_color", Color.BLACK)
+		cap.add_theme_constant_override("outline_size", 8)
+		cap.size = Vector2(360, 30)
+		cap.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		cap.position = (left_center if k == 0 else right_center) + Vector2(-180.0, -CARD_SIZE.y * s / 2.0 - 40.0)
+		holder.add_child(cap)
+	var tw := create_tween()
+	tw.tween_property(holder, "modulate:a", 1.0, 0.25)
+	await tw.finished
+	await get_tree().create_timer(hold).timeout
+	await fade_out(holder, 0.3)
+	holder.queue_free()
+
+
 # --- Particles and lines ------------------------------------------------------------------
 func burst(pos: Vector2, color: Color, amount := 26, speed := 150.0, lifetime := 0.7) -> void:
 	var p := CPUParticles2D.new()

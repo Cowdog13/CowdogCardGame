@@ -43,7 +43,8 @@
     "reinforce",
     2
    ]
-  ]
+  ],
+  "starter": "firespore"
  },
  "crashing_wave": {
   "name": "Crashing Wave",
@@ -89,7 +90,8 @@
     "disable",
     2
    ]
-  ]
+  ],
+  "starter": "water_spirit"
  },
  "nature_exile": {
   "name": "Nature Exile",
@@ -135,7 +137,8 @@
     "trash",
     2
    ]
-  ]
+  ],
+  "starter": "leafer"
  },
  "light": {
   "name": "Light",
@@ -185,6 +188,7 @@
     "removal",
     2
    ]
-  ]
+  ],
+  "starter": "lightling"
  }
 }

@@ -40,7 +40,7 @@ func _init() -> void:
 			for c in pl.board:
 				if c != null:
 					total += c.cards.size() + c.berries.size()
-		if total != 100:
+		if total != 102:  # two decks of 50 and each player's free starting creature
 			problems += 1
 			print("CARD COUNT game %d = %d" % [g, total])
 		var key := "%s(P%d) vs %s" % [d0, 0, d1]

@@ -244,7 +244,7 @@ func _ability(view: Dictionary) -> Dictionary:
 	var double := Rules.has_active(me.board, "double_ability")
 	for slot in me.board.size():
 		var c = me.board[slot]
-		if c == null or Rules.is_stunned(c, view.turn):
+		if c == null or Rules.is_stunned(c, view.turn) or Rules.is_dormant(c, view.turn):
 			continue
 		var abilities: Array = Rules.top_card(c).abilities
 		for ai in abilities.size():
@@ -441,16 +441,21 @@ func _consume(pool: Array, b: String) -> bool:
 # --- Swap ----------------------------------------------------------------------------------
 func _swap(view: Dictionary) -> Dictionary:
 	var me: Dictionary = view.you
-	if me.swap_used or me.creature_played:
+	var cost := int(me.swap_cost)
+	if me.swapped_this_turn or me.creature_played or cost > 2 or me.hand.size() < cost + 3:
+		return {}
+	# Give cards we can't use soon (Tier 2/3 creatures with nothing to evolve) for a creature we can play right now.
+	var junk: Array = []
+	for hi in me.hand.size():
+		var give: String = me.hand[hi]
+		if CardDB.is_creature(give) and not _playable_now(me, give) and int(CardDB.card(give).tier) > 1:
+			junk.append(hi)
+	if junk.size() < cost:
 		return {}
 	for di in me.discard.size():
 		var wanted: String = me.discard[di]
-		if not CardDB.is_creature(wanted) or not _playable_now(me, wanted):
-			continue
-		for hi in me.hand.size():
-			var give: String = me.hand[hi]
-			if CardDB.is_creature(give) and not _playable_now(me, give) and int(CardDB.card(give).tier) > 1:
-				return {"type": "swap", "hand": hi, "discard": di}
+		if CardDB.is_creature(wanted) and _playable_now(me, wanted):
+			return {"type": "swap", "cards": junk.slice(0, cost), "discard": di}
 	return {}
 
 

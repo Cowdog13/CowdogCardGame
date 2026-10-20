@@ -246,7 +246,7 @@ func _build_ui() -> void:
 	right.add_child(small)
 	_swap_btn = Button.new()
 	_swap_btn.text = "Swap"
-	_swap_btn.tooltip_text = "Once per game: swap a creature in your hand with one in your discard"
+	_swap_btn.tooltip_text = "Once per turn: put cards from your hand into the discard and take a creature from it. Each swap costs one card more than the last."
 	_swap_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_swap_btn.pressed.connect(_on_swap)
 	small.add_child(_swap_btn)
@@ -329,7 +329,8 @@ func _refresh() -> void:
 	_rebuild_opp_hand()
 	var acting := _can_act()
 	_end_btn.disabled = not acting or not _pending.is_empty()
-	_swap_btn.disabled = not acting or you.swap_used
+	_swap_btn.text = "Swap (%d)" % int(you.swap_cost)
+	_swap_btn.disabled = not acting or you.swapped_this_turn
 	match view.phase:
 		"mulligan": _turn_label.text = "Mulligan"
 		"over": _turn_label.text = "Game over"
@@ -459,7 +460,8 @@ func _rebuild_board(row: HBoxContainer, seat: int) -> void:
 				affordable.append(met or ab.get("active", false))
 				usable.append(not ab.get("active", false) and _can_act() and _pending.is_empty() and met
 					and not Rules.abilities_locked(view.turn) and Rules.ability_blocked(creature, ai, view.turn, double) == ""
-					and not Rules.is_stunned(creature, view.turn) and view.you.abilities_used < Rules.ABILITIES_PER_TURN)
+					and not Rules.is_stunned(creature, view.turn) and not Rules.is_dormant(creature, view.turn)
+					and view.you.abilities_used < Rules.ABILITIES_PER_TURN)
 			w.set_ability_states(usable, affordable)
 		_slot_nodes["%d:%d" % [seat, slot]] = w
 		if _hidden_slots.get("%d:%d" % [seat, slot], 0) > 0:
@@ -1292,28 +1294,20 @@ func _pile_rect(seat: int, kind: String) -> Rect2:
 
 
 func _on_swap() -> void:
-	var hand_idx: Array = []
-	var labels: Array = []
-	var hand_ids: Array = []
-	for i in view.you.hand.size():
-		if CardDB.is_creature(view.you.hand[i]):
-			hand_idx.append(i)
-			labels.append(CardDB.card_name(view.you.hand[i]))
-			hand_ids.append(view.you.hand[i])
-	var disc_idx: Array = []
-	var disc_labels: Array = []
-	var disc_ids: Array = []
-	for i in view.you.discard.size():
-		if CardDB.is_creature(view.you.discard[i]):
-			disc_idx.append(i)
-			disc_labels.append(CardDB.card_name(view.you.discard[i]))
-			disc_ids.append(view.you.discard[i])
-	if hand_idx.is_empty() or disc_idx.is_empty():
-		return _toast("Swap needs a creature in your hand and one in your discard.")
-	_pick_from_list("Swap: give which creature from your hand?", labels, func(h):
-		_pick_from_list("Swap: take which creature from your discard?", disc_labels, func(d):
-			_submit({"type": "swap", "hand": hand_idx[h], "discard": disc_idx[d]}), disc_ids),
-		hand_ids)
+	var you: Dictionary = view.you
+	var cost := int(you.swap_cost)
+	if you.swapped_this_turn:
+		return _toast("You can only swap once per turn.")
+	if you.hand.size() < cost:
+		return _toast("This swap costs %d card(s) from your hand." % cost)
+	var creatures: Array = you.discard.filter(func(id): return CardDB.is_creature(id))
+	if creatures.is_empty():
+		return _toast("There is no creature in your discard pile.")
+	_pick_grouped("Swap %d: which creature do you take from your discard pile?" % cost, creatures, "Take", func(id: String):
+		var di: int = you.discard.rfind(id)
+		_ordered_pick("Swap %d: choose %d card(s) from your hand to put in the discard pile" % [cost, cost], you.hand, cost, [], "Swap",
+			func(picked: Array): _submit({"type": "swap", "cards": picked, "discard": di}), Callable(),
+			"Click a card to choose it; click a stack again to choose another copy. Right-click (or click a stack whose copies are all chosen) to take one back. The chosen cards go to your discard pile.", false))
 
 
 # --- Visual effects -------------------------------------------------------------------------------------
@@ -1439,7 +1433,7 @@ func _play_fx(ev: Dictionary, src: Rect2, item: Dictionary) -> void:
 			var caption := "Super Berry found!" if all_super and ev.cards.size() == 1 else ("Super Berries found!" if all_super else "Berries found!")
 			await _fx.show_reveal(ev.cards, caption, 1.2)
 		"swap":
-			await _fx.show_pair(ev.hand_card, ev.discard_card, "From hand", "From discard", 2.0)
+			await _fx.show_swap(ev.given, ev.taken, 2.0)
 
 
 func _play_attach(ev: Dictionary, src: Rect2, mine: bool) -> void:

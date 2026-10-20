@@ -241,7 +241,7 @@ func _init() -> void:
 	var p6: Dictionary = e6.state.players[u6]
 	p6.hand = ["firespore", "firespore", "firespore", "firespore", "firespore", "firespore", "removal"]
 	p6.creature_plays_left = 5
-	for k in 5:
+	for k in 4:  # the free starting creature already holds the first place
 		check(e6.submit(u6, {"type": "play_creature", "hand": 0, "slot": 3}).ok, "play creature %d (slot argument is ignored)" % k)
 	check(p6.board.all(func(c): return c != null), "five creatures fill the board left to right")
 	check(not e6.submit(u6, {"type": "play_creature", "hand": 0, "slot": 0}).ok, "a sixth creature can't be played")
@@ -261,5 +261,42 @@ func _init() -> void:
 	check(e8.state.names == ["Ann", "Bo"], "player names are kept")
 	check(e8.submit(1, {"type": "concede"}).ok and e8.is_over() and e8.state.winner == 0, "conceding hands the game to the other player")
 	check(not e8.submit(0, {"type": "concede"}).ok, "nothing can be done after the game is over")
+	# The starting creature: an extra card on the board, asleep until turn 5, berries can be attached.
+	var e9 := GameEngine.new()
+	e9.setup(["scorching_fire", "light"], 9)
+	for p in 2:
+		e9.submit(p, {"type": "mulligan", "cards": []})
+		var pl9: Dictionary = e9.state.players[p]
+		check(pl9.deck.size() + pl9.hand.size() == 50, "the starter is not drawn from the deck")
+	check(e9.state.players[0].board[0].cards == ["firespore"] and e9.state.players[1].board[0].cards == ["lightling"], "each deck starts with its own basic")
+	var u9: int = e9.state.active
+	var s9: Dictionary = e9.state.players[u9]
+	s9.hand = ["fire_berry", "fire_berry", "firespitter"] if u9 == 0 else ["light_berry", "light_berry", "lighturn"]
+	check(e9.submit(u9, {"type": "attach_berry", "hand": 0, "slot": 0}).ok, "a berry can go on the sleeping starter")
+	e9.state.turn = 4
+	s9.board[0].berries = ["fire_berry"] if u9 == 0 else ["light_berry"]
+	check(not e9.submit(u9, {"type": "use_ability", "slot": 0, "ability": 0}).ok, "the starter can't use abilities before turn 5")
+	e9.state.turn = 5
+	e9.state.active = u9
+	check(e9.submit(u9, {"type": "use_ability", "slot": 0, "ability": 0}).ok, "from turn 5 it can")
+	# Swap: once per turn; the cost grows by one card per swap.
+	var e10 := GameEngine.new()
+	e10.setup(["scorching_fire", "crashing_wave"], 10)
+	for p in 2:
+		e10.submit(p, {"type": "mulligan", "cards": []})
+	var u10: int = e10.state.active
+	var p10: Dictionary = e10.state.players[u10]
+	p10.hand = ["removal", "fire_berry", "fire_berry", "firepup"]
+	p10.discard = ["fireking", "water_spirit"]
+	check(e10.get_view(u10).you.swap_cost == 1, "the first swap costs 1 card")
+	check(not e10.submit(u10, {"type": "swap", "cards": [0, 1], "discard": 0}).ok, "the first swap costs exactly 1")
+	check(not e10.submit(u10, {"type": "swap", "cards": [0], "discard": 5}).ok, "a swap needs a creature from the discard")
+	check(e10.submit(u10, {"type": "swap", "cards": [0], "discard": 0}).ok and p10.hand == ["fire_berry", "fire_berry", "firepup", "fireking"] and p10.discard == ["water_spirit", "removal"], "swap 1: any card for a creature")
+	check(not e10.submit(u10, {"type": "swap", "cards": [0, 1], "discard": 0}).ok, "only one swap per turn")
+	e10.submit(u10, {"type": "end_turn"})
+	e10.submit(1 - u10, {"type": "end_turn"})
+	check(e10.get_view(u10).you.swap_cost == 2, "the next swap costs 2 cards")
+	check(not e10.submit(u10, {"type": "swap", "cards": [0], "discard": 0}).ok, "swap 2 needs two cards")
+	check(e10.submit(u10, {"type": "swap", "cards": [0, 1], "discard": 0}).ok and p10.discard.count("fire_berry") == 2 and p10.hand.has("water_spirit"), "swap 2: two cards for one creature")
 	print("rules_test failures=%d" % fails)
 	quit(1 if fails > 0 else 0)

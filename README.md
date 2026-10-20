@@ -26,7 +26,7 @@ Open the folder in Godot 4.7 and press Play (main scene `scenes/main.tscn`).
 - Clicks on an ability within about half a second of another action are ignored, so a double-click can't use an ability by accident.
 - The status strip in the middle of the board only appears while it has something to say.
 - Used abilities flash for 1.5s so it's clear what was activated. Creature spaces are numbered 1-5 (shown on the board and in the payment list).
-- Hover any card (hand, board, piles) to see it large in the right-hand column. **Log** shows the full game log. **Swap** is the once-per-game hand/discard creature swap.
+- Hover any card (hand, board, piles) to see it large in the right-hand column. **Log** shows the full game log. **Swap (N)** puts N cards from your hand into the discard and takes a creature from it (once per turn; N grows by 1 after each swap). Everyone starts with a free dormant starter creature on the board (see the Rulebook).
 
 ## Multiplayer
 Peer-to-peer games (one player hosts, no server) are in **Multiplayer (beta)** on the main menu; single player is unchanged. How to host/join, how it works and the plan for 4 players are in
@@ -89,6 +89,7 @@ godot --headless -s tests/net_ui_test.gd     # both screens over the network
 godot --headless -s tests/net_surrender_test.gd   # Menu -> confirm surrenders in multiplayer
 godot --headless -s tests/tutorial_test.gd        # plays the whole tutorial through the controller
 godot --headless -s tests/rulebook_test.gd
+godot --headless -s tests/ui_swap.gd           # the Swap picker (take a creature, give N cards)
 godot --headless -s tests/ui_end_flash.gd      # End Turn flashes only when no move is left
 godot --headless -s tests/has_move_test.gd
 godot --headless -s tests/nature_test.gd       # the Nature Exile deck's effects on the engine

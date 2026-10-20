@@ -56,8 +56,8 @@ func _init() -> void:
 			await process_frame
 	check(e.state.players[1].board.count(null) >= 4, "Removal took out a creature of the opponent")
 	check(e.state.players[0].exile.size() >= 1, "an exhausted berry was exiled")
-	check(e.state.players[0].swap_used, "swap was used")
-	check(Rules.top_card(e.state.players[0].board[0]).id == "fireking", "slot 0 is Fireking")
+	check(e.state.players[0].swaps_made == 1, "the swap was used")
+	check(Rules.top_card(e.state.players[0].board[0]).id == "firespitter", "slot 0 is Firespitter")
 	check(e.state.turn == 7 and e.state.active == 0, "still turn 7")
 	director._on_finish()
 	check(ctrl.agents[1] is AIAgent, "opponent is the AI after finishing")
@@ -98,7 +98,10 @@ func _action_for(exp: Dictionary, view: Dictionary) -> Dictionary:
 				idx.append(you.discard.find(id))
 			return {"type": "recycle", "cards": idx}
 		"swap":
-			return {"type": "swap", "hand": you.hand.find(exp.hand_card), "discard": you.discard.find(exp.discard_card)}
+			var give: Array = []
+			for id in exp.hand_cards:
+				give.append(you.hand.find(id))
+			return {"type": "swap", "cards": give, "discard": you.discard.find(exp.discard_card)}
 		"play_spell":
 			var payment: Array = []
 			for i in you.discard.size():

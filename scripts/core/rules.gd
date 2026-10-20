@@ -14,6 +14,9 @@ const ABILITIES_PER_TURN := 2  # total per player per turn
 const FIRST_PLAYER_SKIPS_FIRST_DRAW := false
 const FIRST_TURN_NO_ABILITIES := true  # neither player may use abilities on their first turn
 
+## Every player starts with a free Tier 1 creature on the board; it can't use abilities before this turn.
+const STARTER_DORMANT_UNTIL := 5
+
 const SUPER := "super"
 const COLORLESS := "colorless"
 const ELEMENTS: Array[String] = ["fire", "water", "nature", "light", "shadow", "void", "metal", "air", "electric"]
@@ -68,6 +71,11 @@ static func top_card(creature: Dictionary) -> Dictionary:
 
 static func creature_name(creature: Dictionary) -> String:
 	return top_card(creature).name
+
+
+## The starting creature sleeps for each player's first two turns (berries can still be attached to it).
+static func is_dormant(creature: Dictionary, turn: int) -> bool:
+	return int(creature.get("dormant_until", -1)) > turn
 
 
 static func is_stunned(creature: Dictionary, turn: int) -> bool:
@@ -195,7 +203,7 @@ static func has_move(view: Dictionary, count_swap := true) -> bool:
 	if me.abilities_used < ABILITIES_PER_TURN and not abilities_locked(int(view.turn)):
 		var double := has_active(me.board, "double_ability")
 		for c in me.board:
-			if c == null or is_stunned(c, int(view.turn)):
+			if c == null or is_stunned(c, int(view.turn)) or is_dormant(c, int(view.turn)):
 				continue
 			var abilities: Array = top_card(c).abilities
 			for ai in abilities.size():
@@ -206,10 +214,10 @@ static func has_move(view: Dictionary, count_swap := true) -> bool:
 	return false
 
 
-## The once-per-game swap is still available and there is a creature on both sides of it.
+## A swap is possible now: none yet this turn, enough cards in hand to pay its cost and a creature in the discard.
 static func can_swap(view: Dictionary) -> bool:
 	var me: Dictionary = view.you
-	return not me.swap_used and me.hand.any(func(id): return CardDB.is_creature(id)) and me.discard.any(func(id): return CardDB.is_creature(id))
+	return not me.swapped_this_turn and me.hand.size() >= int(me.swap_cost) and me.discard.any(func(id): return CardDB.is_creature(id))
 
 
 static func _spell_has_target(spell: Dictionary, me: Dictionary, opp: Dictionary) -> bool:
