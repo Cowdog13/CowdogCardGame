@@ -55,6 +55,7 @@ static func ability_text(ability: Dictionary) -> String:
 			"plunder": parts.append("Plunder %d" % int(e.amount))
 			"pillage": parts.append("Pillage %d" % int(e.amount))
 			"stun": parts.append("Stun %d" % int(e.count))
+			"recycle": parts.append("Recycle %d" % int(e.amount))
 			_: parts.append(String(e.type))
 	return ", ".join(parts)
 
@@ -131,7 +132,13 @@ static func effect_value(effect: Dictionary, creature: Dictionary) -> float:
 		"plunder":
 			if effect.has("per_attached_berry"):
 				return float(int(effect.per_attached_berry) * creature.berries.size())
+			if effect.has("per_exile"):
+				return 2.0  # grows as the exile pile does
 			return float(int(effect.amount))
+		"recycle":
+			return 0.3
+		"cast_from_discard":
+			return 1.5
 		"stun":
 			return 2.0 * int(effect.count)
 		"berry_trade":
@@ -196,7 +203,8 @@ static func best_attach_slot(board: Array, berry_id: String) -> int:
 ## Cheapest way for `me` (a player view/state) to pay a spell cost. Prefers exiling berries
 ## from the discard pile, then discarding attached berries where it hurts the board least.
 ## Returns {"payment": [...], "loss": float} or {} if the cost cannot be paid.
-static func plan_payment(me: Dictionary, cost: Dictionary) -> Dictionary:
+## `blocked` lists discard indices that may not be used (cards reserved for the spell's own effect).
+static func plan_payment(me: Dictionary, cost: Dictionary, blocked: Array = []) -> Dictionary:
 	var need := int(cost.amount)
 	var payment: Array = []
 	for pass_super in [false, true]:
@@ -204,7 +212,7 @@ static func plan_payment(me: Dictionary, cost: Dictionary) -> Dictionary:
 			if payment.size() >= need:
 				break
 			var id: String = me.discard[i]
-			if not CardDB.is_berry(id) or not berry_matches(id, cost.element):
+			if blocked.has(i) or not CardDB.is_berry(id) or not berry_matches(id, cost.element):
 				continue
 			if (CardDB.element_of(id) == SUPER) != pass_super:
 				continue

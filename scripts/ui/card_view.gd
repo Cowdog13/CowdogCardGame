@@ -185,7 +185,7 @@ func _build_abilities(card: Dictionary, element: String, pal: Dictionary) -> voi
 		var text_x := 8.0 + cost.size.x + 8.0
 		var text_w := 264.0 - text_x - 8.0
 		var body := Rules.ability_text(ab)
-		if ab.has("text") and body.length() > 60:
+		if ab.has("text") and (body.length() > 60 or h < 50.0):
 			# Long rules text: one block, with the ability name leading it.
 			_label("%s: %s" % [ab.name, body], Rect2(text_x, 3, text_w, h - 6), 17, 9, UiStyle.INK, HORIZONTAL_ALIGNMENT_LEFT, box)
 		elif ab.has("text"):

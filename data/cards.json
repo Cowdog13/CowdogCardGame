@@ -430,5 +430,233 @@
     "count": 1
    }
   ]
+ },
+ "nature_berry": {
+  "name": "Nature Berry",
+  "kind": "berry",
+  "element": "nature"
+ },
+ "leafer": {
+  "name": "Leafer",
+  "kind": "creature",
+  "tier": 1,
+  "evolves_from": "",
+  "element": "nature",
+  "abilities": [
+   {
+    "name": "Plunder 2",
+    "cost": {
+     "element": "nature",
+     "amount": 1
+    },
+    "effects": [
+     {
+      "type": "plunder",
+      "amount": 2
+     }
+    ]
+   }
+  ]
+ },
+ "leaflet": {
+  "name": "Leaflet",
+  "kind": "creature",
+  "tier": 2,
+  "evolves_from": "leafer",
+  "element": "nature",
+  "abilities": [
+   {
+    "name": "Recycle 2",
+    "cost": {
+     "element": "nature",
+     "amount": 2
+    },
+    "effects": [
+     {
+      "type": "recycle",
+      "amount": 2
+     }
+    ]
+   },
+   {
+    "name": "Plunder 3",
+    "cost": {
+     "element": "nature",
+     "amount": 2
+    },
+    "effects": [
+     {
+      "type": "plunder",
+      "amount": 3
+     }
+    ]
+   }
+  ]
+ },
+ "leafren": {
+  "name": "Leafren",
+  "kind": "creature",
+  "tier": 3,
+  "evolves_from": "leaflet",
+  "element": "nature",
+  "abilities": [
+   {
+    "name": "Recycle 3",
+    "cost": {
+     "element": "nature",
+     "amount": 2
+    },
+    "effects": [
+     {
+      "type": "recycle",
+      "amount": 3
+     }
+    ]
+   },
+   {
+    "name": "Plunder 3",
+    "cost": {
+     "element": "nature",
+     "amount": 2
+    },
+    "effects": [
+     {
+      "type": "plunder",
+      "amount": 3
+     }
+    ]
+   },
+   {
+    "name": "Mulch",
+    "cost": {
+     "element": "super",
+     "amount": 1
+    },
+    "effects": [
+     {
+      "type": "exile_attached",
+      "element": "super"
+     },
+     {
+      "type": "recycle",
+      "amount": 6
+     }
+    ],
+    "text": "Exile a Super Berry attached to this creature. Recycle 6"
+   }
+  ]
+ },
+ "spore_spreader": {
+  "name": "Spore Spreader",
+  "kind": "creature",
+  "tier": 1,
+  "evolves_from": "",
+  "element": "nature",
+  "abilities": [
+   {
+    "name": "Recycle 2",
+    "cost": {
+     "element": "nature",
+     "amount": 1
+    },
+    "effects": [
+     {
+      "type": "recycle",
+      "amount": 2
+     }
+    ]
+   },
+   {
+    "name": "Spore Cloud",
+    "cost": {
+     "element": "super",
+     "amount": 2
+    },
+    "effects": [
+     {
+      "type": "plunder",
+      "per_exile": 1
+     }
+    ],
+    "text": "Plunder 1 for each card in your exile"
+   }
+  ]
+ },
+ "spore_muncher": {
+  "name": "Spore Muncher",
+  "kind": "creature",
+  "tier": 2,
+  "evolves_from": "spore_spreader",
+  "element": "nature",
+  "abilities": [
+   {
+    "name": "Recycle 3",
+    "cost": {
+     "element": "nature",
+     "amount": 2
+    },
+    "effects": [
+     {
+      "type": "recycle",
+      "amount": 3
+     }
+    ]
+   },
+   {
+    "name": "Decompose",
+    "cost": {
+     "element": "super",
+     "amount": 3
+    },
+    "effects": [
+     {
+      "type": "cast_from_discard"
+     }
+    ],
+    "text": "Exile a spell from your discard to play it"
+   }
+  ]
+ },
+ "moosh": {
+  "name": "Moosh",
+  "kind": "creature",
+  "tier": 1,
+  "evolves_from": "",
+  "element": "nature",
+  "abilities": [
+   {
+    "name": "Rot",
+    "cost": {
+     "element": "nature",
+     "amount": 2
+    },
+    "effects": [
+     {
+      "type": "exile_attached",
+      "element": "nature"
+     },
+     {
+      "type": "plunder",
+      "amount": 3
+     }
+    ],
+    "text": "Exile a Nature Berry attached to this creature. Plunder 3"
+   }
+  ]
+ },
+ "trash": {
+  "name": "Trash",
+  "kind": "spell",
+  "cost": {
+   "element": "nature",
+   "amount": 2
+  },
+  "text": "Exile 3 cards from your discard",
+  "effects": [
+   {
+    "type": "exile_discard",
+    "amount": 3
+   }
+  ]
  }
 }

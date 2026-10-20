@@ -69,7 +69,9 @@ Evolving also [b]removes a stun[/b] from the creature.
 
 [b]Active[/b] - the effect is always on while the creature has the required berries. Active effects of the same kind do not stack: two Firewolves recycle just as much as one.
 
-[b]Recycle X[/b] - put X cards from your discard pile on the [b]bottom of your deck[/b], in any order you choose. You pick the cards and the order.
+[b]Recycle X[/b] - put X cards from your discard pile on the [b]bottom of your deck[/b], in any order you choose. You pick the cards and the order. If your discard pile has fewer than X cards, you recycle them all.
+
+[b]Exile[/b] - some effects send cards to your exile pile instead of the discard pile. Exile is face up but permanent.
 
 [b]Berry Trade[/b] - choose a number of berries attached to the creature, discard them, and discard the same number of berries of your choice from an enemy creature."""],
 	["Spells", """Spells are cast from your hand on your turn. Each has a berry cost, and [b]you choose which berries pay[/b]:
@@ -81,7 +83,8 @@ Berries must match the cost: [i]Colorless[/i] accepts any berry, and an element 
 
 [b]Removal[/b] (3 Colorless) sends a creature and all berries attached to it to the discard pile.
 [b]Reinforce[/b] (3 Fire) lets you play a second creature this turn.
-[b]Disable[/b] (1 Colorless) is Stun 1."""],
+[b]Disable[/b] (1 Colorless) is Stun 1.
+[b]Trash[/b] (2 Nature) exiles 3 cards of your choice from your discard pile. The berries that pay for it can't also be the cards it exiles."""],
 	["The swap", """Once per [b]game[/b], on your turn, you may swap a creature card in your hand with a creature card in your discard pile. Press [b]Swap[/b], choose the creature from your hand to give, then the creature from your discard pile to take. Both cards are shown to everyone. The button is disabled once you have used the swap."""],
 	["Scorching Fire cards", """[b]Firespore[/b] (Tier 1): 1 Fire Berry, Plunder 2.
 [b]Firespitter[/b] (Tier 2, on Firespore): 2 Fire Berries, Plunder 3.
@@ -101,6 +104,17 @@ Berries must match the cost: [i]Colorless[/i] accepts any berry, and an element 
 [b]Removal[/b], [b]Disable[/b]: see Spells.
 
 [b]Strategy:[/b] stun the creatures that threaten you, trade away the opponent's berries, and plunder."""],
+	["Nature Exile cards", """[b]Leafer[/b] (Tier 1): 1 Nature Berry, Plunder 2.
+[b]Leaflet[/b] (Tier 2, on Leafer): 2 Nature Berries, Recycle 2; or 2 Nature Berries, Plunder 3.
+[b]Leafren[/b] (Tier 3, on Leaflet): 2 Nature Berries, Recycle 3; or 2 Nature Berries, Plunder 3; or [i]Mulch[/i], 1 Super Berry: exile a Super Berry attached to this creature, then Recycle 6.
+[b]Spore Spreader[/b] (Tier 1): 1 Nature Berry, Recycle 2; or [i]Spore Cloud[/i], 2 Super Berries: Plunder 1 for each card in your exile pile.
+[b]Spore Muncher[/b] (Tier 2, on Spore Spreader): 2 Nature Berries, Recycle 3; or [i]Decompose[/i], 3 Super Berries: exile a spell from your discard pile and play it (you don't pay its berry cost, choose its targets as usual).
+[b]Moosh[/b] (Tier 1): [i]Rot[/i], 2 Nature Berries: exile a Nature Berry attached to this creature, then Plunder 3.
+[b]Removal[/b], [b]Trash[/b]: see Spells. [b]Trash[/b] (2 Nature Berries): exile 3 cards of your choice from your discard pile.
+
+Exiled cards never come back, but they are counted by Spore Spreader. An ability that needs an empty pile to do anything (Recycle with no discard pile, Spore Cloud with no exile) can't be used. Recycle 6 with fewer than 6 cards in your discard pile recycles all of them.
+
+[b]Strategy:[/b] fill your exile pile with Trash, Mulch, Rot and spent berries, then let Spore Spreader plunder for it, and keep your deck healthy by recycling."""],
 	["Using the screen", """[b]Playing cards.[/b] Click a card in your hand. A berry goes on a creature (if you have several, click which one); a creature is played or evolves; a spell asks for its target and payment. Hover a card to see it large in the right-hand panel.
 
 [b]Using abilities.[/b] Click the ability on the creature. Ability boxes only react when the creature can use that ability.

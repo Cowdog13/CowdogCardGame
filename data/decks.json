@@ -90,5 +90,51 @@
     2
    ]
   ]
+ },
+ "nature_exile": {
+  "name": "Nature Exile",
+  "format": "preconstructed",
+  "cards": [
+   [
+    "super_berry",
+    7
+   ],
+   [
+    "nature_berry",
+    16
+   ],
+   [
+    "leafer",
+    4
+   ],
+   [
+    "leaflet",
+    4
+   ],
+   [
+    "leafren",
+    4
+   ],
+   [
+    "spore_spreader",
+    4
+   ],
+   [
+    "spore_muncher",
+    4
+   ],
+   [
+    "moosh",
+    2
+   ],
+   [
+    "removal",
+    3
+   ],
+   [
+    "trash",
+    2
+   ]
+  ]
  }
 }

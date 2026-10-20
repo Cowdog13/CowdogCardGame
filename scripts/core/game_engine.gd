@@ -353,7 +353,8 @@ func _do_ability(player: int, action: Dictionary) -> Dictionary:
 	var pl := _P(player)
 	var slot := int(action.get("slot", -1))
 	var ai := int(action.get("ability", -1))
-	var params: Dictionary = action.get("params", {})
+	var params: Dictionary = action.get("params", {}).duplicate()
+	params["_slot"] = slot  # set here, never trusted from the client
 	if slot < 0 or slot >= pl.board.size() or pl.board[slot] == null:
 		return _err("Choose one of your creatures")
 	var creature: Dictionary = pl.board[slot]
@@ -394,8 +395,42 @@ func _creature_ref_error(ref: Dictionary) -> String:
 	return ""
 
 
-func _check_effect(e: Dictionary, player: int, params: Dictionary) -> String:
+func _check_effect(e: Dictionary, player: int, params: Dictionary, reserved: Array = []) -> String:
+	var pl := _P(player)
 	match e.type:
+		"recycle":
+			if pl.discard.is_empty():
+				return "Your discard pile is empty"
+		"plunder":
+			if e.has("per_exile") and pl.exile.is_empty():
+				return "Your exile pile is empty"
+		"exile_attached":
+			var creature: Dictionary = pl.board[int(params._slot)]
+			var bi := int(params.get("berry", -1))
+			if bi < 0 or bi >= creature.berries.size() or not Rules.berry_matches(creature.berries[bi], e.element):
+				return "Choose one of this creature's attached %s Berries" % String(e.element).capitalize()
+		"cast_from_discard":
+			var si := int(params.get("spell", -1))
+			if si < 0 or si >= pl.discard.size() or not CardDB.is_spell(pl.discard[si]):
+				return "Choose a spell in your discard pile"
+			var sp: Dictionary = params.get("spell_params", {})
+			for se in CardDB.card(pl.discard[si]).effects:
+				var why := _check_effect(se, player, sp, [pl.discard[si]])
+				if why != "":
+					return why
+		"exile_discard":
+			var pool: Array = pl.discard.duplicate()
+			for id in reserved:
+				pool.erase(id)
+			var need := mini(int(e.amount), pool.size())
+			var chosen: Array = params.get("cards", [])
+			if chosen.size() != need:
+				return "Choose %d card(s) from your discard pile to exile" % need
+			for id in chosen:
+				var at: int = pool.find(id)
+				if at < 0:
+					return "Those cards aren't all in your discard pile"
+				pool.remove_at(at)
 		"stun":
 			var targets: Array = params.get("targets", [])
 			if targets.is_empty() or targets.size() > int(e.count):
@@ -449,6 +484,8 @@ func _apply_effect(e: Dictionary, player: int, slot: int, params: Dictionary) ->
 			var n := int(e.get("amount", 0))
 			if e.has("per_attached_berry"):
 				n = int(e.per_attached_berry) * _P(player).board[slot].berries.size()
+			elif e.has("per_exile"):
+				n = _P(player).exile.size()
 			_plunder(player, opp, n)
 		"pillage":
 			_pillage(player, int(e.amount))
@@ -470,6 +507,41 @@ func _apply_effect(e: Dictionary, player: int, slot: int, params: Dictionary) ->
 			_release_berries(player, mine, params.own)
 			_release_berries(tp, enemy, params.theirs)
 			_say("%d berr%s discarded from each side." % [params.own.size(), "y" if params.own.size() == 1 else "ies"], player)
+		"recycle":
+			var pl := _P(player)
+			var n := mini(int(e.amount), pl.discard.size())
+			if n > 0:
+				_pending_for(player).recycle = n
+		"exile_attached":
+			var pl := _P(player)
+			var creature: Dictionary = pl.board[int(params._slot)]
+			var bi := int(params.berry)
+			var id: String = creature.berries[bi]
+			creature.berries.remove_at(bi)
+			creature.exhausted.remove_at(bi)
+			pl.exile.append(id)
+			_say("%s exiles a %s from %s." % [_pname(player), CardDB.card_name(id), Rules.creature_name(creature)], player)
+		"cast_from_discard":
+			var pl := _P(player)
+			var id: String = pl.discard[int(params.spell)]
+			var sp: Dictionary = params.get("spell_params", {})
+			pl.discard.remove_at(int(params.spell))
+			pl.exile.append(id)
+			var spell := CardDB.card(id)
+			_say("%s exiles %s from the discard to play it." % [_pname(player), spell.name], player, "spell",
+				{"fx": "spell", "card": id, "hand": -1, "targets": _spell_targets(spell, sp)})
+			for se in spell.effects:
+				_apply_effect(se, player, -1, sp)
+		"exile_discard":
+			var pl := _P(player)
+			var n := 0
+			for id in params.get("cards", []):
+				var at: int = pl.discard.find(id)
+				if at >= 0:
+					pl.discard.remove_at(at)
+					pl.exile.append(id)
+					n += 1
+			_say("%s exiles %d card(s) from their discard pile." % [_pname(player), n], player)
 		"extra_creature_play":
 			_P(player).creature_plays_left += 1
 			_say("%s may play a second creature this turn." % _pname(player), player)
@@ -717,8 +789,12 @@ func _do_spell(player: int, action: Dictionary) -> Dictionary:
 	var why := _payment_error(player, spell.cost, action.get("payment", []))
 	if why != "":
 		return _err(why)
+	var reserved: Array = []  # discard cards the payment uses: the spell's own effect can't pick them too
+	for entry in action.get("payment", []):
+		if entry.src == "discard":
+			reserved.append(pl.discard[int(entry.index)])
 	for e in spell.effects:
-		why = _check_effect(e, player, params)
+		why = _check_effect(e, player, params, reserved)
 		if why != "":
 			return _err(why)
 	_pay(player, action.payment)

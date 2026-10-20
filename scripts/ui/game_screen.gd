@@ -755,19 +755,29 @@ func _begin_spell(i: int, id: String) -> void:
 			var n := int(effect.count)
 			_begin_targeting("%s: choose up to %d creature(s)." % [spell.name, n], _any_creature, n,
 				func(t): _cast(i, {"targets": t}))
+		"exile_discard":
+			_ask_exile_cards(spell, view.you.discard, func(chosen: Array):
+				# The payment may not use the very cards that are being exiled.
+				var blocked: Array = []
+				for cid in chosen:
+					for di in range(view.you.discard.size() - 1, -1, -1):
+						if view.you.discard[di] == cid and not blocked.has(di):
+							blocked.append(di)
+							break
+				_cast(i, {"cards": chosen}, blocked))
 		_:
 			_cast(i, {})
 
 
-func _cast(i: int, params: Dictionary) -> void:
+func _cast(i: int, params: Dictionary, blocked: Array = []) -> void:
 	var spell := CardDB.card(view.you.hand[i])
 	_choose_payment(spell, func(payment: Array):
-		_submit({"type": "play_spell", "hand": i, "payment": payment, "params": params}))
+		_submit({"type": "play_spell", "hand": i, "payment": payment, "params": params}), blocked)
 
 
 ## Lets the player pick exactly which berries pay for `spell`. The cheapest payment is
 ## pre-selected, so confirming straight away behaves like an automatic payment.
-func _choose_payment(spell: Dictionary, on_paid: Callable) -> void:
+func _choose_payment(spell: Dictionary, on_paid: Callable, blocked: Array = []) -> void:
 	var you: Dictionary = view.you
 	var options: Array = []  # payment entries, parallel to the list items
 	var labels: Array = []
@@ -784,11 +794,11 @@ func _choose_payment(spell: Dictionary, on_paid: Callable) -> void:
 				labels.append("Creature %d (%s): %s, %s" % [s + 1, Rules.creature_name(c), CardDB.card_name(c.berries[bi]),
 					"exhausted -> exile" if sideways else "upright -> discard"])
 	for di in you.discard.size():
-		if CardDB.is_berry(you.discard[di]) and Rules.berry_matches(you.discard[di], spell.cost.element):
+		if not blocked.has(di) and CardDB.is_berry(you.discard[di]) and Rules.berry_matches(you.discard[di], spell.cost.element):
 			options.append({"src": "discard", "index": di})
 			berry_ids.append(you.discard[di])
 			labels.append("Your discard: %s (-> exile)" % CardDB.card_name(you.discard[di]))
-	var plan := Rules.plan_payment(you, spell.cost)
+	var plan := Rules.plan_payment(you, spell.cost, blocked)
 	var preselect: Array = []
 	for k in options.size():
 		for entry in plan.get("payment", []):
@@ -859,7 +869,7 @@ func _ask_order(ids: Array) -> void:
 ## The numbers are the order the cards go on the bottom of the deck: 1 first, so the highest number ends up
 ## at the very bottom. `initial` lists cards (indices into `card_ids`) that start out numbered. `on_ok` receives
 ## the chosen indices into `card_ids`, in order.
-func _ordered_pick(title: String, card_ids: Array, need: int, initial: Array, verb: String, on_ok: Callable, on_cancel: Callable) -> void:
+func _ordered_pick(title: String, card_ids: Array, need: int, initial: Array, verb: String, on_ok: Callable, on_cancel: Callable, hint_text := "", ordered := true) -> void:
 	var d := ConfirmationDialog.new()
 	d.title = title
 	var box := VBoxContainer.new()
@@ -877,7 +887,7 @@ func _ordered_pick(title: String, card_ids: Array, need: int, initial: Array, ve
 			copies[k] = idx
 	box.add_child(_list_with_preview(list, func(k: int) -> String: return rows[k].get("id", "")))
 	var hint := Label.new()
-	hint.text = "Click a card to number it: 1 goes on the bottom of the deck first (closest to the top), the highest number ends up at the very bottom. Click a stack again to number another copy. Right-click (or click a stack whose copies are all numbered) to remove the last number."
+	hint.text = hint_text if hint_text != "" else "Click a card to number it: 1 goes on the bottom of the deck first (closest to the top), the highest number ends up at the very bottom. Click a stack again to number another copy. Right-click (or click a stack whose copies are all numbered) to remove the last number."
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	hint.custom_minimum_size = Vector2(620, 0)
 	hint.add_theme_font_size_override("font_size", 12)
@@ -898,7 +908,8 @@ func _ordered_pick(title: String, card_ids: Array, need: int, initial: Array, ve
 				if order[pos] == k:
 					nums.append(str(pos + 1))
 			var name_text := "x%d   %s" % [rows[k].count, CardDB.card_name(rows[k].id)]
-			list.set_item_text(k, ("%s      > %s" % [name_text, ", ".join(nums)]) if not nums.is_empty() else name_text)
+			var tag := ", ".join(nums) if ordered else "%d chosen" % nums.size()
+			list.set_item_text(k, ("%s      > %s" % [name_text, tag]) if not nums.is_empty() else name_text)
 			list.set_item_custom_bg_color(k, Color(0.25, 0.5, 0.25, 0.7) if not nums.is_empty() else Color(0, 0, 0, 0))
 		list.deselect_all()
 		d.get_ok_button().disabled = order.size() != need
@@ -955,8 +966,80 @@ func _on_ability_pressed(slot: int, ai: int) -> void:
 			_begin_targeting("Berry trade: choose an enemy creature with berries.",
 				func(p, s): return p != ME and _any_creature(p, s) and not view.opponent.board[s].berries.is_empty(), 1,
 				func(t): _ask_trade_amount(slot, ai, t[0]))
+		"exile_attached":
+			_ask_exile_berry(slot, effect, func(bi): _submit({"type": "use_ability", "slot": slot, "ability": ai, "params": {"berry": bi}}))
+		"cast_from_discard":
+			_ask_cast_from_discard(slot, ai)
 		_:
 			_submit({"type": "use_ability", "slot": slot, "ability": ai, "params": {}})
+
+
+## Leafren / Moosh: which attached berry of this creature gets exiled. Asks only when there is a real choice.
+func _ask_exile_berry(slot: int, effect: Dictionary, on_pick: Callable) -> void:
+	var c: Dictionary = view.you.board[slot]
+	var options: Array = []  # berry indices, one per distinct (berry, upright / exhausted)
+	var labels: Array = []
+	var ids: Array = []
+	var seen := {}
+	for bi in c.berries.size():
+		if not Rules.berry_matches(c.berries[bi], effect.element):
+			continue
+		var key := "%s:%s" % [c.berries[bi], c.exhausted[bi]]
+		if seen.has(key):
+			continue
+		seen[key] = true
+		options.append(bi)
+		ids.append(c.berries[bi])
+		labels.append("%s (%s)" % [CardDB.card_name(c.berries[bi]), "exhausted" if c.exhausted[bi] else "upright"])
+	if options.is_empty():
+		return _toast("No %s Berry is attached to this creature." % String(effect.element).capitalize())
+	if options.size() == 1:
+		return on_pick.call(options[0])
+	_pick_from_list("Exile which attached berry?", labels, func(k): on_pick.call(options[k]), ids)
+
+
+## Spore Muncher: choose a spell in the discard pile, then whatever that spell needs (target, cards to exile).
+func _ask_cast_from_discard(slot: int, ai: int) -> void:
+	var discard: Array = view.you.discard
+	var options: Array = []  # discard index of the newest copy of each distinct spell
+	var labels: Array = []
+	var ids: Array = []
+	for di in range(discard.size() - 1, -1, -1):
+		if CardDB.is_spell(discard[di]) and not ids.has(discard[di]):
+			options.append(di)
+			ids.append(discard[di])
+			labels.append(CardDB.card_name(discard[di]))
+	if options.is_empty():
+		return _toast("There is no spell in your discard pile.")
+	var go := func(di: int, sp: Dictionary):
+		_submit({"type": "use_ability", "slot": slot, "ability": ai, "params": {"spell": di, "spell_params": sp}})
+	var on_spell := func(k: int):
+		var di: int = options[k]
+		var spell := CardDB.card(discard[di])
+		var effect: Dictionary = spell.effects[0]
+		match effect.type:
+			"destroy":
+				_begin_targeting("%s: choose a creature." % spell.name, _any_creature, 1, func(t): go.call(di, {"target": t[0]}))
+			"stun":
+				var n := int(effect.count)
+				_begin_targeting("%s: choose up to %d creature(s)." % [spell.name, n], _any_creature, n, func(t): go.call(di, {"targets": t}))
+			"exile_discard":
+				var rest: Array = discard.duplicate()
+				rest.remove_at(di)  # the spell itself is being exiled
+				_ask_exile_cards(spell, rest, func(chosen: Array): go.call(di, {"cards": chosen}))
+			_:
+				go.call(di, {})
+	_pick_from_list("Exile which spell to play it?", labels, on_spell, ids)
+
+
+## Trash: choose which cards of `pool` (card ids) to exile. Calls `on_ok` with the chosen card ids.
+func _ask_exile_cards(spell: Dictionary, pool: Array, on_ok: Callable) -> void:
+	var need := mini(int(spell.effects[0].amount), pool.size())
+	if need == 0:
+		return on_ok.call([])
+	_ordered_pick("%s: choose %d card(s) from your discard pile to exile" % [spell.name, need], pool, need, [], "Exile",
+		func(picked: Array): on_ok.call(picked.map(func(i): return pool[i])), Callable(),
+		"Click a card to choose it; click a stack again to choose another copy. Right-click (or click a stack whose copies are all chosen) to take one back. These cards are exiled for good.", false)
 
 
 func _ask_trade_amount(slot: int, ai: int, target: Dictionary) -> void:
@@ -1166,7 +1249,7 @@ func _fx_source_rect(ev: Dictionary) -> Rect2:
 	var mine: bool = int(ev.player) == ME
 	if ev.fx == "swap" or ev.fx == "ability" or ev.fx == "stun" or ev.fx == "reveal" or ev.fx == "plunder" or ev.fx == "pillage":
 		return Rect2()
-	if ev.fx == "attach" and ev.from == "discard" or ev.fx == "play_creature" and int(ev.hand) < 0:
+	if ev.fx == "attach" and ev.from == "discard" or (ev.fx == "play_creature" or ev.fx == "spell") and int(ev.hand) < 0:
 		return _pile_rect(int(ev.player), "discard")
 	var idx := int(ev.hand)
 	if mine:

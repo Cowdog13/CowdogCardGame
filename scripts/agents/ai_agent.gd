@@ -164,6 +164,22 @@ func _spell(view: Dictionary) -> Dictionary:
 				params = {"targets": [{"player": 1 - view.me, "slot": t}]}
 				if worth < 3.0:
 					continue
+			"exile_discard":
+				# Only worth a card when something on our board gets stronger from a bigger exile pile.
+				if not _has_exile_synergy(me):
+					continue
+				var reserved: Array = []
+				for entry in plan.payment:
+					if entry.src == "discard":
+						reserved.append(me.discard[int(entry.index)])
+				var pool: Array = me.discard.duplicate()
+				for id2 in reserved:
+					pool.erase(id2)
+				if pool.size() < 3:
+					continue
+				pool.sort_custom(func(a, b): return (1 if CardDB.is_berry(a) else 0) < (1 if CardDB.is_berry(b) else 0))
+				params = {"cards": pool.slice(0, 3)}
+				worth = 2.5
 			"extra_creature_play":
 				# Worth it when there is a second creature in hand that could be played this turn.
 				var playable := 0
@@ -178,6 +194,17 @@ func _spell(view: Dictionary) -> Dictionary:
 		if plan.loss < worth * 0.6:
 			return {"type": "play_spell", "hand": hi, "payment": plan.payment, "params": params}
 	return {}
+
+
+func _has_exile_synergy(me: Dictionary) -> bool:
+	for c in me.board:
+		if c == null:
+			continue
+		for ab in Rules.top_card(c).abilities:
+			for e in ab.effects:
+				if e.has("per_exile"):
+					return true
+	return false
 
 
 func _threat(creature: Dictionary, turn: int) -> float:
@@ -230,8 +257,31 @@ func _evaluate_ability(view: Dictionary, slot: int, c: Dictionary, ab: Dictionar
 	var effect: Dictionary = ab.effects[0]
 	var enemy := 1 - int(view.me)
 	match effect.type:
+		"recycle":
+			if me.discard.is_empty():
+				return {}
+			return {"value": 0.25, "params": {}}  # free, and keeps the deck from running dry
+		"exile_attached":
+			# Pay with a berry of exactly that kind (never a Super Berry for a Nature Berry).
+			var bi := -1
+			for i in c.berries.size():
+				if CardDB.element_of(c.berries[i]) == effect.element:
+					bi = i
+			var rest: Dictionary = ab.effects[1]
+			if bi < 0 or rest.type != "plunder":
+				return {}
+			var gain := float(int(rest.amount)) - 1.2
+			if int(rest.amount) > opp.deck_count:
+				gain += 1000.0
+			return {"value": gain, "params": {"berry": bi}}
+		"cast_from_discard":
+			return _evaluate_cast(view, me, opp)
 		"plunder":
 			var amount := Rules.effect_value(effect, c)
+			if effect.has("per_exile"):
+				amount = float(me.exile_count)
+				if amount <= 0.0:
+					return {}
 			if amount > opp.deck_count:
 				amount += 1000.0  # not enough cards left: this Plunder wins the game
 			return {"value": amount, "params": {}}
@@ -258,6 +308,26 @@ func _evaluate_ability(view: Dictionary, slot: int, c: Dictionary, ab: Dictionar
 			return {"value": total * 0.6, "params": {"targets": targets}}
 		"berry_trade":
 			return _evaluate_trade(c, slot, opp, enemy)
+	return {}
+
+
+## Spore Muncher: replay the best spell in the discard pile (only Removal and Disable-style stuns are worth it).
+func _evaluate_cast(view: Dictionary, me: Dictionary, opp: Dictionary) -> Dictionary:
+	for di in me.discard.size():
+		var id: String = me.discard[di]
+		if not CardDB.is_spell(id):
+			continue
+		var effect: Dictionary = CardDB.card(id).effects[0]
+		if effect.type == "destroy":
+			var t := _strongest_enemy(opp, view.turn, false)
+			if t >= 0 and _threat(opp.board[t], view.turn) >= 4.0:
+				return {"value": _threat(opp.board[t], view.turn), "params": {"spell": di,
+					"spell_params": {"target": {"player": 1 - int(view.me), "slot": t}}}}
+		elif effect.type == "stun":
+			var t := _strongest_enemy(opp, view.turn, true)
+			if t >= 0 and _threat(opp.board[t], view.turn) >= 3.0:
+				return {"value": _threat(opp.board[t], view.turn), "params": {"spell": di,
+					"spell_params": {"targets": [{"player": 1 - int(view.me), "slot": t}]}}}
 	return {}
 
 

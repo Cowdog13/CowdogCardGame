@@ -25,6 +25,10 @@ CARD_FILES = {
     "WaterCards/Water_Sprite.png": "water_sprite",
     "Berries/Fire_Berry.png": "fire_berry", "Berries/Water_Berry.png": "water_berry",
     "Berries/Super_Berry.png": "super_berry",
+    "NatureCards/Leafer.png": "leafer", "NatureCards/Leaflet.png": "leaflet", "NatureCards/Leafren.png": "leafren",
+    "NatureCards/Spore_Spreader.png": "spore_spreader", "NatureCards/Spore_Mucher.png": "spore_muncher",
+    "NatureCards/Moosh.png": "moosh", "NatureCards/Trash.png": "trash",
+    "NatureCards/Nature_Berry.png": "nature_berry",
 }
 SYMBOL_FILES = {
     "Symbols/Fire_Symbol.png": "fire", "Symbols/Water_Symbol.png": "water", "Symbols/Nature_Symbol.png": "nature",
