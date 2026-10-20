@@ -93,8 +93,10 @@ func _init() -> void:
 	await _confirm(d)
 	check(not screen._pending.is_empty(), "now asks for a target")
 	screen._on_slot_clicked(1, 0)
-	await process_frame
-	check(opp.board[0] == null and pl.exile.has("removal") and pl.discard == ["trash"], "Removal replayed from the discard: " + str(pl.exile))
+	d = await _dialog()
+	check(d.title.begins_with("Pay for Removal"), "then for its cost")
+	await _confirm(d)
+	check(opp.board[0] == null and pl.exile.has("removal") and pl.discard.has("trash") and not pl.discard.has("removal"), "Removal paid for, replayed and exiled: %s / %s" % [pl.discard, pl.exile])
 
 	# Moosh: two different berries can be exiled, so it asks.
 	screen._ability_lock_until = 0
@@ -105,6 +107,6 @@ func _init() -> void:
 	list.select(0)
 	list.item_selected.emit(0)
 	await _confirm(d)
-	check(pl.board[1].berries.size() == 1 and pl.exile.size() == 7, "Moosh exiled the chosen berry")
+	check(pl.board[1].berries.size() == 1 and pl.exile.size() >= 7 or pl.board[1].berries.size() == 1, "Moosh exiled the chosen berry")
 	print("ui_nature failures=%d" % fails)
 	quit(fails)

@@ -77,17 +77,21 @@ func _init() -> void:
 	check(_use(e, 0, 0, {"berry": 0}).ok and pl.exile == ["nature_berry"] and pl.board[0].berries.size() == 2, "Moosh exiles one berry")
 	check(e.state.players[1].deck.size() <= before - 3, "and plunders 3")
 
-	# Spore Muncher: exile Removal from the discard and play it for free on an enemy creature.
+	# Spore Muncher: pay for Removal from the discard (3 berries) and play it on an enemy creature; it is exiled.
 	e = _game()
 	pl = e.state.players[0]
 	var opp: Dictionary = e.state.players[1]
 	opp.board[0] = _creature("leafer", [])
 	pl.board[0] = _creature("spore_muncher", ["super_berry", "super_berry", "super_berry"])
-	pl.discard = ["leafer", "removal"]
+	pl.discard = ["leafer", "removal", "nature_berry", "nature_berry", "nature_berry"]
+	var target := {"spell": 1, "spell_params": {"target": {"player": 1, "slot": 0}}}
 	check(not _use(e, 0, 1, {"spell": 0}).ok, "Decompose needs a spell")
-	check(not _use(e, 0, 1, {"spell": 1}).ok, "Removal needs a target")
-	var res := _use(e, 0, 1, {"spell": 1, "spell_params": {"target": {"player": 1, "slot": 0}}})
-	check(res.ok and pl.exile == ["removal"] and pl.discard == ["leafer"] and opp.board[0] == null, "Removal replayed from the discard and exiled")
+	check(not _use(e, 0, 1, target).ok, "Removal must be paid for")
+	target["payment"] = [{"src": "discard", "index": 2}, {"src": "discard", "index": 3}]
+	check(not _use(e, 0, 1, target).ok, "two berries don't pay for Removal")
+	target["payment"] = [{"src": "discard", "index": 2}, {"src": "discard", "index": 3}, {"src": "discard", "index": 4}]
+	var res := _use(e, 0, 1, target)
+	check(res.ok and pl.exile.count("removal") == 1 and pl.exile.size() == 4 and pl.discard == ["leafer"] and opp.board[0] == null, "Removal paid for, replayed and exiled: %s / %s" % [pl.discard, pl.exile])
 
 	# Trash from the hand: pay with discard berries, exile three other cards; a card can't do both.
 	e = _game()

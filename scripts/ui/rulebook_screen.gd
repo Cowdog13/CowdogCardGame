@@ -108,7 +108,7 @@ Berries must match the cost: [i]Colorless[/i] accepts any berry, and an element 
 [b]Leaflet[/b] (Tier 2, on Leafer): 2 Nature Berries, Recycle 2; or 2 Nature Berries, Plunder 3.
 [b]Leafren[/b] (Tier 3, on Leaflet): 2 Nature Berries, Recycle 3; or 2 Nature Berries, Plunder 3; or [i]Mulch[/i], 1 Super Berry: exile a Super Berry attached to this creature, then Recycle 6.
 [b]Spore Spreader[/b] (Tier 1): 1 Nature Berry, Recycle 2; or [i]Spore Cloud[/i], 2 Super Berries: Plunder 1 for each card in your exile pile.
-[b]Spore Muncher[/b] (Tier 2, on Spore Spreader): 2 Nature Berries, Recycle 3; or [i]Decompose[/i], 3 Super Berries: exile a spell from your discard pile and play it (you don't pay its berry cost, choose its targets as usual).
+[b]Spore Muncher[/b] (Tier 2, on Spore Spreader): 2 Nature Berries, Recycle 3; or [i]Decompose[/i], 3 Super Berries: choose a spell in your discard pile and play it: you pay the spell's own berry cost as usual and choose its targets, and the spell is [b]exiled[/b] once it resolves instead of staying in the discard pile.
 [b]Moosh[/b] (Tier 1): [i]Rot[/i], 2 Nature Berries: exile a Nature Berry attached to this creature, then Plunder 3.
 [b]Removal[/b], [b]Trash[/b]: see Spells. [b]Trash[/b] (2 Nature Berries): exile 3 cards of your choice from your discard pile.
 

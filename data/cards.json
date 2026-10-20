@@ -613,7 +613,7 @@
       "type": "cast_from_discard"
      }
     ],
-    "text": "Exile a spell from your discard to play it"
+    "text": "Pay for a spell in your discard pile and play it. It is exiled afterwards"
    }
   ]
  },

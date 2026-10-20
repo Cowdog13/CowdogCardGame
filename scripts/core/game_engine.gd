@@ -413,9 +413,18 @@ func _check_effect(e: Dictionary, player: int, params: Dictionary, reserved: Arr
 			var si := int(params.get("spell", -1))
 			if si < 0 or si >= pl.discard.size() or not CardDB.is_spell(pl.discard[si]):
 				return "Choose a spell in your discard pile"
+			var spell := CardDB.card(pl.discard[si])
+			var payment: Array = params.get("payment", [])
+			var why := _payment_error(player, spell.cost, payment)
+			if why != "":
+				return why
+			var held: Array = [pl.discard[si]]  # the spell itself and the berries that pay can't be picked again
+			for entry in payment:
+				if entry.src == "discard":
+					held.append(pl.discard[int(entry.index)])
 			var sp: Dictionary = params.get("spell_params", {})
-			for se in CardDB.card(pl.discard[si]).effects:
-				var why := _check_effect(se, player, sp, [pl.discard[si]])
+			for se in spell.effects:
+				why = _check_effect(se, player, sp, held)
 				if why != "":
 					return why
 		"exile_discard":
@@ -525,10 +534,11 @@ func _apply_effect(e: Dictionary, player: int, slot: int, params: Dictionary) ->
 			var pl := _P(player)
 			var id: String = pl.discard[int(params.spell)]
 			var sp: Dictionary = params.get("spell_params", {})
-			pl.discard.remove_at(int(params.spell))
+			_pay(player, params.get("payment", []))  # may exile discard berries, so find the spell again afterwards
+			pl.discard.remove_at(pl.discard.find(id))
 			pl.exile.append(id)
 			var spell := CardDB.card(id)
-			_say("%s exiles %s from the discard to play it." % [_pname(player), spell.name], player, "spell",
+			_say("%s pays for %s and plays it from the discard pile; it is exiled." % [_pname(player), spell.name], player, "spell",
 				{"fx": "spell", "card": id, "hand": -1, "targets": _spell_targets(spell, sp)})
 			for se in spell.effects:
 				_apply_effect(se, player, -1, sp)

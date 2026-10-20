@@ -317,16 +317,20 @@ func _evaluate_cast(view: Dictionary, me: Dictionary, opp: Dictionary) -> Dictio
 		var id: String = me.discard[di]
 		if not CardDB.is_spell(id):
 			continue
-		var effect: Dictionary = CardDB.card(id).effects[0]
+		var spell := CardDB.card(id)
+		var effect: Dictionary = spell.effects[0]
+		var plan: Dictionary = Rules.plan_payment(me, spell.cost)  # the spell's berry cost is paid as usual
+		if plan.is_empty():
+			continue
 		if effect.type == "destroy":
 			var t := _strongest_enemy(opp, view.turn, false)
-			if t >= 0 and _threat(opp.board[t], view.turn) >= 4.0:
-				return {"value": _threat(opp.board[t], view.turn), "params": {"spell": di,
+			if t >= 0 and _threat(opp.board[t], view.turn) >= 4.0 and plan.loss < _threat(opp.board[t], view.turn) * 0.6:
+				return {"value": _threat(opp.board[t], view.turn), "params": {"spell": di, "payment": plan.payment,
 					"spell_params": {"target": {"player": 1 - int(view.me), "slot": t}}}}
 		elif effect.type == "stun":
 			var t := _strongest_enemy(opp, view.turn, true)
-			if t >= 0 and _threat(opp.board[t], view.turn) >= 3.0:
-				return {"value": _threat(opp.board[t], view.turn), "params": {"spell": di,
+			if t >= 0 and _threat(opp.board[t], view.turn) >= 3.0 and plan.loss < _threat(opp.board[t], view.turn) * 0.6:
+				return {"value": _threat(opp.board[t], view.turn), "params": {"spell": di, "payment": plan.payment,
 					"spell_params": {"targets": [{"player": 1 - int(view.me), "slot": t}]}}}
 	return {}
 

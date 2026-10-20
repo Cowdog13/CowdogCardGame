@@ -758,13 +758,7 @@ func _begin_spell(i: int, id: String) -> void:
 		"exile_discard":
 			_ask_exile_cards(spell, view.you.discard, func(chosen: Array):
 				# The payment may not use the very cards that are being exiled.
-				var blocked: Array = []
-				for cid in chosen:
-					for di in range(view.you.discard.size() - 1, -1, -1):
-						if view.you.discard[di] == cid and not blocked.has(di):
-							blocked.append(di)
-							break
-				_cast(i, {"cards": chosen}, blocked))
+				_cast(i, {"cards": chosen}, _discard_indices_of(chosen)))
 		_:
 			_cast(i, {})
 
@@ -1011,12 +1005,17 @@ func _ask_cast_from_discard(slot: int, ai: int) -> void:
 			labels.append(CardDB.card_name(discard[di]))
 	if options.is_empty():
 		return _toast("There is no spell in your discard pile.")
-	var go := func(di: int, sp: Dictionary):
-		_submit({"type": "use_ability", "slot": slot, "ability": ai, "params": {"spell": di, "spell_params": sp}})
+	var go := func(di: int, sp: Dictionary, blocked: Array = []):
+		# The spell's own berry cost is paid as usual; it is exiled instead of discarded once it resolves.
+		_choose_payment(CardDB.card(discard[di]), func(payment: Array):
+			_submit({"type": "use_ability", "slot": slot, "ability": ai, "params": {"spell": di, "spell_params": sp, "payment": payment}}), blocked)
 	var on_spell := func(k: int):
 		var di: int = options[k]
 		var spell := CardDB.card(discard[di])
 		var effect: Dictionary = spell.effects[0]
+		if Rules.plan_payment(view.you, spell.cost).is_empty():
+			_toast("You can't pay for %s (%s)." % [spell.name, Rules.cost_text(spell.cost)])
+			return
 		match effect.type:
 			"destroy":
 				_begin_targeting("%s: choose a creature." % spell.name, _any_creature, 1, func(t): go.call(di, {"target": t[0]}))
@@ -1026,10 +1025,21 @@ func _ask_cast_from_discard(slot: int, ai: int) -> void:
 			"exile_discard":
 				var rest: Array = discard.duplicate()
 				rest.remove_at(di)  # the spell itself is being exiled
-				_ask_exile_cards(spell, rest, func(chosen: Array): go.call(di, {"cards": chosen}))
+				_ask_exile_cards(spell, rest, func(chosen: Array): go.call(di, {"cards": chosen}, _discard_indices_of(chosen, di)))
 			_:
 				go.call(di, {})
 	_pick_from_list("Exile which spell to play it?", labels, on_spell, ids)
+
+
+## Discard indices (newest copies first) holding the card ids in `chosen`, skipping index `skip`.
+func _discard_indices_of(chosen: Array, skip := -1) -> Array:
+	var found: Array = []
+	for cid in chosen:
+		for di in range(view.you.discard.size() - 1, -1, -1):
+			if di != skip and view.you.discard[di] == cid and not found.has(di):
+				found.append(di)
+				break
+	return found
 
 
 ## Trash: choose which cards of `pool` (card ids) to exile. Calls `on_ok` with the chosen card ids.
