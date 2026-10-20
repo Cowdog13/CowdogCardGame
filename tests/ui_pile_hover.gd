@@ -2,6 +2,9 @@ extends SceneTree
 ## Hovering a card in a discard/exile list shows it big next to the list. Needs a display:
 ##   xvfb-run godot --rendering-driver opengl3 -s tests/ui_pile_hover.gd -- [screenshot_dir]
 func _init() -> void:
+	var rows := GameScreen.new()._pile_rows(["fire_berry", "firespore", "fire_berry", "removal", "firespore", "fire_berry"])
+	assert(rows.size() == 6 and rows[1].count == 2 and rows[3].id == "removal" and rows[5].count == 3 and rows[5].index == 5)
+
 	var screen := GameScreen.new()
 	root.add_child(screen)
 	screen.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -15,14 +18,14 @@ func _init() -> void:
 	e.state_changed.emit()
 	await process_frame
 	var fails := 0
-	for case in [[0, "discard", "water_ruler"], [1, "exile", "super_berry"]]:
+	for case in [[0, "discard", "water_ruler", 1], [1, "exile", "super_berry", 5]]:
 		screen._view_pile(case[0], case[1])
 		await process_frame
 		await process_frame
 		var d: Window = screen.get_children().filter(func(c): return c is AcceptDialog)[0]
 		var list: ItemList = d.find_children("*", "ItemList", true, false)[0]
 		var holder: Control = d.find_children("Preview", "Control", true, false)[0]
-		var idx := 1  # newest first: ["disable", "water_ruler", "water_berry"] / ["removal", "super_berry", "fireking"]
+		var idx: int = case[3]  # rows: header, creature(s), header, spell(s), header, berry(ies)
 		var pos := list.get_global_rect().position + list.get_item_rect(idx).get_center()
 		var ev := InputEventMouseMotion.new()
 		ev.position = pos

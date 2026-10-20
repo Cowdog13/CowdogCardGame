@@ -532,16 +532,52 @@ func _popup(dialog: Window) -> void:
 	dialog.popup_centered()
 
 
+## Pile contents for the viewers: identical cards are grouped ("Firespore x3") and the groups are sorted
+## by type (creatures, spells, berries). Returns rows: {"header": text} or {"id", "count", "index"} where
+## `index` is the position in the pile of the newest copy.
+func _pile_rows(ids: Array) -> Array:
+	var groups := {}
+	for i in ids.size():
+		var g: Dictionary = groups.get(ids[i], {"id": ids[i], "count": 0, "index": i})
+		g.count += 1
+		g.index = i
+		groups[ids[i]] = g
+	var rows: Array = []
+	for kind in [["creature", "Creatures"], ["spell", "Spells"], ["berry", "Berries"]]:
+		var of_kind: Array = groups.values().filter(func(g): return CardDB.kind(g.id) == kind[0])
+		if of_kind.is_empty():
+			continue
+		of_kind.sort_custom(func(a, b):
+			var ta := int(CardDB.card(a.id).get("tier", 0))
+			var tb := int(CardDB.card(b.id).get("tier", 0))
+			return CardDB.card_name(a.id) < CardDB.card_name(b.id) if ta == tb else ta < tb)
+		var total := 0
+		for g in of_kind:
+			total += g.count
+		rows.append({"header": "%s (%d)" % [kind[1], total]})
+		rows.append_array(of_kind)
+	return rows
+
+
+## Fills `list` from _pile_rows(); headers can't be selected.
+func _fill_pile_list(list: ItemList, rows: Array) -> void:
+	for r in rows:
+		if r.has("header"):
+			var k := list.add_item("- %s -" % r.header, null, false)
+			list.set_item_custom_fg_color(k, Color(0.95, 0.82, 0.4))
+		else:
+			list.add_item("%s  x%d" % [CardDB.card_name(r.id), r.count])
+
+
 func _show_pile(title: String, ids: Array) -> void:
 	var d := AcceptDialog.new()
 	d.title = "%s (%d)" % [title, ids.size()]
 	d.min_size = Vector2(680, 640)
 	var list := ItemList.new()
 	list.custom_minimum_size = Vector2(320, 520)
-	var order: Array = range(ids.size() - 1, -1, -1)  # newest on top
-	for i in order:
-		list.add_item(CardDB.card_name(ids[i]))
-	d.add_child(_list_with_preview(list, func(k: int) -> String: return ids[order[k]]))
+	var rows := _pile_rows(ids)
+	_fill_pile_list(list, rows)
+	d.add_child(_list_with_preview(list, func(k: int) -> String: return rows[k].get("id", "")))
 	d.canceled.connect(d.queue_free)
 	d.confirmed.connect(d.queue_free)
 	_popup(d)
@@ -946,7 +982,10 @@ func _list_with_preview(list: ItemList, card_at: Callable) -> HBoxContainer:
 			c.queue_free()
 		if k < 0:
 			return
-		var card := CardView.new().setup(card_at.call(k), CardView.Mark.NONE, Vector2(270, 378))
+		var card_id: String = card_at.call(k)
+		if card_id == "":
+			return
+		var card := CardView.new().setup(card_id, CardView.Mark.NONE, Vector2(270, 378))
 		card.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		holder.add_child(card)
 	list.gui_input.connect(func(ev: InputEvent):
@@ -975,10 +1014,9 @@ func _view_pile(seat: int, kind: String) -> void:
 	var box := VBoxContainer.new()
 	var list := ItemList.new()
 	list.custom_minimum_size = Vector2(340, 520)
-	var order: Array = range(ids.size() - 1, -1, -1)  # newest on top
-	for i in order:
-		list.add_item(CardDB.card_name(ids[i]))
-	box.add_child(_list_with_preview(list, func(k: int) -> String: return ids[order[k]]))
+	var rows := _pile_rows(ids)
+	_fill_pile_list(list, rows)
+	box.add_child(_list_with_preview(list, func(k: int) -> String: return rows[k].get("id", "")))
 	var hint := Label.new()
 	hint.text = "Select a berry to play it from here (it enters exhausted and uses your berry for the turn)."
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -990,15 +1028,17 @@ func _view_pile(seat: int, kind: String) -> void:
 	var can_play: bool = _can_act() and not view.you.berry_attached and _pending.is_empty() \
 		and view.you.board.any(func(c): return c != null)
 	play.disabled = true
-	list.item_selected.connect(func(k): play.disabled = not (can_play and CardDB.is_berry(ids[order[k]])))
+	list.item_selected.connect(func(k): play.disabled = not (can_play and rows[k].has("id") and CardDB.is_berry(rows[k].id)))
 	list.item_activated.connect(func(k):
-		if can_play and CardDB.is_berry(ids[order[k]]):
+		if can_play and rows[k].has("id") and CardDB.is_berry(rows[k].id):
 			play.pressed.emit())
 	d.custom_action.connect(func(_a):
 		var sel := list.get_selected_items()
 		if sel.is_empty():
 			return
-		var di: int = order[sel[0]]
+		if not rows[sel[0]].has("id"):
+			return
+		var di: int = rows[sel[0]].index
 		d.queue_free()
 		_begin_targeting("Attach %s from your discard to which creature? (enters exhausted)" % CardDB.card_name(ids[di]),
 			func(p, s): return p == ME and view.you.board[s] != null, 1,
