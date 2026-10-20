@@ -120,18 +120,18 @@ Exiled cards never come back, but they are counted by Spore Spreader. An ability
 [b]Lighturn[/b] (Tier 2, on Lightling): 2 Light Berries, Draw 1; or 2 Light Berries, Plunder 3.
 [b]Lightium[/b] (Tier 3, on Lighturn): [i]Aegis[/i], 2 Super Berries, [i]Active:[/i] your creatures that have a Super Berry attached can't be targeted by your opponent; or [i]Flare[/i], 2 Light Berries: Plunder 3, then draw 1.
 [b]Lanturn[/b] (Tier 1): 2 Light Berries, put a card from your discard pile on top of your deck; or 1 Light Berry, Plunder 2.
-[b]Lighttable[/b] (Tier 2, on Lanturn): 2 Super Berries, search your deck for a card and put it on top; or 2 Light Berries, Plunder 3.
+[b]Lighttable[/b] (Tier 2, on Lanturn): 2 Super Berries, search your deck for a card, shuffle, and put the card on top; or 2 Light Berries, Plunder 3.
 [b]Lightning[/b] (Tier 1): [i]Overclock[/i], 1 Super Berry, [i]Active:[/i] each of your creatures can use two [b]different[/b] abilities per turn; 2 Light Berries, Plunder 3; 2 Light Berries, Draw 1.
 [b]Lightor[/b] (Tier 2, on Lightning): [i]Static[/i], 1 Super Berry, [i]Active:[/i] whenever you draw a card, Plunder 1; or [i]Overload[/i], 3 Super Berries: draw 4 cards, then Plunder 1 for each card in your hand.
 [b]Gather[/b] (spell, 2 of any berry): target player draws 2 cards. [b]Removal[/b]: see Spells.
 
-[b]Drawing[/b] adds cards to your hand (there is no hand limit). If a player has to draw and has no card left, they lose, so the game asks before you draw more cards than your deck holds. Lightor's Active triggers on every card [i]you[/i] draw, including your draw at the start of your turn and each card of a Draw 4, but not on cards your opponent draws.
+[b]Drawing[/b] adds cards to your hand (there is no hand limit). If a player has to draw and has no card left, they lose, even when it is your own ability or spell that made you draw, so don't draw more cards than your deck holds. Lightor's Active triggers on every card [i]you[/i] draw, including your draw at the start of your turn and each card of a Draw 4, but not on cards your opponent draws.
 
 [b]Two abilities on one creature.[/b] With Lightning's Active on, a creature may use two different abilities in a turn, but you still can't use more than 2 abilities in total per turn.
 
 [b]Protected creatures.[/b] While Lightium's Aegis is on, an opponent can't pick your creatures with a Super Berry attached as the target of Stun, Removal or Berry Trade. Plunder doesn't target creatures, and you can still target your own creatures.
 
-[b]Search.[/b] Lighttable shows your deck's contents (not their order) and puts the chosen card on top without shuffling.
+[b]Search.[/b] Lighttable shows the contents of your deck (not their order), grouped by type with creatures next to the rest of their evolution line. You pick the card you want, the rest of the deck is [b]shuffled[/b], and the card goes on top.
 
 [b]Strategy:[/b] draw cards, plunder with several small abilities a turn, and let Lightor's Static punish every draw."""],
 	["Using the screen", """[b]Playing cards.[/b] Click a card in your hand. A berry goes on a creature (if you have several, click which one); a creature is played or evolves; a spell asks for its target and payment. Hover a card to see it large in the right-hand panel.

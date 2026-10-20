@@ -78,7 +78,15 @@ func _init() -> void:
 	check(not _use(e, 1, 0, {"card": "lightling_not_here"}).ok, "Search needs a card that is in the deck")
 	var target: String = pl.deck.back()
 	var count_before: int = pl.deck.size()
+	var order_before: Array = pl.deck.duplicate()
 	check(_use(e, 1, 0, {"card": target}).ok and pl.deck[0] == target and pl.deck.size() == count_before, "Search puts a deck card on top")
+	var rest_before: Array = order_before.duplicate()
+	rest_before.remove_at(rest_before.rfind(target) if order_before.back() == target else rest_before.find(target))
+	var rest_after: Array = pl.deck.slice(1)
+	check(rest_after != rest_before, "and shuffles the rest of the deck")
+	rest_after.sort()
+	rest_before.sort()
+	check(rest_after == rest_before, "without losing any card")
 
 	# Lightning: two different abilities per creature, still at most 2 abilities in total.
 	e = _game()

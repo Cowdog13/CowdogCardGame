@@ -590,6 +590,11 @@ func _pile_rows(ids: Array) -> Array:
 		if of_kind.is_empty():
 			continue
 		of_kind.sort_custom(func(a, b):
+			# Creatures sit with their evolution line: Lightling, Lighturn, Lightium, then the next line.
+			var ra := _line_name(a.id)
+			var rb := _line_name(b.id)
+			if ra != rb:
+				return ra < rb
 			var ta := int(CardDB.card(a.id).get("tier", 0))
 			var tb := int(CardDB.card(b.id).get("tier", 0))
 			return CardDB.card_name(a.id) < CardDB.card_name(b.id) if ta == tb else ta < tb)
@@ -599,6 +604,14 @@ func _pile_rows(ids: Array) -> Array:
 		rows.append({"header": "%s (%d)" % [kind[1], total]})
 		rows.append_array(of_kind)
 	return rows
+
+
+## Name of the Tier 1 card an evolution line starts with (spells and berries are their own line).
+func _line_name(id: String) -> String:
+	var c := CardDB.card(id)
+	while String(c.get("evolves_from", "")) != "":
+		c = CardDB.card(c.evolves_from)
+	return c.name
 
 
 ## Fills `list` from _pile_rows(); headers can't be selected.
@@ -994,15 +1007,7 @@ func _on_ability_pressed(slot: int, ai: int) -> void:
 	var creature: Dictionary = view.you.board[slot]
 	var ab: Dictionary = Rules.top_card(creature).abilities[ai]
 	_pending = {}
-	var draws := 0
-	for e in ab.effects:
-		if e.type == "draw":
-			draws += int(e.amount)
-	if draws > int(view.you.deck_count):
-		_confirm("Not enough cards", "Your deck has only %d card(s) but this draws %d. You lose when you can't draw. Do it anyway?" % [view.you.deck_count, draws],
-			func(): _start_ability(slot, ai))
-	else:
-		_start_ability(slot, ai)
+	_start_ability(slot, ai)
 
 
 func _start_ability(slot: int, ai: int) -> void:
@@ -1095,19 +1100,13 @@ func _ask_cast_from_discard(slot: int, ai: int) -> void:
 	_pick_from_list("Exile which spell to play it?", labels, on_spell, ids)
 
 
-## Gather: which player draws. Warns when that player's deck is too small (they would lose).
+## Gather: which player draws. (Drawing from an empty deck loses the game, as the rules say.)
 func _ask_draw_target(i: int, spell: Dictionary, effect: Dictionary) -> void:
 	if effect.get("target", "") != "player":
 		return _cast(i, {})
-	var n := int(effect.amount)
-	_pick_from_list("%s: which player draws %d cards?" % [spell.name, n], ["You (%d cards in your deck)" % view.you.deck_count, "Opponent (%d cards in their deck)" % view.opponent.deck_count],
-		func(k: int):
-			var deck_size: int = view.you.deck_count if k == 0 else view.opponent.deck_count
-			var go := func(): _cast(i, {"player": ME if k == 0 else OPP})
-			if deck_size < n:
-				_confirm("Not enough cards", "That deck has fewer than %d cards, so that player loses the game when they can't draw. Do it anyway?" % n, go)
-			else:
-				go.call())
+	_pick_from_list("%s: which player draws %d cards?" % [spell.name, int(effect.amount)],
+		["You (%d cards in your deck)" % view.you.deck_count, "Opponent (%d cards in their deck)" % view.opponent.deck_count],
+		func(k: int): _cast(i, {"player": ME if k == 0 else OPP}))
 
 
 ## A single-choice list of distinct cards (grouped by type, with counts) with a big preview. `on_pick` gets the card id.

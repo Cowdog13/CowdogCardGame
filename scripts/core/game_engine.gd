@@ -574,8 +574,13 @@ func _apply_effect(e: Dictionary, player: int, slot: int, params: Dictionary) ->
 		"search_to_top":
 			var pl := _P(player)
 			pl.deck.remove_at(pl.deck.find(params.card))
+			for i in range(pl.deck.size() - 1, 0, -1):  # shuffle the rest, as at a table, then the card goes on top
+				var j := rng.randi_range(0, i)
+				var tmp = pl.deck[i]
+				pl.deck[i] = pl.deck[j]
+				pl.deck[j] = tmp
 			pl.deck.push_front(params.card)
-			_say("%s searches their deck and puts a card on top of it." % _pname(player), player)
+			_say("%s searches their deck, shuffles it and puts a card on top." % _pname(player), player)
 		"recycle":
 			var pl := _P(player)
 			var n := mini(int(e.amount), pl.discard.size())

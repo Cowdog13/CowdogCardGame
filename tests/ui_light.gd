@@ -71,17 +71,14 @@ func _init() -> void:
 	await process_frame
 	check(pl.hand.size() == 2 and pl.deck.size() == 3, "Gather drew 2: hand %d deck %d" % [pl.hand.size(), pl.deck.size()])
 
-	# The warning when a draw would empty the deck.
+	# No warning: drawing from an empty deck simply loses.
 	pl.deck = []
 	pl.board[1] = _creature("lighturn", ["light_berry", "light_berry"])
 	e.state_changed.emit()
 	await process_frame
 	screen._ability_lock_until = 0
 	screen._on_ability_pressed(1, 0)
-	d = await _dialog()
-	check(d.title == "Not enough cards" and not e.is_over(), "warns before drawing from an empty deck")
-	d.get_ok_button().pressed.emit()
 	await process_frame
-	check(e.is_over(), "and loses when confirmed")
+	check(e.is_over() and e.state.winner == 1, "using a draw ability with an empty deck loses at once")
 	print("ui_light failures=%d" % fails)
 	quit(fails)
