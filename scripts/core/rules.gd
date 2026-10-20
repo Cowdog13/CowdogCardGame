@@ -126,6 +126,71 @@ static func place_error(board: Array, card_id: String, slot: int) -> String:
 	return ""
 
 
+# --- Is there anything left to do? -------------------------------------------
+## True when the player whose `view` this is has at least one legal action left this turn besides ending it
+## (used to flash the End Turn button). Judged from the view only, and a little generous: a spell counts if it
+## can be paid for, an ability if its berries and what it needs (cards to recycle, ...) are there.
+static func has_move(view: Dictionary) -> bool:
+	var me: Dictionary = view.you
+	var opp: Dictionary = view.opponent
+	var has_creature: bool = me.board.any(func(c): return c != null)
+	if not me.berry_attached and has_creature:
+		if me.hand.any(func(id): return CardDB.is_berry(id)) or me.discard.any(func(id): return CardDB.is_berry(id)):
+			return true
+	if not me.creature_played:
+		for id in me.hand:
+			if CardDB.is_creature(id):
+				for slot in me.board.size():
+					if place_error(me.board, id, slot) == "":
+						return true
+	for id in me.hand:
+		if CardDB.is_spell(id):
+			var spell := CardDB.card(id)
+			if not plan_payment(me, spell.cost).is_empty() and _spell_has_target(spell, me, opp):
+				return true
+	if not me.swap_used and me.hand.any(func(id): return CardDB.is_creature(id)) and me.discard.any(func(id): return CardDB.is_creature(id)):
+		return true
+	if me.abilities_used < ABILITIES_PER_TURN and not abilities_locked(int(view.turn)):
+		for c in me.board:
+			if c == null or is_stunned(c, int(view.turn)) or used_ability_this_turn(c, int(view.turn)):
+				continue
+			for ab in top_card(c).abilities:
+				if not ab.get("active", false) and meets_cost(c.berries, ab.cost) and _ability_can_resolve(ab, c, me, opp):
+					return true
+	return false
+
+
+static func _spell_has_target(spell: Dictionary, me: Dictionary, opp: Dictionary) -> bool:
+	match spell.effects[0].type:
+		"destroy", "stun":
+			return me.board.any(func(c): return c != null) or opp.board.any(func(c): return c != null)
+	return true
+
+
+static func _ability_can_resolve(ab: Dictionary, creature: Dictionary, me: Dictionary, opp: Dictionary) -> bool:
+	for e in ab.effects:
+		match e.type:
+			"recycle":
+				if me.discard.is_empty():
+					return false
+			"plunder":
+				if e.has("per_exile") and int(me.exile_count) == 0:
+					return false
+			"exile_attached":
+				if not creature.berries.any(func(b): return berry_matches(b, e.element)):
+					return false
+			"cast_from_discard":
+				if not me.discard.any(func(id): return CardDB.is_spell(id) and not plan_payment(me, CardDB.card(id).cost).is_empty()):
+					return false
+			"berry_trade":
+				if creature.berries.is_empty() or not opp.board.any(func(c): return c != null and not c.berries.is_empty()):
+					return false
+			"stun":
+				if not (me.board.any(func(c): return c != null) or opp.board.any(func(c): return c != null)):
+					return false
+	return true
+
+
 # --- Heuristic valuation (used for AI decisions and automatic choices) -------
 static func effect_value(effect: Dictionary, creature: Dictionary) -> float:
 	match effect.type:

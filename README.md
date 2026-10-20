@@ -89,6 +89,8 @@ godot --headless -s tests/net_ui_test.gd     # both screens over the network
 godot --headless -s tests/net_surrender_test.gd   # Menu -> confirm surrenders in multiplayer
 godot --headless -s tests/tutorial_test.gd        # plays the whole tutorial through the controller
 godot --headless -s tests/rulebook_test.gd
+godot --headless -s tests/ui_end_flash.gd      # End Turn flashes only when no move is left
+godot --headless -s tests/has_move_test.gd
 godot --headless -s tests/nature_test.gd       # the Nature Exile deck's effects on the engine
 godot --headless -s tests/ui_nature.gd         # its pickers (Trash, Decompose, Rot)
 godot --headless -s tests/ui_double_click.gd      # no accidental ability use after a click

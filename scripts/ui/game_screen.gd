@@ -51,6 +51,7 @@ var _fx_queue: Array = []
 var _fx_running := false
 var _recycle_open := false
 var _ability_lock_until := 0  # ms; ignores ability clicks right after another click (double-click protection)
+var _end_flash: Tween  # pulses the End Turn button when there is nothing left to do
 var _ghosts := {}  # destroyed creatures kept on screen until the spell that destroys them has landed
 
 
@@ -234,6 +235,11 @@ func _build_ui() -> void:
 	_end_btn.custom_minimum_size = Vector2(0, 44)
 	_end_btn.pressed.connect(func(): _submit({"type": "end_turn"}))
 	right.add_child(_end_btn)
+	var flash_timer := Timer.new()
+	flash_timer.wait_time = 0.4
+	flash_timer.autostart = true
+	flash_timer.timeout.connect(_update_end_flash)
+	add_child(flash_timer)
 	var small := HBoxContainer.new()
 	small.add_theme_constant_override("separation", 6)
 	right.add_child(small)
@@ -273,6 +279,21 @@ func _board_row(parent: Control) -> HBoxContainer:
 
 
 # --- Refresh -----------------------------------------------------------------------------
+## Flashes End Turn while it is the player's turn and no other move is possible. Checked on a short timer so it
+## also notices when the effects of the last move have finished playing.
+func _update_end_flash() -> void:
+	var flash := not tutorial_mode and not view.is_empty() and _can_act() and _pending.is_empty() and not _fx_busy() \
+		and not Rules.has_move(view)
+	if flash and _end_flash == null:
+		_end_flash = create_tween().set_loops()
+		_end_flash.tween_property(_end_btn, "modulate", Color(1.7, 1.45, 0.45), 0.35).set_trans(Tween.TRANS_SINE)
+		_end_flash.tween_property(_end_btn, "modulate", Color(1, 1, 1), 0.35).set_trans(Tween.TRANS_SINE)
+	elif not flash and _end_flash != null:
+		_end_flash.kill()
+		_end_flash = null
+		_end_btn.modulate = Color(1, 1, 1)
+
+
 func _refresh() -> void:
 	view = controller.get_view(ME)
 	if view.is_empty():
