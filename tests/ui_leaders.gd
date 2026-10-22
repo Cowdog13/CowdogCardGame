@@ -38,22 +38,25 @@ func _init() -> void:
 	e.state.turn = 6
 	e.state.active = 0
 	var pl: Dictionary = e.state.players[0]
+	var enemy: Dictionary = e.state.players[1]
 	pl.board = [_creature("water_essence", ["super_berry", "super_berry"]), _creature("water_spirit", []), null, null, null]
-	pl.board[1].stun_until = 6
-	e.state.players[1].deck = []
+	enemy.board = [_creature("lightling", []), _creature("lightling", []), null, null, null]
+	enemy.board[1].stun_until = 6
+	enemy.deck = []
 	for i in 20:
-		e.state.players[1].deck.append("lightling")  # no Super Berry to steal, which would ask where to put it
-	var deck_before: int = e.state.players[1].deck.size()
+		enemy.deck.append("lightling")  # no Super Berry to steal, which would ask where to put it
+	var deck_before: int = enemy.deck.size()
 	e.state_changed.emit()
 	await process_frame
 	screen._ability_lock_until = 0
 	screen._on_ability_pressed(0, 0)
-	check(not screen._pending.is_empty(), "asks which stunned creature to free")
-	screen._on_slot_clicked(0, 0)  # the leader itself isn't stunned: not a valid target
-	check(pl.board[1].stun_until == 6, "an unstunned creature can't be picked")
-	screen._on_slot_clicked(0, 1)
+	check(not screen._pending.is_empty(), "asks which stunned enemy creature to free")
+	screen._on_slot_clicked(1, 0)  # not stunned: not a valid target
+	screen._on_slot_clicked(0, 1)  # your own creature: not valid either
+	check(enemy.board[1].stun_until == 6, "only a stunned enemy creature can be picked")
+	screen._on_slot_clicked(1, 1)
 	await process_frame
-	check(pl.board[1].stun_until == -1 and e.state.players[1].deck.size() == deck_before - 4, "stun removed, Plunder 2 berries x 2 creatures")
+	check(enemy.board[1].stun_until == -1 and enemy.deck.size() == deck_before - 4, "stun removed, Plunder 2 berries x 2 creatures")
 
 	# Sun God: draw 2, then choose 2 cards of the hand to put on the bottom.
 	pl.board[2] = _creature("sun_god", ["super_berry", "super_berry"])

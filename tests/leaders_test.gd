@@ -52,17 +52,19 @@ func _init() -> void:
 	e.state.players[0].board[0] = _creature("fire_lord", ["super_berry", "fire_berry", "fire_berry"])
 	check(not _use(e).ok, "Fire Lord needs 2 Super Berries")
 
-	# Water Essence: remove a stun, then Plunder (berries x creatures).
+	# Water Essence: remove the stun from an ENEMY creature, then Plunder (berries x creatures).
 	e = _game("crashing_wave")
 	pl = e.state.players[0]
 	opp = e.state.players[1]
 	pl.board[0] = _creature("water_essence", ["super_berry", "super_berry", "water_berry"])
 	pl.board[1] = _creature("water_spirit", [])
 	pl.board[2] = _creature("water_spirit", [])
-	check(not _use(e, {"target": {"player": 0, "slot": 1}}).ok, "needs a stunned creature")
-	pl.board[1].stun_until = 5
+	opp.board[0] = _creature("lightling", [])
+	check(not _use(e, {"target": {"player": 1, "slot": 0}}).ok, "needs a stunned creature")
+	opp.board[0].stun_until = 6
+	check(not _use(e, {"target": {"player": 0, "slot": 0}}).ok, "it can't be one of your own creatures")
 	before = opp.deck.size()
-	check(_use(e, {"target": {"player": 0, "slot": 1}}).ok and pl.board[1].stun_until == -1, "the stun is removed")
+	check(_use(e, {"target": {"player": 1, "slot": 0}}).ok and opp.board[0].stun_until == -1, "the enemy's stun is removed")
 	check(opp.deck.size() == before - 9, "and it plunders 3 berries x 3 creatures: %d" % (before - opp.deck.size()))
 
 	# Mother Nature: recycle X cards from exile (X = attached berries) to the bottom of the deck.

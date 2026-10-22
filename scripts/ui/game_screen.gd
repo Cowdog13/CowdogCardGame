@@ -1025,8 +1025,8 @@ func _start_ability(slot: int, ai: int) -> void:
 	var effect: Dictionary = ab.effects[0]
 	match effect.type:
 		"remove_stun":
-			_begin_targeting("Remove the stun from which creature?",
-				func(p, s): return _any_creature(p, s) and Rules.is_stunned((view.you if p == ME else view.opponent).board[s], view.turn), 1,
+			_begin_targeting("Remove the stun from which of your opponent's creatures?",
+				func(p, s): return p != ME and _any_creature(p, s) and Rules.is_stunned(view.opponent.board[s], view.turn), 1,
 				func(t): _submit({"type": "use_ability", "slot": slot, "ability": ai, "params": {"target": t[0]}}))
 		"discard_to_top":
 			_pick_grouped("Put which card from your discard pile on top of your deck?", view.you.discard, "Put on top",

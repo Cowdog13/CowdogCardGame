@@ -984,7 +984,7 @@
       "per_berry_per_creature": 1
      }
     ],
-    "text": "Remove a stun from a creature: Plunder X, X = berries on this creature x your creatures"
+    "text": "Remove a stun from an enemy creature: Plunder X, X = berries on this creature x your creatures"
    }
   ]
  },

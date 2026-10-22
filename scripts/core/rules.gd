@@ -260,7 +260,11 @@ static func _ability_can_resolve(ab: Dictionary, creature: Dictionary, me: Dicti
 				if int(me.exile_count) == 0:
 					return false
 			"remove_stun":
-				if not (me.board + opp.board).any(func(c): return c != null and is_stunned(c, turn)):
+				var stunned_enemy := false
+				for slot in opp.board.size():
+					var c = opp.board[slot]
+					stunned_enemy = stunned_enemy or (c != null and is_stunned(c, turn) and not is_untargetable(opp.board, slot, true))
+				if not stunned_enemy:
 					return false
 			"plunder":
 				if e.has("per_exile") and int(me.exile_count) == 0:

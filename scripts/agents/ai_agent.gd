@@ -278,10 +278,11 @@ func _evaluate_ability(view: Dictionary, slot: int, c: Dictionary, ab: Dictionar
 			var alt := _best_other_plunder(view, slot, me)
 			return {} if alt <= 0.0 else {"value": alt + 0.5, "params": {}}
 		"remove_stun":
-			# Water Essence: free one of our own stunned creatures, then plunder berries x creatures.
+			# Water Essence: remove the stun from one of the opponent's stunned creatures (usually one we just
+			# stunned ourselves), then plunder berries x creatures.
 			var freed := -1
-			for s in me.board.size():
-				if me.board[s] != null and Rules.is_stunned(me.board[s], view.turn):
+			for s in opp.board.size():
+				if opp.board[s] != null and Rules.is_stunned(opp.board[s], view.turn) and not Rules.is_untargetable(opp.board, s, true):
 					freed = s
 			var cards_n: int = me.board.count(null)
 			var amount: int = c.berries.size() * (Rules.BOARD_SLOTS - cards_n)
@@ -289,7 +290,7 @@ func _evaluate_ability(view: Dictionary, slot: int, c: Dictionary, ab: Dictionar
 				return {}
 			if amount > opp.deck_count:
 				amount += 1000
-			return {"value": float(amount), "params": {"target": {"player": view.me, "slot": freed}}}
+			return {"value": float(amount), "params": {"target": {"player": enemy, "slot": freed}}}
 		"recycle_exile":
 			return {} if me.exile_count == 0 else {"value": 0.3, "params": {}}
 		"draw":
@@ -345,6 +346,19 @@ func _evaluate_ability(view: Dictionary, slot: int, c: Dictionary, ab: Dictionar
 				return {}
 			return {"value": 0.8, "params": {}}
 		"stun":
+			# Combo with a leader like Water Essence: stun a creature just to remove the stun and plunder a lot.
+			var surge := _surge(view, me)
+			if not surge.is_empty() and me.abilities_used == 0 and surge.x >= 4 and not _has_stunned_enemy(opp, view.turn):
+				var victim := -1
+				var weakest := INF
+				for s in opp.board.size():
+					if opp.board[s] != null and not Rules.is_untargetable(opp.board, s, true) and not Rules.is_stunned(opp.board[s], view.turn):
+						var t := _threat(opp.board[s], view.turn)
+						if t < weakest:
+							weakest = t
+							victim = s
+				if victim >= 0:
+					return {"value": float(surge.x) + 0.4, "params": {"targets": [{"player": enemy, "slot": victim}]}}
 			var targets: Array = []
 			var order: Array = range(opp.board.size())
 			order.sort_custom(func(a, b): return _slot_threat(opp, a, view.turn) > _slot_threat(opp, b, view.turn))
@@ -361,6 +375,28 @@ func _evaluate_ability(view: Dictionary, slot: int, c: Dictionary, ab: Dictionar
 		"berry_trade":
 			return _evaluate_trade(c, slot, opp, enemy)
 	return {}
+
+
+## A ready "remove a stun, then plunder" ability on our board: {"slot", "x"} (x = the plunder it would do), or {}.
+func _surge(view: Dictionary, me: Dictionary) -> Dictionary:
+	for s in me.board.size():
+		var c = me.board[s]
+		if c == null or Rules.is_stunned(c, view.turn) or Rules.is_dormant(c, view.turn):
+			continue
+		var abilities: Array = Rules.top_card(c).abilities
+		for ai in abilities.size():
+			var ab: Dictionary = abilities[ai]
+			if ab.effects[0].type == "remove_stun" and Rules.meets_cost(c.berries, ab.cost) \
+					and Rules.ability_blocked(c, ai, view.turn, false) == "":
+				return {"slot": s, "x": c.berries.size() * (Rules.BOARD_SLOTS - me.board.count(null))}
+	return {}
+
+
+func _has_stunned_enemy(opp: Dictionary, turn: int) -> bool:
+	for s in opp.board.size():
+		if opp.board[s] != null and Rules.is_stunned(opp.board[s], turn) and not Rules.is_untargetable(opp.board, s, true):
+			return true
+	return false
 
 
 ## The best Plunder another creature (not at `slot`) could do right now.

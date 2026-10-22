@@ -456,9 +456,11 @@ func _check_effect(e: Dictionary, player: int, params: Dictionary, reserved: Arr
 				return "Choose which player draws"
 		"remove_stun":
 			var ref: Dictionary = params.get("target", {})
-			var why := _creature_ref_error(ref)
+			var why := _target_error(player, ref)
 			if why != "":
 				return why
+			if int(ref.player) == player:
+				return "Choose a stunned creature of your opponent"
 			if not Rules.is_stunned(_P(int(ref.player)).board[int(ref.slot)], state.turn):
 				return "Choose a creature that is stunned"
 		"recycle_exile":
