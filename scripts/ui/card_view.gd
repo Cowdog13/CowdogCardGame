@@ -124,7 +124,7 @@ func _build() -> void:
 
 	var tier_text := "Spell"
 	if kind == "creature":
-		tier_text = "Basic" if int(card.tier) <= 1 else "Evolves from %s" % CardDB.card_name(card.evolves_from)
+		tier_text = ("Leader" if card.get("leader", false) else "Basic") if int(card.tier) <= 1 else "Evolves from %s" % CardDB.card_name(card.evolves_from)
 	elif kind == "berry":
 		tier_text = "Berry"
 	_label(tier_text, Rect2(22, 54, 256, 22), 17, 12, UiStyle.INK_SOFT, HORIZONTAL_ALIGNMENT_LEFT)

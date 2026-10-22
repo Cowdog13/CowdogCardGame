@@ -13,7 +13,7 @@ func decide(view: Dictionary) -> Dictionary:
 		if view.pending.berries.is_empty():
 			if not view.pending.ordering.is_empty():
 				return {"type": "order_recycle", "order": range(view.pending.ordering.size())}
-			return {"type": "recycle", "cards": Rules.recycle_pick(view.you.discard, view.pending.recycle)}
+			return {"type": "recycle", "cards": Rules.bottom_pick(view, int(view.pending.recycle))}
 		return {"type": "place_berry", "slot": Rules.best_attach_slot(view.you.board, view.pending.berries.back())}
 	if view.phase == "mulligan":
 		return _mulligan(view)
@@ -267,10 +267,25 @@ func _evaluate_ability(view: Dictionary, slot: int, c: Dictionary, ab: Dictionar
 	var draws := 0
 	for e in ab.effects:
 		if e.type == "draw":
-			draws += int(e.amount)
+			draws += int(e.get("amount", c.berries.size()))
 	if draws > 0 and me.deck_count <= draws + 4:
 		return {}  # drawing from an empty deck loses the game
 	match effect.type:
+		"remove_stun":
+			# Water Essenes: free one of our own stunned creatures, then plunder berries x creatures.
+			var freed := -1
+			for s in me.board.size():
+				if me.board[s] != null and Rules.is_stunned(me.board[s], view.turn):
+					freed = s
+			var cards_n: int = me.board.count(null)
+			var amount: int = c.berries.size() * (Rules.BOARD_SLOTS - cards_n)
+			if freed < 0:
+				return {}
+			if amount > opp.deck_count:
+				amount += 1000
+			return {"value": float(amount), "params": {"target": {"player": view.me, "slot": freed}}}
+		"recycle_exile":
+			return {} if me.exile_count == 0 else {"value": 0.3, "params": {}}
 		"draw":
 			var value := 0.9 * draws
 			if ab.effects.size() > 1 and ab.effects[1].has("per_hand"):

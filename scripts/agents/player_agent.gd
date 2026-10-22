@@ -20,7 +20,7 @@ static func fallback_action(view: Dictionary) -> Dictionary:
 		if view.pending.berries.is_empty():
 			if not view.pending.ordering.is_empty():
 				return {"type": "order_recycle", "order": range(view.pending.ordering.size())}
-			return {"type": "recycle", "cards": Rules.recycle_pick(view.you.discard, view.pending.recycle)}
+			return {"type": "recycle", "cards": Rules.bottom_pick(view, int(view.pending.recycle))}
 		for s in view.you.board.size():
 			if view.you.board[s] != null:
 				return {"type": "place_berry", "slot": s}

@@ -937,5 +937,108 @@
     "target": "player"
    }
   ]
+ },
+ "fire_lord": {
+  "name": "Fire Lord",
+  "kind": "creature",
+  "tier": 1,
+  "evolves_from": "",
+  "element": "fire",
+  "leader": true,
+  "abilities": [
+   {
+    "name": "Blaze",
+    "cost": {
+     "element": "super",
+     "amount": 2
+    },
+    "effects": [
+     {
+      "type": "plunder",
+      "per_attached_berry": 1
+     }
+    ],
+    "text": "Plunder 1 for each berry attached to this creature"
+   }
+  ]
+ },
+ "water_essenes": {
+  "name": "Water Essenes",
+  "kind": "creature",
+  "tier": 1,
+  "evolves_from": "",
+  "element": "water",
+  "leader": true,
+  "abilities": [
+   {
+    "name": "Tidal Surge",
+    "cost": {
+     "element": "super",
+     "amount": 2
+    },
+    "effects": [
+     {
+      "type": "remove_stun"
+     },
+     {
+      "type": "plunder",
+      "per_berry_per_creature": 1
+     }
+    ],
+    "text": "Remove a stun from a creature: Plunder X, X = berries on this creature x your creatures"
+   }
+  ]
+ },
+ "mother_nature": {
+  "name": "Mother Nature",
+  "kind": "creature",
+  "tier": 1,
+  "evolves_from": "",
+  "element": "nature",
+  "leader": true,
+  "abilities": [
+   {
+    "name": "Rebirth",
+    "cost": {
+     "element": "super",
+     "amount": 2
+    },
+    "effects": [
+     {
+      "type": "recycle_exile",
+      "per_attached_berry": 1
+     }
+    ],
+    "text": "Recycle X cards from your exile, X = berries attached to this creature"
+   }
+  ]
+ },
+ "sun_god": {
+  "name": "Sun God",
+  "kind": "creature",
+  "tier": 1,
+  "evolves_from": "",
+  "element": "light",
+  "leader": true,
+  "abilities": [
+   {
+    "name": "Dawn",
+    "cost": {
+     "element": "super",
+     "amount": 2
+    },
+    "effects": [
+     {
+      "type": "draw",
+      "per_attached_berry": 1
+     },
+     {
+      "type": "bottom_from_hand",
+      "per_attached_berry": 1
+     }
+    ],
+    "text": "Draw X, then put X cards from your hand on the bottom of your deck (X = berries attached)"
+   }
+  ]
  }
 }

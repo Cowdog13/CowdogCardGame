@@ -209,7 +209,7 @@ static func has_move(view: Dictionary, count_swap := true) -> bool:
 			for ai in abilities.size():
 				var ab: Dictionary = abilities[ai]
 				if not ab.get("active", false) and ability_blocked(c, ai, int(view.turn), double) == "" \
-						and meets_cost(c.berries, ab.cost) and _ability_can_resolve(ab, c, me, opp):
+						and meets_cost(c.berries, ab.cost) and _ability_can_resolve(ab, c, me, opp, int(view.turn)):
 					return true
 	return false
 
@@ -232,7 +232,7 @@ static func _spell_has_target(spell: Dictionary, me: Dictionary, opp: Dictionary
 	return true
 
 
-static func _ability_can_resolve(ab: Dictionary, creature: Dictionary, me: Dictionary, opp: Dictionary) -> bool:
+static func _ability_can_resolve(ab: Dictionary, creature: Dictionary, me: Dictionary, opp: Dictionary, turn: int) -> bool:
 	for e in ab.effects:
 		match e.type:
 			"recycle", "discard_to_top":
@@ -240,6 +240,12 @@ static func _ability_can_resolve(ab: Dictionary, creature: Dictionary, me: Dicti
 					return false
 			"search_to_top":
 				if int(me.deck_count) == 0:
+					return false
+			"recycle_exile":
+				if int(me.exile_count) == 0:
+					return false
+			"remove_stun":
+				if not (me.board + opp.board).any(func(c): return c != null and is_stunned(c, turn)):
 					return false
 			"plunder":
 				if e.has("per_exile") and int(me.exile_count) == 0:
@@ -265,13 +271,15 @@ static func effect_value(effect: Dictionary, creature: Dictionary) -> float:
 		"plunder":
 			if effect.has("per_attached_berry"):
 				return float(int(effect.per_attached_berry) * creature.berries.size())
+			if effect.has("per_berry_per_creature"):
+				return float(creature.berries.size() * 2)
 			if effect.has("per_exile") or effect.has("per_hand"):
 				return 2.0  # grows with the exile pile / the hand
 			return float(int(effect.amount))
-		"recycle":
+		"recycle", "recycle_exile":
 			return 0.3
 		"draw":
-			return 0.9 * float(int(effect.amount))
+			return 0.9 * float(int(effect.get("amount", creature.berries.size())))
 		"discard_to_top":
 			return 0.4
 		"search_to_top":
@@ -390,6 +398,23 @@ static func plan_payment(me: Dictionary, cost: Dictionary, blocked: Array = []) 
 		index_map[best_s].remove_at(best_i)
 		board[best_s].berries.remove_at(best_i)
 	return {"payment": payment, "loss": before - board_potential(board)}
+
+
+## The cards a player picks for a pending "put on the bottom of the deck" choice (see pending.source):
+## from the discard pile or exile berries first; from the hand, the cards that help least.
+static func bottom_pick(view: Dictionary, n: int) -> Array:
+	var source: String = view.pending.get("source", "discard")
+	var cards: Array = view.you[source]
+	if source != "hand":
+		return recycle_pick(cards, n)
+	var order: Array = range(cards.size())
+	var rank := func(i: int) -> int:
+		var id: String = cards[i]
+		if CardDB.is_creature(id):
+			return 0 if int(CardDB.card(id).tier) > 1 else 3
+		return 2 if CardDB.is_berry(id) else 1
+	order.sort_custom(func(a, b): return rank.call(a) < rank.call(b) if rank.call(a) != rank.call(b) else a > b)
+	return order.slice(0, mini(n, order.size()))
 
 
 ## Indices of the `n` discard cards least worth keeping there, best first: berries, then

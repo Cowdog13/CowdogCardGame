@@ -44,7 +44,7 @@
     2
    ]
   ],
-  "starter": "firespore"
+  "starter": "fire_lord"
  },
  "crashing_wave": {
   "name": "Crashing Wave",
@@ -91,7 +91,7 @@
     2
    ]
   ],
-  "starter": "water_spirit"
+  "starter": "water_essenes"
  },
  "nature_exile": {
   "name": "Nature Exile",
@@ -138,7 +138,7 @@
     2
    ]
   ],
-  "starter": "leafer"
+  "starter": "mother_nature"
  },
  "light": {
   "name": "Light",
@@ -189,6 +189,6 @@
     2
    ]
   ],
-  "starter": "lightling"
+  "starter": "sun_god"
  }
 }

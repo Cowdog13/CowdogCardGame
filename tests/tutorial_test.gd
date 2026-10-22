@@ -57,7 +57,7 @@ func _init() -> void:
 	check(e.state.players[1].board.count(null) >= 4, "Removal took out a creature of the opponent")
 	check(e.state.players[0].exile.size() >= 1, "an exhausted berry was exiled")
 	check(e.state.players[0].swaps_made == 1, "the swap was used")
-	check(Rules.top_card(e.state.players[0].board[0]).id == "firespitter", "slot 0 is Firespitter")
+	check(Rules.top_card(e.state.players[0].board[2]).id == "firespitter", "slot 2 is Firespitter")
 	check(e.state.turn == 7 and e.state.active == 0, "still turn 7")
 	director._on_finish()
 	check(ctrl.agents[1] is AIAgent, "opponent is the AI after finishing")

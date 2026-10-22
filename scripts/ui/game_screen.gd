@@ -891,11 +891,18 @@ func _multi_pick(title: String, labels: Array, need: int, preselect: Array, verb
 	update.call()
 
 
-## Firewolf: choose which cards from the discard go to the bottom of the deck, and in what order.
+## Choose which cards go to the bottom of the deck, and in what order: Recycle (from the discard pile), Mother Nature
+## (from the exile pile) or the Sun God (from the hand).
 func _ask_recycle(n: int) -> void:
-	var discard: Array = view.you.discard
+	var source: String = view.pending.get("source", "discard")
+	var cards: Array = view.you[source]
+	var title := "Recycle: choose %d card(s) and the order they go on the bottom of your deck" % n
+	if source == "exile":
+		title = "Recycle from exile: choose %d card(s) and the order they go on the bottom of your deck" % n
+	elif source == "hand":
+		title = "Choose %d card(s) from your hand and the order they go on the bottom of your deck" % n
 	_recycle_open = true
-	_ordered_pick("Recycle: choose %d card(s) and the order they go on the bottom of your deck" % n, discard, n, Rules.recycle_pick(discard, n), "Recycle",
+	_ordered_pick(title, cards, n, Rules.bottom_pick(view, n), "Recycle" if source != "hand" else "Put on the bottom",
 		func(picked: Array):
 			_recycle_open = false
 			_submit({"type": "recycle", "cards": picked}),
@@ -1017,6 +1024,10 @@ func _start_ability(slot: int, ai: int) -> void:
 	var ab: Dictionary = Rules.top_card(creature).abilities[ai]
 	var effect: Dictionary = ab.effects[0]
 	match effect.type:
+		"remove_stun":
+			_begin_targeting("Remove the stun from which creature?",
+				func(p, s): return _any_creature(p, s) and Rules.is_stunned((view.you if p == ME else view.opponent).board[s], view.turn), 1,
+				func(t): _submit({"type": "use_ability", "slot": slot, "ability": ai, "params": {"target": t[0]}}))
 		"discard_to_top":
 			_pick_grouped("Put which card from your discard pile on top of your deck?", view.you.discard, "Put on top",
 				func(id): _submit({"type": "use_ability", "slot": slot, "ability": ai, "params": {"card": id}}))

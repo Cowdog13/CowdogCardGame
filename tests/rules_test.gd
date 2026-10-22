@@ -261,21 +261,22 @@ func _init() -> void:
 	check(e8.state.names == ["Ann", "Bo"], "player names are kept")
 	check(e8.submit(1, {"type": "concede"}).ok and e8.is_over() and e8.state.winner == 0, "conceding hands the game to the other player")
 	check(not e8.submit(0, {"type": "concede"}).ok, "nothing can be done after the game is over")
-	# The starting creature: an extra card on the board, asleep until turn 5, berries can be attached.
+	# The starting leader: an extra card on the board, asleep until turn 5, berries can be attached.
 	var e9 := GameEngine.new()
 	e9.setup(["scorching_fire", "light"], 9)
 	for p in 2:
 		e9.submit(p, {"type": "mulligan", "cards": []})
 		var pl9: Dictionary = e9.state.players[p]
 		check(pl9.deck.size() + pl9.hand.size() == 50, "the starter is not drawn from the deck")
-	check(e9.state.players[0].board[0].cards == ["firespore"] and e9.state.players[1].board[0].cards == ["lightling"], "each deck starts with its own basic")
+	check(e9.state.players[0].board[0].cards == ["fire_lord"] and e9.state.players[1].board[0].cards == ["sun_god"], "each deck starts with its own leader")
 	var u9: int = e9.state.active
 	var s9: Dictionary = e9.state.players[u9]
-	s9.hand = ["fire_berry", "fire_berry", "firespitter"] if u9 == 0 else ["light_berry", "light_berry", "lighturn"]
-	check(e9.submit(u9, {"type": "attach_berry", "hand": 0, "slot": 0}).ok, "a berry can go on the sleeping starter")
+	s9.hand = ["fire_berry", "super_berry"] if u9 == 0 else ["light_berry", "super_berry"]
+	check(e9.submit(u9, {"type": "attach_berry", "hand": 0, "slot": 0}).ok, "a berry can go on the sleeping leader")
 	e9.state.turn = 4
-	s9.board[0].berries = ["fire_berry"] if u9 == 0 else ["light_berry"]
-	check(not e9.submit(u9, {"type": "use_ability", "slot": 0, "ability": 0}).ok, "the starter can't use abilities before turn 5")
+	s9.board[0].berries = ["super_berry", "super_berry"]
+	s9.board[0].exhausted = [false, false]
+	check(not e9.submit(u9, {"type": "use_ability", "slot": 0, "ability": 0}).ok, "the leader can't use abilities before turn 5")
 	e9.state.turn = 5
 	e9.state.active = u9
 	check(e9.submit(u9, {"type": "use_ability", "slot": 0, "ability": 0}).ok, "from turn 5 it can")

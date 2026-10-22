@@ -447,6 +447,16 @@ func _check_effect(e: Dictionary, player: int, params: Dictionary, reserved: Arr
 		"draw":
 			if e.get("target", "") == "player" and int(params.get("player", -1)) not in [0, 1]:
 				return "Choose which player draws"
+		"remove_stun":
+			var ref: Dictionary = params.get("target", {})
+			var why := _creature_ref_error(ref)
+			if why != "":
+				return why
+			if not Rules.is_stunned(_P(int(ref.player)).board[int(ref.slot)], state.turn):
+				return "Choose a creature that is stunned"
+		"recycle_exile":
+			if pl.exile.is_empty():
+				return "Your exile pile is empty"
 		"discard_to_top":
 			if not params.get("card", "") is String or not pl.discard.has(params.get("card", "")):
 				return "Choose a card in your discard pile"
@@ -551,6 +561,9 @@ func _apply_effect(e: Dictionary, player: int, slot: int, params: Dictionary) ->
 				n = _P(player).exile.size()
 			elif e.has("per_hand"):
 				n = int(e.per_hand) * _P(player).hand.size()
+			elif e.has("per_berry_per_creature"):
+				var mine: Dictionary = _P(player).board[slot]
+				n = int(e.per_berry_per_creature) * mine.berries.size() * (Rules.BOARD_SLOTS - _P(player).board.count(null))
 			_plunder(player, opp, n)
 		"pillage":
 			_pillage(player, int(e.amount))
@@ -575,7 +588,10 @@ func _apply_effect(e: Dictionary, player: int, slot: int, params: Dictionary) ->
 		"draw":
 			var target := int(params.get("player", player)) if e.get("target", "") == "player" else player
 			var drawn := 0
-			for i in int(e.amount):
+			var draw_n := int(e.get("amount", 0))
+			if e.has("per_attached_berry"):
+				draw_n = int(e.per_attached_berry) * _P(player).board[slot].berries.size()
+			for i in draw_n:
 				if not _draw_card(target):
 					_say("%s has no card to draw." % _pname(target), target)
 					_win(1 - target, "%s has no card to draw." % _pname(target))
@@ -585,6 +601,23 @@ func _apply_effect(e: Dictionary, player: int, slot: int, params: Dictionary) ->
 					break
 			if drawn > 0:
 				_say("%s draws %d card(s)." % [_pname(target), drawn], target)
+		"remove_stun":
+			var ref: Dictionary = params.target
+			var c: Dictionary = _P(int(ref.player)).board[int(ref.slot)]
+			c.stun_until = -1
+			_say("%s removes the stun from %s." % [_pname(player), Rules.creature_name(c)], player)
+		"recycle_exile":
+			var pl := _P(player)
+			var n := mini(int(e.per_attached_berry) * pl.board[slot].berries.size(), pl.exile.size())
+			if n > 0:
+				_pending_for(player).recycle = n
+				state.pending["source"] = "exile"
+		"bottom_from_hand":
+			var pl := _P(player)
+			var n := mini(int(e.per_attached_berry) * pl.board[slot].berries.size(), pl.hand.size())
+			if n > 0 and state.phase != "over":
+				_pending_for(player).recycle = n
+				state.pending["source"] = "hand"
 		"discard_to_top":
 			var pl := _P(player)
 			pl.discard.remove_at(pl.discard.find(params.card))
@@ -735,7 +768,7 @@ func _plunder(initiator: int, target: int, n: int) -> void:
 ## Active effect applies (see _pillage); otherwise they go to the discard.
 func _pending_for(p: int) -> Dictionary:
 	if state.pending.is_empty():
-		state.pending = {"player": p, "berries": [], "ordering": [], "recycle": 0}
+		state.pending = {"player": p, "berries": [], "ordering": [], "recycle": 0, "source": "discard"}
 	return state.pending
 
 
@@ -783,20 +816,22 @@ func _do_order_recycle(player: int, action: Dictionary) -> Dictionary:
 ## the deck, and in which order (first listed goes on the bottom first).
 func _do_recycle(player: int, action: Dictionary) -> Dictionary:
 	var pl := _P(player)
+	var zone: String = state.pending.get("source", "discard")  # the discard pile, or the exile pile (Mother Nature), or the hand (Sun God)
+	var cards: Array = pl[zone]
 	var picks: Array = action.get("cards", [])
 	var need := int(state.pending.recycle)
-	if picks.size() != need or _indices_invalid(picks, pl.discard.size()):
-		return _err("Choose exactly %d card(s) from your discard to recycle" % need)
-	var ids: Array = picks.map(func(i): return pl.discard[int(i)])
+	if picks.size() != need or _indices_invalid(picks, cards.size()):
+		return _err("Choose exactly %d card(s) from your %s to put on the bottom of your deck" % [need, zone])
+	var ids: Array = picks.map(func(i): return cards[int(i)])
 	var sorted := picks.map(func(i): return int(i))
 	sorted.sort()
 	sorted.reverse()
 	for i in sorted:
-		pl.discard.remove_at(i)
+		cards.remove_at(i)
 	for id in ids:
 		pl.deck.push_back(id)
 	state.pending.recycle = 0
-	_say("%s recycles %d card(s) to the bottom of their deck." % [_pname(player), ids.size()], player)
+	_say("%s puts %d card(s) from their %s on the bottom of their deck." % [_pname(player), ids.size(), zone], player)
 	_clear_pending_if_done()
 	return _ok()
 
