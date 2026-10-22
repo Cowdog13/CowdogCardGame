@@ -31,8 +31,13 @@ func _ready() -> void:
 		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		tr.custom_minimum_size = Vector2(0, 120)
-		box.add_child(tr)
-		tr.modulate = Color(0.93, 0.85, 0.6)
+		# The logo is black line art: it sits on a parchment plate so it shows on the dark menu.
+		var plate := PanelContainer.new()
+		plate.add_theme_stylebox_override("panel", UiStyle.box(Color(0.93, 0.87, 0.7), 18, Color(0.95, 0.78, 0.35), 3))
+		plate.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		plate.custom_minimum_size = Vector2(150, 0)
+		plate.add_child(tr)
+		box.add_child(plate)
 	var title := Label.new()
 	title.text = "Cowdog Card Game"
 	title.add_theme_font_size_override("font_size", 40)
