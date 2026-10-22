@@ -26,7 +26,7 @@ Open the folder in Godot 4.7 and press Play (main scene `scenes/main.tscn`).
 - Clicks on an ability within about half a second of another action are ignored, so a double-click can't use an ability by accident.
 - The status strip in the middle of the board only appears while it has something to say.
 - Used abilities flash for 1.5s so it's clear what was activated. Creature spaces are numbered 1-5 (shown on the board and in the payment list).
-- Hover any card (hand, board, piles) to see it large in the right-hand column. **Log** shows the full game log. **Swap (N)** puts N cards from your hand into the discard and takes a creature from it (once per turn; N grows by 1 after each swap). Everyone starts with a free dormant leader creature on the board (Fire Lord, Water Essenes, Mother Nature or the Sun God; see the Rulebook).
+- Hover any card (hand, board, piles) to see it large in the right-hand column. **Log** shows the full game log. **Swap (N)** puts N cards from your hand into the discard and takes a creature from it (once per turn; N grows by 1 after each swap). Everyone starts with a free dormant leader creature on the board (Fire Lord, Water Essence, Mother Nature or the Sun God; see the Rulebook).
 
 ## Multiplayer
 Peer-to-peer games (one player hosts, no server) are in **Multiplayer (beta)** on the main menu; single player is unchanged. How to host/join, how it works and the plan for 4 players are in

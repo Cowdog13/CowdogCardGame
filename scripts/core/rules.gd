@@ -120,6 +120,20 @@ static func has_active(board: Array, effect_type: String) -> bool:
 	return false
 
 
+## Leaders (the starting creatures) can never be the target of anything, whoever controls them.
+static func is_leader(creature: Dictionary) -> bool:
+	return CardDB.card(creature.cards[0]).get("leader", false)
+
+
+## True when the player controlling `board` can't be targeted at `slot` by the other player's effect (`by_opponent`)
+## or by their own (leaders only).
+static func is_untargetable(board: Array, slot: int, by_opponent: bool) -> bool:
+	var c = board[slot]
+	if c == null:
+		return false
+	return is_leader(c) or (by_opponent and is_protected(board, slot))
+
+
 ## Lightium: creatures with a Super Berry attached can't be targeted by the opponent while the Active effect is on.
 static func is_protected(board: Array, slot: int) -> bool:
 	var c = board[slot]
@@ -223,10 +237,11 @@ static func can_swap(view: Dictionary) -> bool:
 static func _spell_has_target(spell: Dictionary, me: Dictionary, opp: Dictionary) -> bool:
 	match spell.effects[0].type:
 		"destroy", "stun":
-			if me.board.any(func(c): return c != null):
-				return true
+			for slot in me.board.size():
+				if me.board[slot] != null and not is_untargetable(me.board, slot, false):
+					return true
 			for slot in opp.board.size():
-				if opp.board[slot] != null and not is_protected(opp.board, slot):
+				if opp.board[slot] != null and not is_untargetable(opp.board, slot, true):
 					return true
 			return false
 	return true
@@ -260,7 +275,12 @@ static func _ability_can_resolve(ab: Dictionary, creature: Dictionary, me: Dicti
 				if creature.berries.is_empty() or not opp.board.any(func(c): return c != null and not c.berries.is_empty()):
 					return false
 			"stun":
-				if not (me.board.any(func(c): return c != null) or opp.board.any(func(c): return c != null)):
+				var any_target := false
+				for slot in me.board.size():
+					any_target = any_target or (me.board[slot] != null and not is_untargetable(me.board, slot, false))
+				for slot in opp.board.size():
+					any_target = any_target or (opp.board[slot] != null and not is_untargetable(opp.board, slot, true))
+				if not any_target:
 					return false
 	return true
 

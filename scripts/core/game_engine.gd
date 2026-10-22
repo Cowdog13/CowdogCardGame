@@ -151,6 +151,7 @@ func _public_player(pl: Dictionary) -> Dictionary:
 		"exile_count": pl.exile.size(),
 		"board": pl.board.duplicate(true),
 		"mulligan_done": pl.mulligan_done,
+		"plunder_doubled": pl.plunder_doubled,
 		"swaps_made": pl.swaps_made,
 		"swapped_this_turn": pl.swapped_this_turn,
 		"swap_cost": pl.swaps_made + 1,
@@ -178,7 +179,7 @@ func _new_player(deck_id: String, fixed: Array = []) -> Dictionary:
 			"ability_used_idx": [], "dormant_until": Rules.STARTER_DORMANT_UNTIL}
 	return {
 		"deck_id": deck_id, "deck": deck, "hand": [], "discard": [], "exile": [],
-		"board": board, "mulligan_done": false, "swaps_made": 0, "swapped_this_turn": false,
+		"board": board, "mulligan_done": false, "plunder_doubled": false, "swaps_made": 0, "swapped_this_turn": false,
 		"berry_attached": false, "creature_plays_left": 1, "abilities_used": 0,
 	}
 
@@ -241,6 +242,7 @@ func _begin_turn() -> void:
 	var pl := _P(p)
 	pl.berry_attached = false
 	pl.swapped_this_turn = false
+	pl.plunder_doubled = false
 	pl.creature_plays_left = 1
 	pl.abilities_used = 0
 	_say("Turn %d: %s" % [state.turn, _pname(p)], p, "turn")
@@ -408,6 +410,9 @@ func _do_ability(player: int, action: Dictionary) -> Dictionary:
 		if why != "":
 			return _err(why)
 	pl.abilities_used += 1
+	if pl.plunder_doubled and ab.effects.any(func(e): return e.type == "plunder"):
+		params["_double"] = true  # Fireking's Twin Flame: this Plunder ability is doubled, then the bonus is gone
+		pl.plunder_doubled = false
 	if int(creature.get("ability_used_turn", -1)) != state.turn:
 		creature["ability_used_idx"] = []
 	creature.ability_used_turn = state.turn
@@ -433,6 +438,8 @@ func _target_error(player: int, ref: Dictionary) -> String:
 	if why != "":
 		return why
 	var tp := int(ref.player)
+	if Rules.is_leader(_P(tp).board[int(ref.slot)]):
+		return "Leaders can't be targeted"
 	if tp != player and Rules.is_protected(_P(tp).board, int(ref.slot)):
 		return "That creature can't be targeted (a Lightium protects it)"
 	return ""
@@ -564,7 +571,12 @@ func _apply_effect(e: Dictionary, player: int, slot: int, params: Dictionary) ->
 			elif e.has("per_berry_per_creature"):
 				var mine: Dictionary = _P(player).board[slot]
 				n = int(e.per_berry_per_creature) * mine.berries.size() * (Rules.BOARD_SLOTS - _P(player).board.count(null))
+			if params.get("_double", false):
+				n *= 2
 			_plunder(player, opp, n)
+		"double_next_plunder":
+			_P(player).plunder_doubled = true
+			_say("%s's next Plunder ability this turn will plunder double." % _pname(player), player)
 		"pillage":
 			_pillage(player, int(e.amount))
 		"stun":

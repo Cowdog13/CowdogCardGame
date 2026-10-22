@@ -37,7 +37,7 @@ func _use(e: GameEngine, params := {}) -> Dictionary:
 
 
 func _init() -> void:
-	for pair in [["scorching_fire", "fire_lord"], ["crashing_wave", "water_essenes"], ["nature_exile", "mother_nature"], ["light", "sun_god"]]:
+	for pair in [["scorching_fire", "fire_lord"], ["crashing_wave", "water_essence"], ["nature_exile", "mother_nature"], ["light", "sun_god"]]:
 		check(CardDB.deck_starter(pair[0]) == pair[1], "%s starts with %s" % pair)
 		check(not CardDB.build_deck_list(pair[0]).has(pair[1]), "%s is not part of the 50 cards" % pair[1])
 
@@ -52,11 +52,11 @@ func _init() -> void:
 	e.state.players[0].board[0] = _creature("fire_lord", ["super_berry", "fire_berry", "fire_berry"])
 	check(not _use(e).ok, "Fire Lord needs 2 Super Berries")
 
-	# Water Essenes: remove a stun, then Plunder (berries x creatures).
+	# Water Essence: remove a stun, then Plunder (berries x creatures).
 	e = _game("crashing_wave")
 	pl = e.state.players[0]
 	opp = e.state.players[1]
-	pl.board[0] = _creature("water_essenes", ["super_berry", "super_berry", "water_berry"])
+	pl.board[0] = _creature("water_essence", ["super_berry", "super_berry", "water_berry"])
 	pl.board[1] = _creature("water_spirit", [])
 	pl.board[2] = _creature("water_spirit", [])
 	check(not _use(e, {"target": {"player": 0, "slot": 1}}).ok, "needs a stunned creature")
@@ -85,5 +85,39 @@ func _init() -> void:
 	check(_use(e).ok and pl.hand == ["removal", "gather", "lightling", "lighturn"], "draws 3: %s" % [pl.hand])
 	check(int(e.state.pending.recycle) == 3 and e.state.pending.source == "hand", "then 3 cards from the hand go back")
 	check(e.submit(0, {"type": "recycle", "cards": [0, 3, 1]}).ok and pl.hand == ["lightling"] and pl.deck.slice(-3) == ["removal", "lighturn", "gather"], "to the bottom in the chosen order: %s / %s" % [pl.hand, pl.deck])
+	# Leaders can't be targeted by anything (Stun, Removal, Berry Trade ...), whoever controls them.
+	e = _game("crashing_wave")
+	pl = e.state.players[0]
+	opp = e.state.players[1]
+	pl.board[0] = _creature("water_essence", ["super_berry", "super_berry"])
+	pl.board[1] = _creature("water_constrictor", ["water_berry"])
+	pl.hand = ["removal"]
+	check(not e.submit(0, {"type": "use_ability", "slot": 1, "ability": 0, "params": {"targets": [{"player": 1, "slot": 0}]}}).ok, "Stun can't target the enemy leader")
+	check(not e.submit(0, {"type": "use_ability", "slot": 1, "ability": 0, "params": {"targets": [{"player": 0, "slot": 0}]}}).ok, "nor your own")
+	check(not e.submit(0, {"type": "play_spell", "hand": 0, "payment": [{"src": "attached", "slot": 0, "index": 0}, {"src": "attached", "slot": 0, "index": 1}, {"src": "attached", "slot": 1, "index": 0}], "params": {"target": {"player": 1, "slot": 0}}}).ok, "Removal can't target a leader")
+
+	# Fireking's Twin Flame (3 Super Berries): the next Plunder ability this turn is doubled, once.
+	e = _game("scorching_fire")
+	pl = e.state.players[0]
+	opp = e.state.players[1]
+	pl.board[0] = _creature("fireking", ["super_berry", "super_berry", "super_berry"])
+	pl.board[1] = _creature("firespore", ["fire_berry"])
+	pl.board[2] = _creature("firespore", ["fire_berry"])
+	check(e.submit(0, {"type": "use_ability", "slot": 0, "ability": 1, "params": {}}).ok and e.get_view(0).you.plunder_doubled, "Twin Flame sets up the bonus")
+	before = opp.deck.size()
+	check(e.submit(0, {"type": "use_ability", "slot": 1, "ability": 0, "params": {}}).ok and opp.deck.size() == before - 4, "Plunder 2 plunders 4")
+	check(not e.get_view(0).you.plunder_doubled, "the bonus is used up")
+	e.state.turn = 7
+	e.state.active = 0
+	pl.abilities_used = 0
+	for c in pl.board:
+		if c != null:
+			c.ability_used_turn = -1
+	pl.board[0].berries = ["super_berry", "super_berry", "super_berry"]
+	pl.board[0].exhausted = [false, false, false]
+	e.submit(0, {"type": "use_ability", "slot": 0, "ability": 1, "params": {}})
+	e.submit(0, {"type": "end_turn"})
+	e.submit(1, {"type": "end_turn"})
+	check(not e.get_view(0).you.plunder_doubled, "an unused bonus doesn't carry over to the next turn")
 	print("leaders_test failures=%d" % fails)
 	quit(fails)

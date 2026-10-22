@@ -397,9 +397,9 @@ func _opp_name() -> String:
 func _turn_flags(you: Dictionary) -> String:
 	if view.phase != "main" or view.active != ME:
 		return ""
-	return "   |   Berry %s   Creature %s   Abilities %d/%d" % [
+	return "   |   Berry %s   Creature %s   Abilities %d/%d%s" % [
 		"used" if you.berry_attached else "ready", "used" if you.creature_played else "ready",
-		you.abilities_used, Rules.ABILITIES_PER_TURN]
+		you.abilities_used, Rules.ABILITIES_PER_TURN, "   Next Plunder x2" if you.plunder_doubled else ""]
 
 
 func _update_banner() -> void:
@@ -796,7 +796,7 @@ func _on_hand_clicked(i: int) -> void:
 
 func _any_creature(p: int, s: int) -> bool:
 	var side: Dictionary = view.you if p == ME else view.opponent
-	return side.board[s] != null and not (p != ME and Rules.is_protected(side.board, s))  # Lightium: not targetable
+	return side.board[s] != null and not Rules.is_untargetable(side.board, s, p != ME)  # leaders and Lightium's creatures: not targetable
 
 
 func _begin_spell(i: int, id: String) -> void:

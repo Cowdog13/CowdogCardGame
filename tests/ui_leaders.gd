@@ -1,5 +1,5 @@
 extends SceneTree
-## Leader abilities in the UI: Water Essenes' stun target, Sun God's cards back from the hand.  godot --headless -s tests/ui_leaders.gd
+## Leader abilities in the UI: Water Essence' stun target, Sun God's cards back from the hand.  godot --headless -s tests/ui_leaders.gd
 var fails := 0
 var screen: GameScreen
 
@@ -38,7 +38,7 @@ func _init() -> void:
 	e.state.turn = 6
 	e.state.active = 0
 	var pl: Dictionary = e.state.players[0]
-	pl.board = [_creature("water_essenes", ["super_berry", "super_berry"]), _creature("water_spirit", []), null, null, null]
+	pl.board = [_creature("water_essence", ["super_berry", "super_berry"]), _creature("water_spirit", []), null, null, null]
 	pl.board[1].stun_until = 6
 	e.state.players[1].deck = []
 	for i in 20:

@@ -79,18 +79,17 @@
     ]
    },
    {
-    "name": "Inferno",
+    "name": "Twin Flame",
     "cost": {
      "element": "super",
-     "amount": 2
+     "amount": 3
     },
     "effects": [
      {
-      "type": "plunder",
-      "per_attached_berry": 1
+      "type": "double_next_plunder"
      }
     ],
-    "text": "Plunder 1 for each berry attached to this creature"
+    "text": "The next Plunder ability you use this turn plunders double"
    }
   ]
  },
@@ -962,8 +961,8 @@
    }
   ]
  },
- "water_essenes": {
-  "name": "Water Essenes",
+ "water_essence": {
+  "name": "Water Essence",
   "kind": "creature",
   "tier": 1,
   "evolves_from": "",

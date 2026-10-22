@@ -95,14 +95,16 @@ Press [b]Swap[/b], choose the creature you take from your discard pile, then cho
 	["Leaders", """Every deck starts the game with a [b]leader[/b] on the board: a unique creature that is not part of the 50-card deck and has no evolutions. It is dormant until turn 5. Every leader ability costs 2 Super Berries (attached to the leader, as always these are not spent), and what it does grows with the number of [b]berries attached to the leader[/b].
 
 [b]Fire Lord[/b] (Scorching Fire): [i]Blaze[/i], 2 Super Berries: Plunder 1 for each berry attached to the Fire Lord.
-[b]Water Essenes[/b] (Crashing Wave): [i]Tidal Surge[/i], 2 Super Berries: remove the stun from a creature (it must be stunned), then Plunder X, where X is the number of berries attached to Water Essenes times the number of creatures you control.
+[b]Water Essence[/b] (Crashing Wave): [i]Tidal Surge[/i], 2 Super Berries: remove the stun from a creature (it must be stunned), then Plunder X, where X is the number of berries attached to Water Essence times the number of creatures you control.
 [b]Mother Nature[/b] (Nature Exile): [i]Rebirth[/i], 2 Super Berries: recycle X cards from your [b]exile pile[/b] to the bottom of your deck, where X is the number of berries attached to Mother Nature. You choose the cards and their order.
 [b]Sun God[/b] (Light): [i]Dawn[/i], 2 Super Berries: draw X cards, where X is the number of berries attached to the Sun God, then put X cards from your hand (your choice, including the ones you just drew) on the bottom of your deck, in the order you choose.
+
+[b]Leaders can't be targeted[/b] by anything: not by Stun, Removal, Berry Trade, nor any other effect that picks a creature.
 
 Attach plenty of berries to your leader early: it can't act before turn 5, but it can collect berries from the very first turn."""],
 	["Scorching Fire cards", """[b]Firespore[/b] (Tier 1): 1 Fire Berry, Plunder 2.
 [b]Firespitter[/b] (Tier 2, on Firespore): 2 Fire Berries, Plunder 3.
-[b]Fireking[/b] (Tier 3, on Firespitter): 3 Fire Berries, Plunder 5; or 2 Super Berries, Inferno: Plunder 1 for each berry attached to this creature.
+[b]Fireking[/b] (Tier 3, on Firespitter): 3 Fire Berries, Plunder 5; or 3 Super Berries, [i]Twin Flame[/i]: the next Plunder ability you use this turn plunders double (Plunder 2 becomes Plunder 4; it does not affect Lightor's Plunder when you draw).
 [b]Firepup[/b] (Tier 1): 2 Fire Berries, Pillage 2; or 1 Fire Berry, Plunder 1.
 [b]Firewolf[/b] (Tier 2, on Firepup): 2 Super Berries, [i]Active:[/i] when you pillage, [b]recycle[/b] as many cards as went to your discard pile (berries attached to creatures don't count; several Firewolves don't stack), in addition to the free Recycle 1 of every Pillage; or 2 Fire Berries, Pillage 3.
 [b]Fire Famine[/b] (Tier 1): 1 Super Berry, [i]Active:[/i] when you pillage, every pillaged berry can be attached to any of your creatures, and all other pillaged cards are recycled to the bottom of your deck (you choose their order); or 2 Fire Berries, Pillage 4.

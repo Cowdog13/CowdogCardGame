@@ -56,7 +56,7 @@ static func opponent_intents() -> Array:
 		{"play": "water_constrictor"}, {"attach": "water_berry", "to": "water_constrictor"}, {"end": true},
 		{"attach": "water_berry", "to": "water_constrictor"},
 		{"ability": "water_constrictor", "index": 0, "params": {"targets": [{"player": 0, "slot": 1}]}}, {"end": true},
-		{"attach": "water_berry", "to": "water_essenes"}, {"end": true},
+		{"attach": "water_berry", "to": "water_essence"}, {"end": true},
 	]
 
 
@@ -81,7 +81,7 @@ static func steps() -> Array:
 		{"title": "End your turn", "highlight": ["end_turn"],
 			"text": "[b]Nobody can use abilities on their first turn[/b] (turn 1 and turn 2 of the game), so there is nothing more to do. Press [b]End Turn[/b].",
 			"expect": {"type": "end_turn"}, "hint": "Press End Turn."},
-		{"title": "The opponent's turn", "text": "Now the practice opponent takes their turn. They play a Water creature and attach a Water Berry. Their leader, Water Essenes, is dormant too.", "bot": true, "button": "Watch the opponent's turn"},
+		{"title": "The opponent's turn", "text": "Now the practice opponent takes their turn. They play a Water creature and attach a Water Berry. Their leader, Water Essence, is dormant too.", "bot": true, "button": "Watch the opponent's turn"},
 		{"title": "A second creature", "highlight": ["hand:firespore"],
 			"text": "Abilities are unlocked now for every creature except your dormant leader. Play a second creature: click [b]Firespore[/b].",
 			"expect": {"type": "play_creature", "card": "firespore"}, "hint": "Play the Firespore."},

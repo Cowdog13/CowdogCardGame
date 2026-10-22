@@ -36,4 +36,4 @@ Crashing Wave Deck List:
 3 Removal: 3 Colorless Send a Creature and all attached berries to the discard
 2 Disable: 1 Colorless Stun 1
 
-Leader: each deck comes with its own unique leader creature (Fire Lord, Water Essenes, Mother Nature, Sun God): an extra card placed on the board at the start of the game, not part of the 50-card deck. It can't use abilities until turn 5 (a player's first two turns), but berries can be attached to it. Each leader ability costs 2 Super Berries and scales with the berries attached to the leader.
+Leader: each deck comes with its own unique leader creature (Fire Lord, Water Essence, Mother Nature, Sun God): an extra card placed on the board at the start of the game, not part of the 50-card deck. It can't use abilities until turn 5 (a player's first two turns), but berries can be attached to it. Each leader ability costs 2 Super Berries and scales with the berries attached to the leader.

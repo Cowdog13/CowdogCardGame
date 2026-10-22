@@ -226,7 +226,7 @@ func _strongest_enemy(opp: Dictionary, turn: int, skip_stunned: bool) -> int:
 	var best_t := 0.0
 	for s in opp.board.size():
 		var c = opp.board[s]
-		if c == null or (skip_stunned and Rules.is_stunned(c, turn)) or Rules.is_protected(opp.board, s):
+		if c == null or (skip_stunned and Rules.is_stunned(c, turn)) or Rules.is_untargetable(opp.board, s, true):
 			continue
 		var t := _threat(c, turn)
 		if t > best_t:
@@ -271,8 +271,14 @@ func _evaluate_ability(view: Dictionary, slot: int, c: Dictionary, ab: Dictionar
 	if draws > 0 and me.deck_count <= draws + 4:
 		return {}  # drawing from an empty deck loses the game
 	match effect.type:
+		"double_next_plunder":
+			# Fireking's Twin Flame: worth it first, when another creature can plunder with the other ability slot.
+			if me.abilities_used != 0 or me.plunder_doubled:
+				return {}
+			var alt := _best_other_plunder(view, slot, me)
+			return {} if alt <= 0.0 else {"value": alt + 0.5, "params": {}}
 		"remove_stun":
-			# Water Essenes: free one of our own stunned creatures, then plunder berries x creatures.
+			# Water Essence: free one of our own stunned creatures, then plunder berries x creatures.
 			var freed := -1
 			for s in me.board.size():
 				if me.board[s] != null and Rules.is_stunned(me.board[s], view.turn):
@@ -322,6 +328,8 @@ func _evaluate_ability(view: Dictionary, slot: int, c: Dictionary, ab: Dictionar
 			return _evaluate_cast(view, me, opp)
 		"plunder":
 			var amount := Rules.effect_value(effect, c)
+			if me.plunder_doubled:
+				amount *= 2.0
 			if effect.has("per_exile"):
 				amount = float(me.exile_count)
 				if amount <= 0.0:
@@ -343,7 +351,7 @@ func _evaluate_ability(view: Dictionary, slot: int, c: Dictionary, ab: Dictionar
 			var total := 0.0
 			for s in order:
 				var t := _slot_threat(opp, s, view.turn)
-				if opp.board[s] == null or Rules.is_protected(opp.board, s) or Rules.is_stunned(opp.board[s], view.turn) or t < 1.5 or targets.size() >= int(effect.count):
+				if opp.board[s] == null or Rules.is_untargetable(opp.board, s, true) or Rules.is_stunned(opp.board[s], view.turn) or t < 1.5 or targets.size() >= int(effect.count):
 					continue
 				targets.append({"player": enemy, "slot": s})
 				total += t
@@ -353,6 +361,24 @@ func _evaluate_ability(view: Dictionary, slot: int, c: Dictionary, ab: Dictionar
 		"berry_trade":
 			return _evaluate_trade(c, slot, opp, enemy)
 	return {}
+
+
+## The best Plunder another creature (not at `slot`) could do right now.
+func _best_other_plunder(view: Dictionary, slot: int, me: Dictionary) -> float:
+	var best := 0.0
+	var double := Rules.has_active(me.board, "double_ability")
+	for s in me.board.size():
+		var c = me.board[s]
+		if s == slot or c == null or Rules.is_stunned(c, view.turn) or Rules.is_dormant(c, view.turn):
+			continue
+		var abilities: Array = Rules.top_card(c).abilities
+		for ai in abilities.size():
+			var ab: Dictionary = abilities[ai]
+			if ab.get("active", false) or not Rules.meets_cost(c.berries, ab.cost) or Rules.ability_blocked(c, ai, view.turn, double) != "":
+				continue
+			if ab.effects[0].type == "plunder" and not ab.effects[0].has("per_exile"):
+				best = maxf(best, Rules.effect_value(ab.effects[0], c))
+	return best
 
 
 ## Spore Muncher: replay the best spell in the discard pile (only Removal and Disable-style stuns are worth it).
@@ -420,7 +446,7 @@ func _evaluate_trade(c: Dictionary, slot: int, opp: Dictionary, enemy: int) -> D
 	var best_value := 0.5
 	for s in opp.board.size():
 		var target = opp.board[s]
-		if target == null or target.berries.is_empty() or Rules.is_protected(opp.board, s):
+		if target == null or target.berries.is_empty() or Rules.is_untargetable(opp.board, s, true):
 			continue
 		for n in range(1, mini(c.berries.size(), target.berries.size()) + 1):
 			var plan := Rules.plan_trade(c, target, n)
