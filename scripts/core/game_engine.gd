@@ -565,7 +565,7 @@ func _apply_effect(e: Dictionary, player: int, slot: int, params: Dictionary) ->
 		"plunder":
 			var n := int(e.get("amount", 0))
 			if e.has("per_attached_berry"):
-				n = int(e.per_attached_berry) * _P(player).board[slot].berries.size()
+				n = maxi(0, int(e.per_attached_berry) * _P(player).board[slot].berries.size() - int(e.get("minus", 0)))
 			elif e.has("per_exile"):
 				n = _P(player).exile.size()
 			elif e.has("per_hand"):

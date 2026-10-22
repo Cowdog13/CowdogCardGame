@@ -294,7 +294,7 @@ static func effect_value(effect: Dictionary, creature: Dictionary) -> float:
 	match effect.type:
 		"plunder":
 			if effect.has("per_attached_berry"):
-				return float(int(effect.per_attached_berry) * creature.berries.size())
+				return maxf(0.0, float(int(effect.per_attached_berry) * creature.berries.size() - int(effect.get("minus", 0))))
 			if effect.has("per_berry_per_creature"):
 				return float(creature.berries.size() * 2)
 			if effect.has("per_exile") or effect.has("per_hand"):

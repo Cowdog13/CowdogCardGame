@@ -94,7 +94,7 @@ Berries must match the cost: [i]Colorless[/i] accepts any berry, and an element 
 Press [b]Swap[/b], choose the creature you take from your discard pile, then choose the cards you give. Everyone sees the cards that were exchanged."""],
 	["Leaders", """Every deck starts the game with a [b]leader[/b] on the board: a unique creature that is not part of the 50-card deck and has no evolutions. It is dormant until turn 5. Every leader ability costs 2 Super Berries (attached to the leader, as always these are not spent), and what it does grows with the number of [b]berries attached to the leader[/b].
 
-[b]Fire Lord[/b] (Scorching Fire): [i]Blaze[/i], 2 Super Berries: Plunder 1 for each berry attached to the Fire Lord.
+[b]Fire Lord[/b] (Scorching Fire): [i]Blaze[/i], 2 Super Berries: Plunder X - 2, where X is the number of berries attached to the Fire Lord (a Fire Lord with 6 berries plunders 4).
 [b]Water Essence[/b] (Crashing Wave): [i]Tidal Surge[/i], 2 Super Berries: remove the stun from one of your [b]opponent's[/b] creatures (it must be stunned, so first stun it with one of your own Stun abilities or spells), then Plunder X, where X is the number of berries attached to Water Essence times the number of creatures you control.
 [b]Mother Nature[/b] (Nature Exile): [i]Rebirth[/i], 2 Super Berries: recycle X cards from your [b]exile pile[/b] to the bottom of your deck, where X is the number of berries attached to Mother Nature. You choose the cards and their order.
 [b]Sun God[/b] (Light): [i]Dawn[/i], 2 Super Berries: draw X cards, where X is the number of berries attached to the Sun God, then put X cards from your hand (your choice, including the ones you just drew) on the bottom of your deck, in the order you choose.

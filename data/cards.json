@@ -954,10 +954,11 @@
     "effects": [
      {
       "type": "plunder",
-      "per_attached_berry": 1
+      "per_attached_berry": 1,
+      "minus": 2
      }
     ],
-    "text": "Plunder 1 for each berry attached to this creature"
+    "text": "Plunder X - 2, where X is the number of berries attached to this creature"
    }
   ]
  },

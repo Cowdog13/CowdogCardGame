@@ -47,7 +47,7 @@ func _init() -> void:
 	var opp: Dictionary = e.state.players[1]
 	pl.board[0] = _creature("fire_lord", ["super_berry", "super_berry", "fire_berry", "fire_berry"])
 	var before: int = opp.deck.size()
-	check(_use(e).ok and opp.deck.size() == before - 4, "Fire Lord plunders 4 with 4 berries")
+	check(_use(e).ok and opp.deck.size() == before - 2, "Fire Lord plunders X - 2 = 2 with 4 berries")
 	e = _game("scorching_fire")
 	e.state.players[0].board[0] = _creature("fire_lord", ["super_berry", "fire_berry", "fire_berry"])
 	check(not _use(e).ok, "Fire Lord needs 2 Super Berries")
