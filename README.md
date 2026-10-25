@@ -55,6 +55,10 @@ Peer-to-peer games (one player hosts, no server) are in **Multiplayer (beta)** o
 - `scripts/ui/`, `scripts/main.gd` - menu and table UI; `fx_layer.gd` holds the visual effects. The engine's log events carry an optional `fx` payload that the UI plays.
 - `tests/` - `fx_demo.gd` (screenshots of every effect), `run_sim.gd` (AI vs AI, rule invariants), `ui_smoke.gd`, `ui_interact.gd`, `screenshot.gd`.
 
+## Art packs
+Main menu -> "Art packs": players can install extra art (for now: the table background) by unzipping a pack into the art packs
+folder. Format, pack-making script and how to sell packs on itch.io: `docs/ART_PACKS.md`. Test: `tests/art_pack_test.gd`.
+
 ## Rulebook
 Main menu -> "Rulebook": the full rules as text (`scripts/ui/rulebook_screen.gd`). Keep it in sync when rules change.
 
@@ -89,6 +93,7 @@ godot --headless -s tests/net_ui_test.gd     # both screens over the network
 godot --headless -s tests/net_surrender_test.gd   # Menu -> confirm surrenders in multiplayer
 godot --headless -s tests/tutorial_test.gd        # plays the whole tutorial through the controller
 godot --headless -s tests/rulebook_test.gd
+godot --headless -s tests/art_pack_test.gd     # art packs replace the table background and fall back to the default
 godot --headless -s tests/leaders_test.gd      # the four leaders
 godot --headless -s tests/ui_leaders.gd        # their pickers
 godot --headless -s tests/ui_swap.gd           # the Swap picker (take a creature, give N cards)

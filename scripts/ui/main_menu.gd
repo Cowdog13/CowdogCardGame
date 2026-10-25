@@ -5,6 +5,7 @@ signal start_requested(deck0: String, deck1: String, ai_delay: float, effects: b
 signal multiplayer_requested
 signal tutorial_requested
 signal rulebook_requested
+signal art_packs_requested
 
 var _you: OptionButton
 var _opp: OptionButton
@@ -76,6 +77,10 @@ func _ready() -> void:
 	rules.text = "Rulebook"
 	rules.pressed.connect(func(): rulebook_requested.emit())
 	box.add_child(rules)
+	var art := Button.new()
+	art.text = "Art packs"
+	art.pressed.connect(func(): art_packs_requested.emit())
+	box.add_child(art)
 	var mp := Button.new()
 	mp.text = "Multiplayer (beta)"
 	mp.pressed.connect(func(): multiplayer_requested.emit())
