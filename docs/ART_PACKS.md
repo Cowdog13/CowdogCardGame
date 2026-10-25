@@ -7,7 +7,7 @@ remembered. Anything a pack doesn't contain keeps the built-in art.
 ```
 art_packs/
   midnight-grove/
-    pack.json                  {"name": "...", "creator": "...", "description": "...", "ai_generated": true}
+    pack.json                  {"name": "...", "creator": "...", "description": "...", "publisher": "Cowdog Game Store", "ai_generated": true}
     board/board_bg.webp        table background (webp, png or jpg; 16:9 works best, 2560 px wide at most)
     cards/<card id>.png        (later) card art, e.g. cards/firespore.png, square, transparent background
     berries/<id>.png, symbols/<element>.png, ui/card_back_logo.png   (later)
@@ -17,6 +17,9 @@ art_packs/
 
     python3 tools/make_art_pack.py --board my_background.png --id midnight-grove --name "Midnight Grove" \
         --creator "Your Name" --ai --out build/art_packs
+
+The pack screen shows the pack's name, creator, description and `publisher` ("Cowdog Game Store" by default). `--ai` only
+records the fact in `pack.json`; the disclosure that matters is the one on the itch.io page (below).
 
 This writes the folder and a zip (`build/art_packs/midnight-grove.zip`) that contains the folder, so a buyer just unzips
 it into the art packs folder.

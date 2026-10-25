@@ -9,9 +9,9 @@ func _init() -> void:
 	var img := Image.create(64, 36, false, Image.FORMAT_RGB8)
 	img.fill(Color(1, 0, 0))
 	img.save_png(folder + "/board/board_bg.png")
-	FileAccess.open(folder + "/pack.json", FileAccess.WRITE).store_string('{"name": "Red Test", "creator": "Me", "ai_generated": true}')
+	FileAccess.open(folder + "/pack.json", FileAccess.WRITE).store_string('{"name": "Red Test", "creator": "Me", "publisher": "Cowdog Game Store", "ai_generated": true}')
 	var packs := ArtDB.list_packs().filter(func(p): return p.id == "test-pack")
-	if packs.size() != 1 or packs[0].name != "Red Test" or not packs[0].ai_generated:
+	if packs.size() != 1 or packs[0].name != "Red Test" or packs[0].publisher != "Cowdog Game Store":
 		fails += 1
 		print("pack not listed: ", packs)
 	ArtDB.set_active_pack("")

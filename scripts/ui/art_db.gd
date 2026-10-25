@@ -45,12 +45,12 @@ static func list_packs() -> Array:
 	DirAccess.make_dir_recursive_absolute(PACKS_DIR)
 	var out: Array = []
 	for dir in DirAccess.get_directories_at(PACKS_DIR):
-		var info := {"id": dir, "name": dir, "creator": "", "description": "", "ai_generated": false, "path": "%s/%s" % [PACKS_DIR, dir]}
+		var info := {"id": dir, "name": dir, "creator": "", "description": "", "publisher": "", "ai_generated": false, "path": "%s/%s" % [PACKS_DIR, dir]}
 		var meta_path: String = info.path + "/pack.json"
 		if FileAccess.file_exists(meta_path):
 			var parsed = JSON.parse_string(FileAccess.get_file_as_string(meta_path))
 			if parsed is Dictionary:
-				for k in ["name", "creator", "description"]:
+				for k in ["name", "creator", "description", "publisher"]:
 					if parsed.has(k):
 						info[k] = String(parsed[k])
 				info["ai_generated"] = bool(parsed.get("ai_generated", false))

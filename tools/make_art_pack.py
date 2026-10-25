@@ -29,7 +29,8 @@ def main() -> None:
     ap.add_argument("--name", required=True)
     ap.add_argument("--creator", default="")
     ap.add_argument("--description", default="A new look for the game table.")
-    ap.add_argument("--ai", action="store_true", help="mark the art as AI-generated (shown in the game and in pack.json)")
+    ap.add_argument("--publisher", default="Cowdog Game Store", help="credit line shown under the pack in the game")
+    ap.add_argument("--ai", action="store_true", help="record in pack.json that the art is AI-generated (the itch.io page must say so too)")
     ap.add_argument("--out", default="build/art_packs")
     args = ap.parse_args()
 
@@ -42,7 +43,7 @@ def main() -> None:
     if img.width > MAX_WIDTH:
         img = img.resize((MAX_WIDTH, round(img.height * MAX_WIDTH / img.width)), Image.LANCZOS)
     img.save(folder / "board" / "board_bg.webp", quality=90)
-    meta = {"name": args.name, "creator": args.creator, "description": args.description, "ai_generated": args.ai}
+    meta = {"name": args.name, "creator": args.creator, "description": args.description, "publisher": args.publisher, "ai_generated": args.ai}
     (folder / "pack.json").write_text(json.dumps(meta, indent=1))
     zip_path = out / f"{args.id}.zip"
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as z:

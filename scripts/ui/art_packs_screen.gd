@@ -101,8 +101,8 @@ func _show_pack(i: int) -> void:
 		text += "  -  by %s" % pack.creator
 	if pack.description != "":
 		text += "\n" + pack.description
-	if pack.get("ai_generated", false):
-		text += "\nMade with AI (AI-generated art)."
+	if pack.get("publisher", "") != "":
+		text += "\n" + pack.publisher
 	if _packs.size() == 1:
 		text += "\n\nNo art packs installed. Unzip a pack into the art packs folder (button on the left), then press Refresh."
 	_info.text = text
