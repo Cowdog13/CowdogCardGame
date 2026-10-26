@@ -1,0 +1,9 @@
+{
+	"wooden_buckler": {"name": "Wooden Buckler", "desc": "Start each battle with 15 armor.", "start_armor": 15},
+	"sharpened_stone": {"name": "Sharpened Stone", "desc": "+10% power.", "power_pct": 0.10},
+	"heartwood_pendant": {"name": "Heartwood Pendant", "desc": "+15% max health.", "hp_pct": 0.15},
+	"ember_core": {"name": "Ember Core", "desc": "+20% power.", "power_pct": 0.20},
+	"quick_gear": {"name": "Quick Gear", "desc": "Cooldowns are 15% shorter.", "cooldown_pct": -0.15},
+	"dusk_mantle": {"name": "Dusk Mantle", "desc": "+10% max health, start each battle with 10 armor.", "hp_pct": 0.10, "start_armor": 10},
+	"void_shard": {"name": "Void Shard", "desc": "+15% power, startup times 20% shorter.", "power_pct": 0.15, "startup_pct": -0.20}
+}
