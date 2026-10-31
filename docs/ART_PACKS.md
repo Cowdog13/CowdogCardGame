@@ -13,7 +13,26 @@ art_packs/
     berries/<id>.png, symbols/<element>.png, ui/card_back_logo.png   (later)
 ```
 
-## Making a pack
+## Making a full art-style pack (all 47 images)
+
+Put the images in one folder (sub-folders are fine). Only the file names matter, ignoring capitals, spaces, dashes and underscores:
+
+- **39 card images**: every creature, leader and spell by its name (`Firespore.png`, `Fire Lord.png`, `Water Essence.png`, `Spore Muncher.png`,
+  `Removal.png`, `Gather.png`, ...) and the five berries (`Fire Berry.png`, `Water Berry.png`, `Nature Berry.png`, `Light Berry.png`, `Super Berry.png`).
+  The small berry icons are made from the berry cards.
+- **6 symbols**: `Fire.png` (or `Fire_Symbol.png`), `Water`, `Nature`, `Light`, `Super`, `Colorless`; a black shape on white (or a transparent shape).
+- **Card back**: `Card Back.png`. **Table**: `Board.png` / `Background.png` / `Table.png`.
+
+```
+pip install pillow numpy scipy
+python3 tools/make_art_pack.py --art-dir my_art/ --check                       # what's found, what's missing
+python3 tools/make_art_pack.py --art-dir my_art/ --id storybook --name "Storybook" --creator "Your Name" --ai --out build/art_packs
+```
+
+Pictures on a plain white background get it cut out, the art is cropped and made square, and everything is resized to the game's sizes.
+Missing images keep the built-in art and are listed in the output. `tests/make_art_pack_test.py` checks the script.
+
+## Making a pack with only a table background
 
     python3 tools/make_art_pack.py --board my_background.png --id midnight-grove --name "Midnight Grove" \
         --creator "Your Name" --ai --out build/art_packs
