@@ -19,7 +19,7 @@ Open **Multiplayer (beta)** on the main menu. The single-player game is untouche
 A small **relay server** lets players connect by room code. Everyone only makes *outgoing* connections to it, so nobody opens a port.
 It never runs the game: the host's game is still the real game, the relay only passes packets (`scripts/net/relay_server.gd`, `relay_peer.gd`).
 - **Organiser (one person):** double-click `Start Game Server.bat` from the game folder (it runs `CowdogCardGame.console.exe --headless -- --relay --port=24681`).
-  For friends outside your network also put the free `cloudflared.exe` next to the .bat: the .bat then starts a Cloudflare quick tunnel and its
+  For friends outside your network also put the free `cloudflared.exe` (or `cloudflared-windows-amd64.exe`) next to the .bat: the .bat then starts a Cloudflare quick tunnel and its
   window shows `https://<random-words>.trycloudflare.com` (changes every start). A fixed address needs a free Cloudflare account and a domain, or a $5 VPS running the same command.
 - **Players:** Multiplayer -> *Room code* -> host opens the lobby and reads out the 5-letter code; the joiner enters the same server address and code.
   Addresses may be written `name.trycloudflare.com`, `wss://...`, or `192.168.1.20:24681` (plain `ws://` for IPs and localhost).

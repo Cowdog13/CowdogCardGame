@@ -15,14 +15,15 @@ Multiplayer (online games have a turn clock: 60 seconds per turn, +4 seconds per
  - The other player: Multiplayer -> "Room code" -> Join a game -> type the same server address and the code -> Connect.
  - After a game the host can press "Play again".
 
- Running the game server (one person, only if you are the organiser; your PC must stay on while people play)
- - Double-click "Start Game Server.bat". Keep its window open.
- - For people outside your home network, download the free cloudflared.exe from https://github.com/cloudflare/cloudflared/releases
-   (Windows 64-bit: cloudflared-windows-amd64.exe), rename it cloudflared.exe and put it next to the .bat file. The .bat then opens a second window
-   that shows an address like https://abc-def.trycloudflare.com . Give friends that name (they can leave out "https://").
-   The address changes every time you start it.
- - Without cloudflared the server still works for friends on your home network (address: your PC's IP, e.g. 192.168.1.20).
- - Windows may ask to allow the program through the firewall: click Allow.
+ Running the game server (one person, the organiser; this PC must stay on while people play)
+ 1. Unzip the WHOLE download into a folder first (right-click the zip -> Extract All). Do not run files from inside the zip.
+ 2. Download cloudflared (free, no account): https://github.com/cloudflare/cloudflared/releases  -> the file cloudflared-windows-amd64.exe.
+    Put it in the same folder as CowdogCardGame.exe. Any of the names cloudflared.exe or cloudflared-windows-amd64.exe works.
+ 3. Double-click "Start Game Server.bat". Two black windows open: keep both open. Windows may ask about the firewall: click Allow.
+ 4. In the window titled "Cowdog tunnel", find the line with https://something-random.trycloudflare.com . The part after https:// is the game server address.
+    It changes every time you start the server.
+ 5. Open the game on your PC as well: Multiplayer -> Room code -> paste the address -> Host a game -> Open lobby. Send your friend the address and the 5-letter code.
+ Without cloudflared the server still works for friends on your home network (address: your PC's IP, e.g. 192.168.1.20:24681).
 
  Alternative: DIRECT address (needs UPnP, a forwarded UDP port 24680, or a virtual LAN such as Radmin VPN / ZeroTier / Tailscale)
  - Choose "Direct address" on the Multiplayer screen; the host's lobby shows an address to share.
