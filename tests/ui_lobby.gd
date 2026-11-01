@@ -13,6 +13,8 @@ func _init() -> void:
 	lobby._show_mode(true)
 	await create_timer(0.2).timeout
 	root.get_texture().get_image().save_png(out + "/mp_host_form.png")
+	lobby._via.select(1)
+	lobby._update_mode()
 	lobby._upnp.button_pressed = false
 	lobby._port.value = 24970
 	lobby._on_host_pressed()

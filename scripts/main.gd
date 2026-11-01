@@ -7,11 +7,27 @@ var _session: NetSession
 
 
 func _ready() -> void:
+	if OS.get_cmdline_user_args().has("--relay"):  # headless game server for room codes (tools/start_server.bat)
+		_run_relay()
+		return
 	theme = UiStyle.build_theme()
 	ArtDB.load_settings()
 	Settings.apply_fullscreen(Settings.fullscreen())
 	_show_menu()
 	_offer_tutorial.call_deferred()
+
+
+func _run_relay() -> void:
+	var port := RelayServer.DEFAULT_PORT
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--port="):
+			port = int(a.substr(7))
+	var relay := RelayServer.new()
+	add_child(relay)
+	var err := relay.start(port)
+	if err != OK:
+		printerr("Could not listen on port %d (error %d). Is another server already running?" % [port, err])
+		get_tree().quit(1)
 
 
 ## F11 switches fullscreen from anywhere.

@@ -20,6 +20,13 @@ var _upnp: CheckBox
 var _choice_box: VBoxContainer
 var _copy_btn: Button
 var _best_address := ""
+var _via: OptionButton  # 0 = room code through a relay server, 1 = direct address
+var _relay_addr: LineEdit
+var _code: LineEdit
+var _direct_host_box: VBoxContainer
+var _direct_join_box: VBoxContainer
+var _relay_box: VBoxContainer
+var _code_box: VBoxContainer
 
 
 func setup(p_session: NetSession) -> MultiplayerMenu:
@@ -49,7 +56,7 @@ func _ready() -> void:
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(title)
 	var sub := Label.new()
-	sub.text = "Peer to peer: one player hosts, no server needed.\nEveryone must have the same build: %s" % BuildInfo.label()
+	sub.text = "One player hosts; friends join with a room code (or a direct address).\nEveryone must have the same build: %s" % BuildInfo.label()
 	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(sub)
 
@@ -66,6 +73,20 @@ func _ready() -> void:
 		_deck.add_item(CardDB.deck_name(id))
 	_choice_box.add_child(_deck)
 	_deck.select(maxi(0, CardDB.deck_ids().find(String(Settings.get_value("multiplayer", "deck", "")))))
+	_choice_box.add_child(_caption("Connect through"))
+	_via = OptionButton.new()
+	_via.add_item("Room code (game server - no router setup)")
+	_via.add_item("Direct address (IP, may need port forwarding)")
+	_via.select(0 if String(Settings.get_value("multiplayer", "relay", "")) != "" or String(Settings.get_value("multiplayer", "address", "")) == "" else 1)
+	_via.item_selected.connect(func(_i): _update_mode())
+	_choice_box.add_child(_via)
+	_relay_box = VBoxContainer.new()
+	_choice_box.add_child(_relay_box)
+	_relay_box.add_child(_caption("Game server address (from whoever runs the server)"))
+	_relay_addr = LineEdit.new()
+	_relay_addr.placeholder_text = "name.trycloudflare.com  or  192.168.1.20:%d" % RelayServer.DEFAULT_PORT
+	_relay_addr.text = String(Settings.get_value("multiplayer", "relay", BuildInfo.DEFAULT_RELAY))
+	_relay_box.add_child(_relay_addr)
 	var tabs := HBoxContainer.new()
 	tabs.add_theme_constant_override("separation", 8)
 	_choice_box.add_child(tabs)
@@ -84,16 +105,18 @@ func _ready() -> void:
 	_host_box.visible = false
 	_host_box.add_theme_constant_override("separation", 8)
 	_choice_box.add_child(_host_box)
-	_host_box.add_child(_caption("Port"))
+	_direct_host_box = VBoxContainer.new()
+	_host_box.add_child(_direct_host_box)
+	_direct_host_box.add_child(_caption("Port"))
 	_port = SpinBox.new()
 	_port.min_value = 1024
 	_port.max_value = 65535
 	_port.value = NetSession.DEFAULT_PORT
-	_host_box.add_child(_port)
+	_direct_host_box.add_child(_port)
 	_upnp = CheckBox.new()
 	_upnp.text = "Try to open the port on my router automatically (UPnP)"
 	_upnp.button_pressed = true
-	_host_box.add_child(_upnp)
+	_direct_host_box.add_child(_upnp)
 	var open_btn := Button.new()
 	open_btn.text = "Open lobby"
 	open_btn.pressed.connect(_on_host_pressed)
@@ -103,11 +126,20 @@ func _ready() -> void:
 	_join_box.visible = false
 	_join_box.add_theme_constant_override("separation", 8)
 	_choice_box.add_child(_join_box)
-	_join_box.add_child(_caption("Host's address (ip or ip:port)"))
+	_direct_join_box = VBoxContainer.new()
+	_join_box.add_child(_direct_join_box)
+	_direct_join_box.add_child(_caption("Host's address (ip or ip:port)"))
 	_address = LineEdit.new()
 	_address.placeholder_text = "192.168.1.20:%d" % NetSession.DEFAULT_PORT
 	_address.text = String(Settings.get_value("multiplayer", "address", ""))
-	_join_box.add_child(_address)
+	_direct_join_box.add_child(_address)
+	_code_box = VBoxContainer.new()
+	_join_box.add_child(_code_box)
+	_code_box.add_child(_caption("Room code (the host sees it after opening the lobby)"))
+	_code = LineEdit.new()
+	_code.placeholder_text = "ABCDE"
+	_code.max_length = 8
+	_code_box.add_child(_code)
 	var connect_btn := Button.new()
 	connect_btn.text = "Connect"
 	connect_btn.pressed.connect(_on_join_pressed)
@@ -125,7 +157,7 @@ func _ready() -> void:
 	_copy_btn.text = "Copy my address"
 	_copy_btn.pressed.connect(func():
 		DisplayServer.clipboard_set(_best_address)
-		_status.text = "Copied %s - paste it to your friend." % _best_address)
+		_status.text = "Copied %s - send it to your friend." % _best_address)
 	_lobby_box.add_child(_copy_btn)
 	_players_label = Label.new()
 	_players_label.add_theme_font_size_override("font_size", 20)
@@ -158,6 +190,19 @@ func _show_mode(host: bool) -> void:
 	_host_box.visible = host
 	_join_box.visible = not host
 	_status.text = ""
+	_update_mode()
+
+
+func _use_relay() -> bool:
+	return _via.selected == 0
+
+
+func _update_mode() -> void:
+	var relay := _use_relay()
+	_relay_box.visible = relay
+	_direct_host_box.visible = not relay
+	_direct_join_box.visible = not relay
+	_code_box.visible = relay
 
 
 func _selected_deck() -> String:
@@ -168,11 +213,21 @@ func _remember() -> void:
 	Settings.set_value("multiplayer", "name", _name.text)
 	Settings.set_value("multiplayer", "deck", _selected_deck())
 	Settings.set_value("multiplayer", "address", _address.text)
+	Settings.set_value("multiplayer", "relay", _relay_addr.text)
 
 
 func _on_host_pressed() -> void:
 	_remember()
-	var err := session.host_game(int(_port.value), _name.text, _selected_deck(), _upnp.button_pressed)
+	var err: Error
+	if _use_relay():
+		var url := NetSession.relay_url(_relay_addr.text)
+		if url == "":
+			_status.text = "Enter the game server's address first."
+			return
+		err = session.host_relay(url, _name.text, _selected_deck())
+		_info_label.text = "Contacting the game server..."
+	else:
+		err = session.host_game(int(_port.value), _name.text, _selected_deck(), _upnp.button_pressed)
 	if err != OK:
 		_status.text = "Could not open the lobby (error %d). Is the port already in use?" % err
 		return
@@ -184,6 +239,17 @@ func _on_host_pressed() -> void:
 
 func _on_join_pressed() -> void:
 	_remember()
+	if _use_relay():
+		var url := NetSession.relay_url(_relay_addr.text)
+		if url == "" or _code.text.strip_edges() == "":
+			_status.text = "Enter the game server's address and the room code."
+			return
+		var rerr := session.join_relay(url, _code.text, _name.text, _selected_deck())
+		if rerr != OK:
+			_status.text = "Could not start connecting (error %d)." % rerr
+			return
+		_status.text = "Joining room %s..." % _code.text.strip_edges().to_upper()
+		return
 	var target := NetSession.parse_address(_address.text)
 	if String(target.address) == "":
 		_status.text = "Enter the host's address first."
@@ -217,6 +283,12 @@ func _on_lobby(players: Array) -> void:
 
 
 func _on_host_info(info: Dictionary) -> void:
+	if String(info.get("room", "")) != "":
+		_best_address = String(info.room)
+		_info_label.text = "Your room code:  %s\nGive it to your friend. They choose Join a game, enter the same game server address and this code." % info.room
+		_copy_btn.text = "Copy room code"
+		_copy_btn.visible = true
+		return
 	var lines: Array = ["Give friends one of these addresses:"]
 	if info.external != "":
 		lines.append("Over the internet: %s:%d" % [info.external, int(info.port)])

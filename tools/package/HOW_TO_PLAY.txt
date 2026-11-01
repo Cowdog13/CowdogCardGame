@@ -1,0 +1,32 @@
+Cowdog Card Game - playtest build {VERSION} (Windows)
+
+1. Unzip this folder anywhere, then double-click CowdogCardGame.exe.
+   (Windows may say "Windows protected your PC": click "More info" -> "Run anyway". The game isn't code-signed.)
+2. The first time, accept the offer to play the TUTORIAL (about ten minutes). The Rulebook is on the main menu too.
+3. Main menu: Start Game (against the computer), Multiplayer (beta), Art packs, Settings (fullscreen: F11).
+
+EVERYONE MUST HAVE THE SAME BUILD. The version is shown at the bottom of the main menu. The game refuses to connect
+to a different build and tells you both versions.
+
+Multiplayer (online games have a turn clock: 60 seconds per turn, +4 seconds per action)
+ Easiest: ROOM CODE through a game server (nobody opens a port)
+ - Whoever runs the game server (see below) tells everyone its address, for example  abc-def.trycloudflare.com
+ - One player: Multiplayer -> "Room code" -> Host a game -> Open lobby. The lobby shows a 5-letter room code; send it to your friend.
+ - The other player: Multiplayer -> "Room code" -> Join a game -> type the same server address and the code -> Connect.
+ - After a game the host can press "Play again".
+
+ Running the game server (one person, only if you are the organiser; your PC must stay on while people play)
+ - Double-click "Start Game Server.bat". Keep its window open.
+ - For people outside your home network, download the free cloudflared.exe from https://github.com/cloudflare/cloudflared/releases
+   (Windows 64-bit: cloudflared-windows-amd64.exe), rename it cloudflared.exe and put it next to the .bat file. The .bat then opens a second window
+   that shows an address like https://abc-def.trycloudflare.com . Give friends that name (they can leave out "https://").
+   The address changes every time you start it.
+ - Without cloudflared the server still works for friends on your home network (address: your PC's IP, e.g. 192.168.1.20).
+ - Windows may ask to allow the program through the firewall: click Allow.
+
+ Alternative: DIRECT address (needs UPnP, a forwarded UDP port 24680, or a virtual LAN such as Radmin VPN / ZeroTier / Tailscale)
+ - Choose "Direct address" on the Multiplayer screen; the host's lobby shows an address to share.
+
+REPORTING PROBLEMS OR BALANCE
+After every game the game saves a small report file. Please send the newest one(s) plus a sentence on what looked wrong or too strong.
+Folder: Settings -> "Open the game reports folder"  (it is %APPDATA%\CowdogCardGame\reports).

@@ -54,13 +54,8 @@ func host_game(port: int, player_name: String, deck: String, use_upnp: bool) -> 
 	if err != OK:
 		return err
 	multiplayer.multiplayer_peer = peer
-	multiplayer.peer_connected.connect(_on_peer_connected)
-	multiplayer.peer_disconnected.connect(_on_peer_disconnected)
-	is_host = true
-	my_seat = 0
-	_local_name = _clean_name(player_name)
-	_players = [{"peer": 1, "name": _local_name, "deck": deck}]
-	var info := {"port": port, "lan": _lan_addresses(), "external": "", "upnp": "Automatic router setup is off: for friends over the internet, forward UDP port %d to this computer." % port}
+	_begin_hosting(player_name, deck)
+	var info := {"port": port, "lan": _lan_addresses(), "external": "", "room": "", "upnp": "Automatic router setup is off: for friends over the internet, forward UDP port %d to this computer." % port}
 	if use_upnp:
 		info.upnp = "Trying to open the port on your router..."
 		_thread = Thread.new()
@@ -68,6 +63,60 @@ func host_game(port: int, player_name: String, deck: String, use_upnp: bool) -> 
 	host_info_changed.emit(info)
 	_emit_lobby()
 	return OK
+
+
+func _begin_hosting(player_name: String, deck: String) -> void:
+	multiplayer.peer_connected.connect(_on_peer_connected)
+	multiplayer.peer_disconnected.connect(_on_peer_disconnected)
+	is_host = true
+	my_seat = 0
+	_local_name = _clean_name(player_name)
+	_players = [{"peer": 1, "name": _local_name, "deck": deck}]
+
+
+## Host through a relay server: no open port needed; friends type the room code the server hands out.
+func host_relay(url: String, player_name: String, deck: String) -> Error:
+	var peer := RelayPeer.new()
+	var err := peer.start_host(url)
+	if err != OK:
+		return err
+	multiplayer.multiplayer_peer = peer
+	_begin_hosting(player_name, deck)
+	peer.failed.connect(func(message): ended.emit(message))
+	peer.room_ready.connect(func(code):
+		host_info_changed.emit({"room": code, "port": 0, "lan": [], "external": "", "upnp": ""}))
+	return OK
+
+
+func join_relay(url: String, code: String, player_name: String, deck: String) -> Error:
+	var peer := RelayPeer.new()
+	var err := peer.start_join(url, code)
+	if err != OK:
+		return err
+	multiplayer.multiplayer_peer = peer
+	_begin_joining(player_name, deck)
+	peer.failed.connect(func(message): join_failed.emit(message))
+	return OK
+
+
+## "wss://name.example", "ws://1.2.3.4:24681", "1.2.3.4", "localhost:24681" or a bare tunnel name.
+static func relay_url(text: String) -> String:
+	var t := text.strip_edges().rstrip("/")
+	if t == "":
+		return ""
+	if t.begins_with("ws://") or t.begins_with("wss://"):
+		return t
+	if t.begins_with("https://"):
+		return "wss://" + t.substr(8)
+	if t.begins_with("http://"):
+		return "ws://" + t.substr(7)
+	var plain := t.begins_with("localhost")
+	var digits := t.replace(".", "").replace(":", "")
+	if digits.is_valid_int():
+		plain = true
+	if plain:
+		return "ws://" + t + ("" if t.contains(":") else ":%d" % RelayServer.DEFAULT_PORT)
+	return "wss://" + t
 
 
 func _lan_addresses() -> Array:
@@ -252,13 +301,17 @@ func join_game(address: String, port: int, player_name: String, deck: String) ->
 	if err != OK:
 		return err
 	multiplayer.multiplayer_peer = peer
-	multiplayer.connected_to_server.connect(_on_connected)
 	multiplayer.connection_failed.connect(func(): join_failed.emit("Could not reach %s:%d." % [address, port]))
+	_begin_joining(player_name, deck)
+	return OK
+
+
+func _begin_joining(player_name: String, deck: String) -> void:
+	multiplayer.connected_to_server.connect(_on_connected)
 	multiplayer.server_disconnected.connect(func(): ended.emit("The host left the game."))
 	is_host = false
 	_local_name = _clean_name(player_name)
 	_local_deck = deck
-	return OK
 
 
 func _on_connected() -> void:

@@ -15,6 +15,20 @@ Open **Multiplayer (beta)** on the main menu. The single-player game is untouche
   Closing the window or losing the connection also counts as a concession. If the host's program closes, the other player is disconnected.
 - To try it on one computer, start two copies of the game; host in one and join `127.0.0.1` in the other.
 
+## Room codes through a game server (no port forwarding)
+A small **relay server** lets players connect by room code. Everyone only makes *outgoing* connections to it, so nobody opens a port.
+It never runs the game: the host's game is still the real game, the relay only passes packets (`scripts/net/relay_server.gd`, `relay_peer.gd`).
+- **Organiser (one person):** double-click `Start Game Server.bat` from the game folder (it runs `CowdogCardGame.console.exe --headless -- --relay --port=24681`).
+  For friends outside your network also put the free `cloudflared.exe` next to the .bat: the .bat then starts a Cloudflare quick tunnel and its
+  window shows `https://<random-words>.trycloudflare.com` (changes every start). A fixed address needs a free Cloudflare account and a domain, or a $5 VPS running the same command.
+- **Players:** Multiplayer -> *Room code* -> host opens the lobby and reads out the 5-letter code; the joiner enters the same server address and code.
+  Addresses may be written `name.trycloudflare.com`, `wss://...`, or `192.168.1.20:24681` (plain `ws://` for IPs and localhost).
+  `BuildInfo.DEFAULT_RELAY` can pre-fill the address in a build.
+- The rest is unchanged: `RelayPeer` is a `MultiplayerPeerExtension`, so `NetSession`'s RPCs, the lobby, the version check and the turn clock work as before.
+  The relay forwards by room: joiner packets go to the host (tagged with the joiner's id), host packets go to one joiner or all. Rooms vanish when the host leaves.
+- Not covered by the automated tests: the Cloudflare tunnel itself (only localhost WebSocket connections are tested).
+- Trust/limits: the relay sees (but can't read meaning into) game packets; traffic to a quick tunnel is TLS from the player to Cloudflare. Up to 200 rooms.
+
 ## How it works
 - The **host's game is the real game**. It runs the same `GameEngine` as single player, so the host alone decides what is legal.
 - A joined player's screen is a `RemoteController` (same interface as `GameController`). Clicks become actions that are sent to the host

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.7.0
+- Room codes: a small game server (Start Game Server.bat, optional free Cloudflare tunnel) lets friends connect with a 5-letter code, no port forwarding.
+  The old direct-address mode stays available. See docs/MULTIPLAYER.md.
+- Build script tools/build_windows.sh; the zip now contains HOW_TO_PLAY.txt, Start Game Server.bat and a console exe for the server.
+
 ## 0.6.2
 - A big "YOUR TURN" banner flashes when the turn passes to you.
 - Multiplayer turn clock: 60 seconds per turn, +4 seconds for every action you complete. When it runs out your turn ends automatically
