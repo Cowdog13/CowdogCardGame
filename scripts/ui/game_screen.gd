@@ -519,7 +519,7 @@ func _rebuild_board(row: HBoxContainer, seat: int) -> void:
 		var chosen := _target_index(seat, slot) >= 0
 		var w := BoardCreature.new().setup(creature, slot, seat == ME, view.turn, valid, chosen)
 		w.clicked.connect(_on_slot_clicked.bind(seat, slot))
-		w.hovered.connect(_show_creature_detail)
+		w.hovered.connect(func(c): _show_creature_detail(c, seat))
 		if seat == ME:
 			w.ability_pressed.connect(func(i): _on_ability_pressed(slot, i))
 			var abilities: Array = Rules.top_card(creature).abilities
@@ -574,13 +574,14 @@ func _rebuild_hand() -> void:
 
 
 # --- Preview / log / dialogs -------------------------------------------------------------------
-func _set_preview(id: String, note: String) -> void:
-	if id != _preview_id:
-		_preview_id = id
+func _set_preview(id: String, note: String, owner := -1) -> void:
+	var key := "%s:%d" % [id, owner]
+	if key != _preview_id:
+		_preview_id = key
 		for c in _preview_holder.get_children():
 			_preview_holder.remove_child(c)
 			c.queue_free()
-		var cv := CardView.new().setup(id, CardView.Mark.NONE, Vector2(288, 403))
+		var cv := CardView.new().setup(id, CardView.Mark.NONE, Vector2(288, 403), false, owner)
 		cv.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		_preview_holder.add_child(cv)
 		_center_preview()
@@ -596,12 +597,12 @@ func _show_card_detail(id: String) -> void:
 	_set_preview(id, "")
 
 
-func _show_creature_detail(creature: Dictionary) -> void:
+func _show_creature_detail(creature: Dictionary, owner := -1) -> void:
 	var counts := {}
 	for b in creature.berries:
 		counts[CardDB.card_name(b)] = int(counts.get(CardDB.card_name(b), 0)) + 1
 	var berries := ", ".join(counts.keys().map(func(k): return "%d %s" % [counts[k], k]))
-	_set_preview(Rules.top_card(creature).id, "Attached: %s" % (berries if berries != "" else "no berries"))
+	_set_preview(Rules.top_card(creature).id, "Attached: %s" % (berries if berries != "" else "no berries"), owner)
 
 
 func _on_event(ev: Dictionary) -> void:

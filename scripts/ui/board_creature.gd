@@ -37,7 +37,7 @@ func setup(p_creature: Dictionary, p_slot: int, mine: bool, turn: int, valid: bo
 	var n := cards.size()
 	for k in n:
 		var is_top := k == n - 1
-		var cv := CardView.new().setup(cards[k], CardView.Mark.NONE, CARD_SIZE, mine and is_top)
+		var cv := CardView.new().setup(cards[k], CardView.Mark.NONE, CARD_SIZE, mine and is_top, ArtDB.my_seat if mine else 1 - ArtDB.my_seat)
 		cv.position = Vector2(6, STRIP * (MAX_STACK - n + k))
 		cv.mouse_filter = Control.MOUSE_FILTER_IGNORE if not is_top else Control.MOUSE_FILTER_PASS
 		add_child(cv)

@@ -49,6 +49,16 @@ func _init() -> void:
 	if ArtDB.card_art("leafer", 1).get_width() == 8 or ArtDB.card_art("leafer", 0).get_width() != 8:
 		fails += 1
 		print("a computer opponent must use the default art; the human keeps the pack")
+	var cv := CardView.new().setup("leafer", CardView.Mark.NONE, Vector2(100, 140), false, 1)  # how a creature on the bot's side of the table is drawn
+	if cv.owner_seat != 1:
+		fails += 1
+		print("card views must carry their owner")
+	cv.free()
+	var bc := BoardCreature.new().setup({"cards": ["leafer"], "berries": [], "exhausted": [], "stun_until": -1, "ability_used_turn": -1}, 0, false, 5, false, false)
+	if bc.top_card.owner_seat != 1:
+		fails += 1
+		print("the bot's board creatures must use the bot's art (owner seat), got ", bc.top_card.owner_seat)
+	bc.free()
 	ArtDB.bot_seats = []
 	ArtDB.set_game_decks(0, "scorching_fire", "nature_exile")
 	if ArtDB.card_art("removal", 0).get_width() == 8 or ArtDB.card_art("removal", 1).get_width() != 8:

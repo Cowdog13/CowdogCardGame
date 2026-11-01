@@ -1,6 +1,7 @@
 # Changelog
 
 ## 0.7.0
+- The computer opponent's creatures on the table (and their hover preview) also use the default art.
 - Art packs: packs without a preview picture or table background now show a grid of their cards on the Art packs screen. The computer opponent always uses the default art.
 - Removed the Computer speed slider and the Visual effects checkbox (effects are always on).
 - Art pack conflicts can be resolved picture by picture or by picking one whole pack (option on the Art packs screen).
