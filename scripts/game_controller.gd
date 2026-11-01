@@ -23,6 +23,9 @@ var hold_external := false  # the tutorial holds the computer back during the ma
 ## Optional rule layer (tutorial): Callable(seat, action, view) -> String; a non-empty result refuses the action.
 var action_filter := Callable()
 
+## Every accepted action in order ({"seat", "action"}); with the engine's seed this replays the whole game (see GameReport).
+var action_log: Array = []
+
 var _busy := {}
 var _failures := {}
 var _over_emitted := false
@@ -48,10 +51,13 @@ func submit(seat: int, action: Dictionary) -> Dictionary:
 		var refusal: String = action_filter.call(seat, action, engine.get_view(seat))
 		if refusal != "":
 			return {"ok": false, "error": refusal}
+	action_log.append({"seat": seat, "action": action.duplicate(true)})  # before the engine runs: a game-ending action must be in the log its listeners save
 	var res := engine.submit(seat, action)
 	if res.ok:
 		_failures[seat] = 0
 		action_done.emit(seat, action)
+	else:
+		action_log.pop_back()
 	return res
 
 
@@ -80,13 +86,18 @@ func _run_agent(seat: int) -> void:
 	if is_inside_tree() and not engine.is_over() and engine.awaiting().has(seat):
 		var view := engine.get_view(seat)
 		var action: Dictionary = await agents[seat].decide(view)
+		action_log.append({"seat": seat, "action": action.duplicate(true)})
 		var res := engine.submit(seat, action)
 		if res.ok:
 			_failures[seat] = 0
 		else:
+			action_log.pop_back()
 			_failures[seat] = int(_failures.get(seat, 0)) + 1
 			push_warning("Agent %d illegal action %s: %s" % [seat, action, res.error])
 			if _failures[seat] >= MAX_FAILURES:
-				engine.submit(seat, PlayerAgent.fallback_action(view))
+				var fallback := PlayerAgent.fallback_action(view)
+				action_log.append({"seat": seat, "action": fallback})
+				if not engine.submit(seat, fallback).ok:
+					action_log.pop_back()
 	_busy[seat] = false
 	_pump()

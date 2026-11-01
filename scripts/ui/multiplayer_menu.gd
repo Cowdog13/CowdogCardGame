@@ -18,6 +18,8 @@ var _address: LineEdit
 var _port: SpinBox
 var _upnp: CheckBox
 var _choice_box: VBoxContainer
+var _copy_btn: Button
+var _best_address := ""
 
 
 func setup(p_session: NetSession) -> MultiplayerMenu:
@@ -47,7 +49,7 @@ func _ready() -> void:
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(title)
 	var sub := Label.new()
-	sub.text = "Peer to peer: one player hosts, no server needed."
+	sub.text = "Peer to peer: one player hosts, no server needed.\nEveryone must have the same build: %s" % BuildInfo.label()
 	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(sub)
 
@@ -56,13 +58,14 @@ func _ready() -> void:
 	box.add_child(_choice_box)
 	_choice_box.add_child(_caption("Your name"))
 	_name = LineEdit.new()
-	_name.text = "Player"
+	_name.text = String(Settings.get_value("multiplayer", "name", "Player"))
 	_choice_box.add_child(_name)
 	_choice_box.add_child(_caption("Your deck"))
 	_deck = OptionButton.new()
 	for id in CardDB.deck_ids():
 		_deck.add_item(CardDB.deck_name(id))
 	_choice_box.add_child(_deck)
+	_deck.select(maxi(0, CardDB.deck_ids().find(String(Settings.get_value("multiplayer", "deck", "")))))
 	var tabs := HBoxContainer.new()
 	tabs.add_theme_constant_override("separation", 8)
 	_choice_box.add_child(tabs)
@@ -103,6 +106,7 @@ func _ready() -> void:
 	_join_box.add_child(_caption("Host's address (ip or ip:port)"))
 	_address = LineEdit.new()
 	_address.placeholder_text = "192.168.1.20:%d" % NetSession.DEFAULT_PORT
+	_address.text = String(Settings.get_value("multiplayer", "address", ""))
 	_join_box.add_child(_address)
 	var connect_btn := Button.new()
 	connect_btn.text = "Connect"
@@ -117,6 +121,12 @@ func _ready() -> void:
 	_info_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_info_label.custom_minimum_size = Vector2(500, 0)
 	_lobby_box.add_child(_info_label)
+	_copy_btn = Button.new()
+	_copy_btn.text = "Copy my address"
+	_copy_btn.pressed.connect(func():
+		DisplayServer.clipboard_set(_best_address)
+		_status.text = "Copied %s - paste it to your friend." % _best_address)
+	_lobby_box.add_child(_copy_btn)
 	_players_label = Label.new()
 	_players_label.add_theme_font_size_override("font_size", 20)
 	_lobby_box.add_child(_players_label)
@@ -154,7 +164,14 @@ func _selected_deck() -> String:
 	return CardDB.deck_ids()[_deck.selected]
 
 
+func _remember() -> void:
+	Settings.set_value("multiplayer", "name", _name.text)
+	Settings.set_value("multiplayer", "deck", _selected_deck())
+	Settings.set_value("multiplayer", "address", _address.text)
+
+
 func _on_host_pressed() -> void:
+	_remember()
 	var err := session.host_game(int(_port.value), _name.text, _selected_deck(), _upnp.button_pressed)
 	if err != OK:
 		_status.text = "Could not open the lobby (error %d). Is the port already in use?" % err
@@ -166,6 +183,7 @@ func _on_host_pressed() -> void:
 
 
 func _on_join_pressed() -> void:
+	_remember()
 	var target := NetSession.parse_address(_address.text)
 	if String(target.address) == "":
 		_status.text = "Enter the host's address first."
@@ -206,6 +224,12 @@ func _on_host_info(info: Dictionary) -> void:
 		lines.append("Same network: %s:%d" % [ip, int(info.port)])
 	lines.append(String(info.upnp))
 	_info_label.text = "\n".join(lines)
+	# The address most likely to work: the internet one when the router opened the port, else the first one on this network.
+	if info.external != "":
+		_best_address = "%s:%d" % [info.external, int(info.port)]
+	elif not info.lan.is_empty():
+		_best_address = "%s:%d" % [info.lan[0], int(info.port)]
+	_copy_btn.visible = _best_address != ""
 
 
 func _on_join_failed(message: String) -> void:

@@ -41,6 +41,8 @@ var _preview_holder: Control
 var _preview_note: Label
 var _preview_id := ""
 var _log_bbcode := ""
+var _log_lines: Array = []  # plain text of the log, for saved game reports
+var is_net_host := false  # hosting an online game: the game-over dialog offers "Play again"
 var _piles: Array = [{}, {}]  # per seat: {"deck": PileView, "discard": ..., "exile": ...}
 var fx_enabled := true
 var _fx: FxLayer
@@ -540,6 +542,7 @@ func _on_event(ev: Dictionary) -> void:
 
 
 func _log_event(ev: Dictionary) -> void:
+	_log_lines.append(String(ev.text))
 	var color := "#cfd8d3"
 	match int(ev.player):
 		ME: color = "#8fc7ff"
@@ -562,9 +565,28 @@ func _show_log() -> void:
 	rt.text = _log_bbcode
 	rt.scroll_following = true
 	d.add_child(rt)
+	d.add_button("Save game report", false, "save")
+	d.add_button("Open reports folder", false, "open")
+	d.custom_action.connect(func(action):
+		if action == "save":
+			var path := save_report()
+			_toast("Saved %s" % path if path != "" else "Could not save the report.")
+		else:
+			Settings.open_reports_folder())
 	d.confirmed.connect(d.queue_free)
 	d.canceled.connect(d.queue_free)
 	_popup(d)
+
+
+## Writes a report of this game (build, decks, seed, every action and the log) to the game reports folder, and returns its path.
+## A tester sends the file in when something looks wrong or unbalanced: the game can be replayed exactly from it.
+func save_report() -> String:
+	var kind := "client"
+	if _allow_rematch:
+		kind = "single player"
+	elif controller is GameController:
+		kind = "host"
+	return GameReport.save(GameReport.build(controller, ME, _log_lines, kind), kind.replace(" ", "-"))
 
 
 func _toast(msg: String) -> void:
@@ -1478,7 +1500,20 @@ func _on_game_over(winner: int) -> void:
 		d.dialog_text = "You win!"
 	else:
 		d.dialog_text = "The computer wins." if _allow_rematch else "You lose."
-	if _allow_rematch:
+	if not tutorial_mode:
+		var path := save_report()
+		if path != "":
+			d.dialog_text += "\n\nA report of this game was saved (Settings > Open the game reports folder). Send it in if something looked wrong."
+	if is_net_host:
+		d.ok_button_text = "Play again"
+		d.add_button("Main Menu", false, "menu")
+		d.confirmed.connect(func(): rematch_requested.emit())
+		d.custom_action.connect(func(_a): exit_requested.emit())
+	elif not _allow_rematch and controller is RemoteController:
+		d.dialog_text += "\n\nIf the host starts another game you will be taken to it."
+		d.ok_button_text = "Main Menu"
+		d.confirmed.connect(func(): exit_requested.emit())
+	elif _allow_rematch:
 		d.ok_button_text = "Rematch"
 		d.add_button("Main Menu", false, "menu")
 		d.confirmed.connect(func(): rematch_requested.emit())

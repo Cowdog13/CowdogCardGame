@@ -28,6 +28,7 @@ const MAX_SEATS := 4
 const REQUIRED_PLAYERS := 2
 const ALLOWED_ACTION_KEYS := ["type", "hand", "slot", "discard", "ability", "params", "payment", "cards", "order", "from"]
 
+var build_id := BuildInfo.fingerprint()  # compared when joining: everyone needs the same build (tests override it)
 var is_host := false
 var my_seat := 0
 var controller: Node  # GameController on the host, RemoteController on clients
@@ -128,6 +129,21 @@ func _seat_of(peer_id: int) -> int:
 
 
 ## Host only: start the game for everyone in the lobby. Returns "" or the reason it can't start.
+## Host only: another game with the same two players, straight after one has ended.
+func rematch() -> String:
+	if not is_host or not started:
+		return "There is no game to repeat."
+	for p in _players:
+		if int(p.peer) == 0:
+			return "Your opponent has left, so there is nobody to play again."
+	if controller != null:
+		controller.queue_free()
+		controller = null
+	_events.clear()
+	started = false
+	return start_game()
+
+
 func start_game() -> String:
 	if not is_host or started:
 		return "Already started."
@@ -194,7 +210,7 @@ func join_game(address: String, port: int, player_name: String, deck: String) ->
 
 
 func _on_connected() -> void:
-	rpc_id(1, "rpc_hello", PROTOCOL, _local_name, _local_deck)
+	rpc_id(1, "rpc_hello", PROTOCOL, build_id, _local_name, _local_deck)
 
 
 ## Accepts "ip", "ip:port" or "[::1]:port" style join codes.
@@ -234,13 +250,15 @@ static func _clean_name(raw: String) -> String:
 # --- Messages -------------------------------------------------------------------------------------
 ## Client -> host: join the lobby.
 @rpc("any_peer", "reliable")
-func rpc_hello(protocol: int, player_name: String, deck: String) -> void:
+func rpc_hello(protocol: int, build: String, player_name: String, deck: String) -> void:
 	if not is_host:
 		return
 	var id := multiplayer.get_remote_sender_id()
 	var reason := ""
 	if protocol != PROTOCOL:
 		reason = "Different game versions (host %d, you %d)." % [PROTOCOL, protocol]
+	elif build != build_id:
+		reason = "You are on a different build than the host. Host: %s. You: %s. Everyone needs the same download." % [build_id, build]
 	elif started:
 		reason = "The game has already started."
 	elif _players.size() >= MAX_SEATS:
@@ -280,6 +298,8 @@ func rpc_begin(seat: int, _count: int, names: Array) -> void:
 	started = true
 	my_seat = seat
 	_names = names
+	if controller != null:
+		controller.queue_free()  # a rematch: the old game's controller goes
 	var rc := RemoteController.new()
 	rc.setup(func(action: Dictionary): rpc_id(1, "rpc_action", action))
 	controller = rc

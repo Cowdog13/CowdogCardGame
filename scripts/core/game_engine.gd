@@ -30,7 +30,7 @@ var rng := RandomNumberGenerator.new()
 ## `fixed_decks` (optional, for the tutorial): one ordered card list per player. They are used exactly as
 ## given (no shuffling) and player 0 goes first, so a scripted game plays out the same way every time.
 func setup(deck_ids: Array, seed_val: int = -1, names: Array = [], fixed_decks: Array = []) -> void:
-	if seed_val < 0:
+	if seed_val == -1:  # -1 asks for a random seed; any other value (even a negative 64-bit one) is replayed as given
 		rng.randomize()
 	else:
 		rng.seed = seed_val
@@ -572,7 +572,7 @@ func _apply_effect(e: Dictionary, player: int, slot: int, params: Dictionary) ->
 				n = int(e.per_hand) * _P(player).hand.size()
 			elif e.has("per_berry_per_creature"):
 				var mine: Dictionary = _P(player).board[slot]
-				n = int(e.per_berry_per_creature) * mine.berries.size() * (Rules.BOARD_SLOTS - _P(player).board.count(null))
+				n = mini(int(e.per_berry_per_creature) * mine.berries.size() * (Rules.BOARD_SLOTS - _P(player).board.count(null)), int(e.get("max", 999)))
 			if params.get("_double", false):
 				n *= 2
 			_plunder(player, opp, n)

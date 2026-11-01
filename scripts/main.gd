@@ -9,7 +9,33 @@ var _session: NetSession
 func _ready() -> void:
 	theme = UiStyle.build_theme()
 	ArtDB.load_settings()
+	Settings.apply_fullscreen(Settings.fullscreen())
 	_show_menu()
+	_offer_tutorial.call_deferred()
+
+
+## F11 switches fullscreen from anywhere.
+func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_F11:
+		Settings.set_fullscreen(DisplayServer.window_get_mode() != DisplayServer.WINDOW_MODE_FULLSCREEN)
+
+
+## The first time the game is started, point new players at the tutorial.
+func _offer_tutorial() -> void:
+	if bool(Settings.get_value("app", "welcomed", false)):
+		return
+	Settings.set_value("app", "welcomed", true)
+	var d := ConfirmationDialog.new()
+	d.title = "Welcome!"
+	d.dialog_text = "New to the game? The tutorial teaches the rules in about ten minutes of play. Start it now?"
+	d.ok_button_text = "Start the tutorial"
+	d.cancel_button_text = "Not now"
+	add_child(d)
+	d.confirmed.connect(func():
+		d.queue_free()
+		_start_tutorial())
+	d.canceled.connect(d.queue_free)
+	d.popup_centered()
 
 
 func _show_menu() -> void:
@@ -20,6 +46,7 @@ func _show_menu() -> void:
 	_menu.tutorial_requested.connect(_start_tutorial)
 	_menu.rulebook_requested.connect(_show_rulebook)
 	_menu.art_packs_requested.connect(_show_art_packs)
+	_menu.settings_requested.connect(_show_settings)
 	add_child(_menu)
 	_menu.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
@@ -34,6 +61,15 @@ func _start_game(deck0: String, deck1: String, ai_delay: float, effects: bool) -
 	_game.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	# The human always sits in seat 0; seat 1 is the computer.
 	_game.start([deck0, deck1], [HumanAgent.new(0), AIAgent.new(1)], ai_delay, effects)
+
+
+func _show_settings() -> void:
+	_clear()
+	var screen := SettingsScreen.new()
+	screen.back_requested.connect(_show_menu)
+	_menu = screen
+	add_child(screen)
+	screen.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
 
 func _show_art_packs() -> void:
@@ -106,7 +142,15 @@ func _on_net_game_ready(controller: Node, my_seat: int) -> void:
 		_show_menu())
 	add_child(_game)
 	_game.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_game.is_net_host = controller is GameController
+	_game.rematch_requested.connect(_net_rematch)
 	_game.attach(controller, my_seat, true, false)
+
+
+func _net_rematch() -> void:
+	var problem := _session.rematch()
+	if problem != "" and _game != null:
+		_game._toast(problem)
 
 
 func _on_net_ended(reason: String) -> void:

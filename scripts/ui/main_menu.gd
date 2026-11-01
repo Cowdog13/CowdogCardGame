@@ -6,6 +6,7 @@ signal multiplayer_requested
 signal tutorial_requested
 signal rulebook_requested
 signal art_packs_requested
+signal settings_requested
 
 var _you: OptionButton
 var _opp: OptionButton
@@ -48,8 +49,8 @@ func _ready() -> void:
 	sub.text = "Playtest build - Preconstructed format"
 	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(sub)
-	_you = _deck_picker(box, "Your deck", 0)
-	_opp = _deck_picker(box, "Computer's deck", 1)
+	_you = _deck_picker(box, "Your deck", _deck_index(Settings.get_value("game", "deck_you", ""), 0))
+	_opp = _deck_picker(box, "Computer's deck", _deck_index(Settings.get_value("game", "deck_computer", ""), 1))
 	var speed_label := Label.new()
 	speed_label.text = "Computer speed (seconds per action)"
 	box.add_child(speed_label)
@@ -57,16 +58,20 @@ func _ready() -> void:
 	_speed.min_value = 0.0
 	_speed.max_value = 2.0
 	_speed.step = 0.1
-	_speed.value = 0.7
+	_speed.value = float(Settings.get_value("game", "computer_speed", 0.7))
 	box.add_child(_speed)
 	_effects = CheckBox.new()
 	_effects.text = "Visual effects (card animations)"
-	_effects.button_pressed = true
+	_effects.button_pressed = bool(Settings.get_value("game", "effects", true))
 	box.add_child(_effects)
 	var start := Button.new()
 	start.text = "Start Game"
 	start.custom_minimum_size = Vector2(0, 48)
 	start.pressed.connect(func():
+		Settings.set_value("game", "deck_you", CardDB.deck_ids()[_you.selected])
+		Settings.set_value("game", "deck_computer", CardDB.deck_ids()[_opp.selected])
+		Settings.set_value("game", "computer_speed", _speed.value)
+		Settings.set_value("game", "effects", _effects.button_pressed)
 		start_requested.emit(CardDB.deck_ids()[_you.selected], CardDB.deck_ids()[_opp.selected], _speed.value, _effects.button_pressed))
 	box.add_child(start)
 	var tut := Button.new()
@@ -85,10 +90,25 @@ func _ready() -> void:
 	mp.text = "Multiplayer (beta)"
 	mp.pressed.connect(func(): multiplayer_requested.emit())
 	box.add_child(mp)
+	var settings := Button.new()
+	settings.text = "Settings"
+	settings.pressed.connect(func(): settings_requested.emit())
+	box.add_child(settings)
 	var quit := Button.new()
 	quit.text = "Quit"
 	quit.pressed.connect(func(): get_tree().quit())
 	box.add_child(quit)
+	var version := Label.new()
+	version.text = BuildInfo.label()
+	version.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	version.modulate = Color(1, 1, 1, 0.55)
+	version.add_theme_font_size_override("font_size", 13)
+	box.add_child(version)
+
+
+func _deck_index(deck_id: String, fallback: int) -> int:
+	var i: int = CardDB.deck_ids().find(deck_id)
+	return i if i >= 0 else fallback
 
 
 func _deck_picker(parent: Control, label: String, default_index: int) -> OptionButton:

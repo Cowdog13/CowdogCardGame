@@ -55,6 +55,9 @@ Peer-to-peer games (one player hosts, no server) are in **Multiplayer (beta)** o
 - `scripts/ui/`, `scripts/main.gd` - menu and table UI; `fx_layer.gd` holds the visual effects. The engine's log events carry an optional `fx` payload that the UI plays.
 - `tests/` - `fx_demo.gd` (screenshots of every effect), `run_sim.gd` (AI vs AI, rule invariants), `ui_smoke.gd`, `ui_interact.gd`, `screenshot.gd`.
 
+## Playtesting
+See `docs/TESTING.md` (a guide for testers and for the organiser), `CHANGELOG.md`, and bump `BuildInfo.VERSION` for each tester build.
+
 ## Art packs
 Main menu -> "Art packs": players can install extra art (for now: the table background) by unzipping a pack into the art packs
 folder. Format, pack-making script and how to sell packs on itch.io: `docs/ART_PACKS.md`. Test: `tests/art_pack_test.gd`.
@@ -93,6 +96,9 @@ godot --headless -s tests/net_ui_test.gd     # both screens over the network
 godot --headless -s tests/net_surrender_test.gd   # Menu -> confirm surrenders in multiplayer
 godot --headless -s tests/tutorial_test.gd        # plays the whole tutorial through the controller
 godot --headless -s tests/rulebook_test.gd
+godot --headless -s tests/replay_test.gd         # a saved game report replays to the identical game
+godot --headless -s tests/net_rematch_test.gd   # old builds are refused online; the host can play again
+godot --headless -s tests/balance_matrix.gd -- 40   # AI vs AI win rates per deck pairing (a rough balance guide)
 godot --headless -s tests/art_pack_test.gd     # art packs replace the table background and fall back to the default
 godot --headless -s tests/leaders_test.gd      # the four leaders
 godot --headless -s tests/ui_leaders.gd        # their pickers
