@@ -1001,7 +1001,10 @@ func _ask_recycle(n: int) -> void:
 			_submit({"type": "recycle", "cards": picked}),
 		func():
 			_recycle_open = false
-			_refresh.call_deferred())  # a recycle choice can't be skipped; ask again
+			if view.pending.get("cancelable", false):
+				_submit({"type": "cancel_pending"})  # the ability is taken back
+			else:
+				_refresh.call_deferred())  # a recycle choice can't be skipped; ask again
 
 
 ## Fire Famine: the pillaged non-berry cards are recycled; the player picks their order.

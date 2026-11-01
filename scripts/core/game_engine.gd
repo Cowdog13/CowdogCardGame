@@ -15,6 +15,7 @@ extends RefCounted
 ##   {"type":"order_recycle","order":[indices]}               (only while state.pending.ordering is set: Fire Famine's order)
 ##   {"type":"recycle",      "cards":[discard indices]}       (only while state.pending.recycle > 0: Firewolf's choice, in order)
 ##   {"type":"timeout"}                                         (host only: the turn clock expired with no action; the other player wins)
+##   {"type":"cancel_pending"}                                  (backs out of an ability that is only waiting for its recycle choice; pending.cancelable)
 ##   {"type":"concede"}                                         (any time; the other player wins)
 ##   {"type":"end_turn"}
 ## Results are {"ok":true} or {"ok":false,"error":"..."}.
@@ -56,6 +57,9 @@ func setup(deck_ids: Array, seed_val: int = -1, names: Array = [], fixed_decks: 
 	state_changed.emit()
 
 
+var _undo := {}  # state before an ability that is waiting for its recycle choice (see _undoable_ability)
+
+
 func is_over() -> bool:
 	return state.phase == "over"
 
@@ -91,6 +95,11 @@ func submit(player: int, action: Dictionary) -> Dictionary:
 		_win(1 - player, "%s forfeited." % _pname(player))
 		state_changed.emit()
 		return _ok()
+	if t == "cancel_pending":
+		return _do_cancel(player)
+	var snap := {}
+	if t == "use_ability" and _undoable_ability(player, action):
+		snap = state.duplicate(true)
 	if not state.pending.is_empty():
 		var wanted := "place_berry"
 		if state.pending.berries.is_empty():
@@ -117,9 +126,42 @@ func submit(player: int, action: Dictionary) -> Dictionary:
 			"end_turn": res = _do_end_turn(player)
 			_: res = _err("Unknown action")
 	if res.ok:
+		_undo = {}
+		if not snap.is_empty() and not state.pending.is_empty() and state.phase != "over" and int(state.pending.recycle) > 0 and int(state.pending.player) == player:
+			_undo = snap  # the ability only asked for a recycle so far: the player may still back out
+			state.pending["cancelable"] = true
 		_apply_deferred_loss()
 		state_changed.emit()
 	return res
+
+
+## Abilities that, before the player has made their recycle choice, did nothing hidden or random: they can be taken back.
+func _undoable_ability(player: int, action: Dictionary) -> bool:
+	var pl := _P(player)
+	var slot := int(action.get("slot", -1))
+	var ai := int(action.get("ability", -1))
+	if slot < 0 or slot >= pl.board.size() or pl.board[slot] == null:
+		return false
+	var abilities: Array = Rules.top_card(pl.board[slot]).abilities
+	if ai < 0 or ai >= abilities.size():
+		return false
+	for e in abilities[ai].effects:
+		if not ["recycle", "recycle_exile", "exile_attached"].has(e.type):
+			return false
+	return true
+
+
+## "Cancel" on an ability's recycle choice: the game goes back to just before the ability was used.
+func _do_cancel(player: int) -> Dictionary:
+	if _undo.is_empty() or state.pending.is_empty() or int(state.pending.player) != player or not state.pending.get("cancelable", false):
+		return _err("There is nothing to cancel")
+	var snap := _undo
+	_undo = {}
+	for k in snap.keys():
+		state[k] = snap[k]
+	_say("%s takes the ability back." % _pname(player), player)
+	state_changed.emit()
+	return _ok()
 
 
 ## Everything `player` is allowed to know: own hand/deck size, public boards and discards.

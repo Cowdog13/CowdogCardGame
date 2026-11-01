@@ -1,6 +1,7 @@
 # Changelog
 
 ## 0.7.0
+- Cancel works on the recycle choice of Recycle 2/3, Mulch and Rebirth: the ability is taken back (berries and cards come back). Pillage's recycle and Dawn can't be cancelled.
 - The computer opponent's creatures on the table (and their hover preview) also use the default art.
 - Art packs: packs without a preview picture or table background now show a grid of their cards on the Art packs screen. The computer opponent always uses the default art.
 - Removed the Computer speed slider and the Visual effects checkbox (effects are always on).

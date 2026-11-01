@@ -95,6 +95,7 @@ xvfb-run godot --rendering-driver opengl3 -s tests/ui_click_area.gd   # needs a 
 godot --headless -s tests/ui_smoke.gd
 godot --headless -s tests/net_test.gd        # host + client over a real local connection play a full game
 godot --headless -s tests/net_ui_test.gd     # both screens over the network
+godot --headless -s tests/cancel_test.gd          # cancelling an ability's recycle choice
 godot --headless -s tests/relay_test.gd           # room codes through the relay server
 godot --headless -s tests/turn_timer_test.gd      # multiplayer turn clock
 godot --headless -s tests/net_surrender_test.gd   # Menu -> confirm surrenders in multiplayer
