@@ -33,6 +33,8 @@ var is_host := false
 var my_seat := 0
 var controller: Node  # GameController on the host, RemoteController on clients
 var started := false
+var timer := TurnTimer.new()  # host: the turn clock (40 s per turn, +2 s per action); tests shorten it
+var _clock_sent := 0.0
 
 var _players: Array = []  # host: [{"peer": int, "name": String, "deck": String}] in seat order
 var _names: Array = []  # client: names by seat once the game starts
@@ -164,9 +166,59 @@ func start_game() -> String:
 	add_child(ctrl)
 	ctrl.event_logged.connect(func(ev): _events.append(ev))
 	ctrl.view_updated.connect(_send_updates)
+	timer = _fresh_timer()
+	ctrl.action_done.connect(timer.on_action)
 	ctrl.start(decks, agents, -1, names)
 	game_ready.emit(ctrl, 0)
 	return ""
+
+
+func _fresh_timer() -> TurnTimer:
+	var t := TurnTimer.new()
+	t.base = timer.base
+	t.bonus = timer.bonus
+	return t
+
+
+func _process(delta: float) -> void:
+	if not is_host or not started or controller == null or controller.engine.state.is_empty():
+		return
+	var engine: GameEngine = controller.engine
+	if engine.is_over():
+		timer.seat = -1
+		controller.clock_seat = -1
+		return
+	timer.sync(engine.state)
+	var expired := timer.tick(delta)
+	controller.clock_seat = timer.seat
+	controller.clock_left = timer.remaining
+	_clock_sent += delta
+	if timer.changed or _clock_sent >= 1.0:
+		timer.changed = false
+		_clock_sent = 0.0
+		for i in range(1, _players.size()):
+			if int(_players[i].peer) != 0:
+				rpc_id(int(_players[i].peer), "rpc_clock", timer.seat, timer.remaining)
+	if expired:
+		_expire()
+
+
+## The active player's time is up: no action all turn forfeits, otherwise the turn is ended for them.
+func _expire() -> void:
+	var seat := timer.seat
+	if timer.actions == 0:
+		controller.submit(seat, {"type": "timeout"})
+		return
+	var guard := 0
+	while not controller.engine.is_over() and guard < 20:
+		guard += 1
+		var pend: Dictionary = controller.engine.state.pending
+		if pend.is_empty():
+			break
+		var who := int(pend.player)
+		controller.submit(who, PlayerAgent.fallback_action(controller.engine.get_view(who)))
+	if not controller.engine.is_over() and controller.engine.state.pending.is_empty():
+		controller.submit(seat, {"type": "end_turn"})
 
 
 func _send_updates() -> void:
@@ -318,6 +370,13 @@ func rpc_state(events: Array, view: Dictionary) -> void:
 		game_ready.emit(controller, my_seat)
 
 
+## Host -> client: whose turn clock is running and how many seconds it has left.
+@rpc("authority", "reliable")
+func rpc_clock(seat: int, seconds: float) -> void:
+	if not is_host and controller is RemoteController:
+		(controller as RemoteController).set_clock(seat, seconds)
+
+
 ## Client -> host: play this action.
 @rpc("any_peer", "reliable")
 func rpc_action(action: Dictionary) -> void:
@@ -327,7 +386,7 @@ func rpc_action(action: Dictionary) -> void:
 	var seat := _seat_of(id)
 	if seat <= 0:
 		return
-	if not _action_is_sane(action):
+	if not _action_is_sane(action) or action.type == "timeout":
 		rpc_id(id, "rpc_error", "Malformed action.")
 		return
 	var res: Dictionary = controller.submit(seat, action)

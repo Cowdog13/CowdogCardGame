@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.6.2
+- Multiplayer turn clock: 40 seconds per turn, +2 seconds for every action you complete. When it runs out your turn ends automatically
+  (open choices are resolved for you); if you took no action at all that turn you forfeit and your opponent wins. Single player has no clock.
+
 ## 0.6.1
 - Tidal Surge is removed from the game. Berry Trade moved from Water Ruler to Water Essence (1 Super Berry), which now has only that ability. Water Ruler gets Rearrange (2 Super Berries): move all
   berries between your creatures, then Plunder X = the most berries on one of your creatures.

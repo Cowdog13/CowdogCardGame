@@ -29,6 +29,7 @@ Open the folder in Godot 4.7 and press Play (main scene `scenes/main.tscn`).
 - Hover any card (hand, board, piles) to see it large in the right-hand column. **Log** shows the full game log. **Swap (N)** puts N cards from your hand into the discard and takes a creature from it (once per turn; N grows by 1 after each swap). Everyone starts with a free dormant leader creature on the board (Fire Lord, Water Essence, Mother Nature or the Sun God; see the Rulebook).
 
 ## Multiplayer
+Online games have a turn clock: 40 s per turn, +2 s per action; at zero the turn ends, and a player who did nothing all turn forfeits.
 Peer-to-peer games (one player hosts, no server) are in **Multiplayer (beta)** on the main menu; single player is unchanged. How to host/join, how it works and the plan for 4 players are in
 `docs/MULTIPLAYER.md`. The last single-player-only commit is `84bb8dc`.
 
@@ -93,6 +94,7 @@ xvfb-run godot --rendering-driver opengl3 -s tests/ui_click_area.gd   # needs a 
 godot --headless -s tests/ui_smoke.gd
 godot --headless -s tests/net_test.gd        # host + client over a real local connection play a full game
 godot --headless -s tests/net_ui_test.gd     # both screens over the network
+godot --headless -s tests/turn_timer_test.gd      # multiplayer turn clock
 godot --headless -s tests/net_surrender_test.gd   # Menu -> confirm surrenders in multiplayer
 godot --headless -s tests/tutorial_test.gd        # plays the whole tutorial through the controller
 godot --headless -s tests/rulebook_test.gd

@@ -13,9 +13,22 @@ var hold_ai := false  # unused here; keeps the interface identical to GameContro
 var ai_delay := 0.0
 var history: Array = []  # every event received so far (a late-attaching screen replays them)
 
+var clock_seat := -1  # whose turn clock is running, and how long it has left (counted down locally between host updates)
+var clock_left := 0.0
+
 var _view: Dictionary = {}
 var _sender: Callable
 var _over_emitted := false
+
+
+func _process(delta: float) -> void:
+	if clock_seat != -1:
+		clock_left = maxf(0.0, clock_left - delta)
+
+
+func set_clock(seat: int, left: float) -> void:
+	clock_seat = seat
+	clock_left = left
 
 
 func setup(sender: Callable) -> void:

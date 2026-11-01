@@ -157,6 +157,8 @@ Exiled cards never come back, but they are counted by Spore Spreader. An ability
 
 [b]Log.[/b] The Log button lists everything that has happened this game.
 
+[b]Turn clock.[/b] Online games only: 40 seconds per turn, plus 2 seconds for every action you complete. When time runs out your turn ends automatically; if you took no action at all that turn, you forfeit and your opponent wins.
+
 [b]Menu.[/b] Leave the game. In a multiplayer game this means [b]surrender[/b], and the opponent wins.
 
 [b]Effects.[/b] Card flights, plundered cards laid out in the middle, stun bolts and so on can be switched off on the main menu."""],

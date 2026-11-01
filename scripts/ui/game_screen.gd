@@ -26,6 +26,7 @@ var tutorial_mode := false  # the tutorial runs this game: the Menu button just 
 
 var _opp_info: Label
 var _last_event: Label
+var _clock_label: Label  # multiplayer turn clock
 var _turn_label: Label
 var _opp_board: HBoxContainer
 var _my_board: HBoxContainer
@@ -72,6 +73,24 @@ func start(deck_ids: Array, agents: Array, ai_delay: float, effects := true) -> 
 ## Shows a game that is run elsewhere: the host's own controller, or a RemoteController that mirrors
 ## the host's game. `my_seat` is the seat shown at the bottom. Rematch needs a local game, so it is
 ## offered only when `allow_rematch` is set.
+func _process(_delta: float) -> void:
+	if _clock_label == null or controller == null:
+		return
+	var seat: int = controller.get("clock_seat") if controller.get("clock_seat") != null else -1
+	_clock_label.visible = seat != -1
+	if seat == -1:
+		return
+	var left: float = controller.clock_left
+	_clock_label.text = "%s %d:%02d" % ["⏱" if seat == ME else "⏳", int(ceil(left)) / 60, int(ceil(left)) % 60]
+	var c := Color(1, 0.95, 0.75)
+	if left <= 10.0:
+		c = Color(1, 0.35, 0.3)
+		_clock_label.modulate.a = 0.65 + 0.35 * absf(sin(Time.get_ticks_msec() / 250.0))
+	else:
+		_clock_label.modulate.a = 1.0
+	_clock_label.add_theme_color_override("font_color", c)
+
+
 func attach(p_controller: Node, my_seat: int, effects := true, allow_rematch := false) -> void:
 	ME = my_seat
 	OPP = 1 - my_seat
@@ -154,6 +173,12 @@ func _build_ui() -> void:
 	_turn_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.8))
 	_turn_label.add_theme_constant_override("outline_size", 5)
 	mid.add_child(_turn_label)
+	_clock_label = Label.new()
+	_clock_label.add_theme_font_size_override("font_size", 22)
+	_clock_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+	_clock_label.add_theme_constant_override("outline_size", 6)
+	_clock_label.visible = false
+	mid.add_child(_clock_label)
 	_banner_panel = PanelContainer.new()
 	var banner_panel := _banner_panel
 	banner_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL

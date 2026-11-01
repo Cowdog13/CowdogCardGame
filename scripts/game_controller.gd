@@ -26,6 +26,10 @@ var action_filter := Callable()
 ## Every accepted action in order ({"seat", "action"}); with the engine's seed this replays the whole game (see GameReport).
 var action_log: Array = []
 
+## Turn clock shown by the UI (multiplayer only; the host's NetSession keeps it up to date).
+var clock_seat := -1
+var clock_left := 0.0
+
 var _busy := {}
 var _failures := {}
 var _over_emitted := false

@@ -14,6 +14,7 @@ extends RefCounted
 ##   {"type":"place_berry",  "slot":s}                        (only while state.pending has berries: where a revealed berry goes)
 ##   {"type":"order_recycle","order":[indices]}               (only while state.pending.ordering is set: Fire Famine's order)
 ##   {"type":"recycle",      "cards":[discard indices]}       (only while state.pending.recycle > 0: Firewolf's choice, in order)
+##   {"type":"timeout"}                                         (host only: the turn clock expired with no action; the other player wins)
 ##   {"type":"concede"}                                         (any time; the other player wins)
 ##   {"type":"end_turn"}
 ## Results are {"ok":true} or {"ok":false,"error":"..."}.
@@ -83,6 +84,11 @@ func submit(player: int, action: Dictionary) -> Dictionary:
 	if t == "concede":  # allowed at any time, including during the opponent's turn
 		_say("%s concedes the game." % _pname(player), player)
 		_win(1 - player, "%s conceded." % _pname(player))
+		state_changed.emit()
+		return _ok()
+	if t == "timeout":  # the multiplayer clock ran out on a player who did nothing all turn (sent by the host only)
+		_say("%s ran out of time without taking any action." % _pname(player), player)
+		_win(1 - player, "%s forfeited." % _pname(player))
 		state_changed.emit()
 		return _ok()
 	if not state.pending.is_empty():
