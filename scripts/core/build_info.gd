@@ -3,7 +3,7 @@ extends RefCounted
 ## Which build of the game this is. Players who connect to each other must have the same one: the version is bumped by
 ## hand for every build that goes to testers, and a fingerprint of the card and deck data catches a forgotten bump.
 
-const VERSION := "0.7.0"
+const VERSION := "0.7.1"
 ## Game server address pre-filled for players (e.g. "wss://my-server.example"). Empty: players type it in.
 const DEFAULT_RELAY := "stored-moral-stevens-proven.trycloudflare.com"
 const CHANNEL := "playtest"

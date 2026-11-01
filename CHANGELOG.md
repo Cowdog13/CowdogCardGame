@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.7.1 (first build for friends)
+- Same as 0.7.0 with all the fixes since; the version changed so older downloads are refused when connecting.
+
 ## 0.7.0
 - Cancel works on the recycle choice of Recycle 2/3, Mulch and Rebirth: the ability is taken back (berries and cards come back). Pillage's recycle and Dawn can't be cancelled.
 - The computer opponent's creatures on the table (and their hover preview) also use the default art.
