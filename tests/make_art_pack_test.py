@@ -77,7 +77,7 @@ with tempfile.TemporaryDirectory() as tmp:
     part = tmp / "nature only"
     part.mkdir()
     for n in ["Leafer", "Removal"]:
-        Image.open(src / next(f.name for f in src.iterdir() if f.stem.lower().replace("_", " ") == n.lower())).save(part / f"{n}.png")
+        on_white(Image.open(ROOT / "assets" / "cards" / f"{n.lower()}.png"), 600).save(part / f"{n}.png")
     res2 = subprocess.run([sys.executable, str(ROOT / "tools" / "make_art_pack.py"), "--art-dir", str(part), "--id", "nature-only",
                            "--name", "Nature Only", "--out", str(out)], capture_output=True, text=True)
     assert res2.returncode == 0, res2.stderr
