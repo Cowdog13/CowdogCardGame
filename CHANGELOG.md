@@ -1,6 +1,7 @@
 # Changelog
 
 ## 0.7.0
+- Several art packs can be switched on at once (e.g. a table background plus a card-art pack). If two packs have the same picture, one is picked at random at the start of each game.
 - A pack's berry art now only appears on the berries of the decks the pack is made for (never the opponent's). The game server address is pre-filled.
 - Room codes: a small game server (Start Game Server.bat, optional free Cloudflare tunnel) lets friends connect with a 5-letter code, no port forwarding.
   The old direct-address mode stays available. See docs/MULTIPLAYER.md.

@@ -10,6 +10,8 @@ var _packs: Array = []
 var _preview: TextureRect
 var _info: Label
 var _apply: Button
+var _selected := 0
+var _note: Label
 
 
 func _ready() -> void:
@@ -72,10 +74,15 @@ func _ready() -> void:
 	_info.custom_minimum_size = Vector2(0, 90)
 	right.add_child(_info)
 	_apply = Button.new()
-	_apply.text = "Use this art"
+	_apply.text = "Use this pack"
 	_apply.custom_minimum_size = Vector2(0, 44)
 	_apply.pressed.connect(_use_selected)
 	right.add_child(_apply)
+	_note = Label.new()
+	_note.text = "You can switch on several packs at once. Each picture comes from a pack that has it; if two packs have the same picture, one of them is picked at random at the start of each game."
+	_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_note.add_theme_color_override("font_color", Color(0.8, 0.85, 0.8))
+	right.add_child(_note)
 	_reload()
 
 
@@ -83,18 +90,20 @@ func _reload() -> void:
 	_packs = [{"id": "", "name": "Default art", "creator": "", "description": "The art that comes with the game."}]
 	_packs.append_array(ArtDB.list_packs())
 	_list.clear()
-	var current := 0
 	for i in _packs.size():
 		var label: String = _packs[i].name
-		if _packs[i].id == ArtDB.active_pack:
-			label += "   (in use)"
-			current = i
+		var on: bool = ArtDB.active_packs.has(_packs[i].id) if _packs[i].id != "" else ArtDB.active_packs.is_empty()
+		if on:
+			label = "[x] " + label + "   (in use)"
+		else:
+			label = "[  ] " + label
 		_list.add_item(label)
-	_list.select(current)
-	_show_pack(current)
+	_list.select(clampi(_selected, 0, _packs.size() - 1))
+	_show_pack(clampi(_selected, 0, _packs.size() - 1))
 
 
 func _show_pack(i: int) -> void:
+	_selected = i
 	var pack: Dictionary = _packs[i]
 	var text: String = pack.name
 	if pack.creator != "":
@@ -107,7 +116,12 @@ func _show_pack(i: int) -> void:
 		text += "\n\nNo art packs installed. Unzip a pack into the art packs folder (button on the left), then press Refresh."
 	_info.text = text
 	_preview.texture = _preview_of(pack)
-	_apply.disabled = pack.id == ArtDB.active_pack
+	if pack.id == "":
+		_apply.text = "Use only the default art"
+		_apply.disabled = ArtDB.active_packs.is_empty()
+	else:
+		_apply.text = "Stop using this pack" if ArtDB.active_packs.has(pack.id) else "Use this pack"
+		_apply.disabled = false
 
 
 ## The pack's board background, or the built-in one for the default entry.
@@ -129,6 +143,10 @@ func _use_selected() -> void:
 	var sel := _list.get_selected_items()
 	if sel.is_empty():
 		return
-	ArtDB.set_active_pack(_packs[sel[0]].id)
+	var id: String = _packs[sel[0]].id
+	if id == "":
+		ArtDB.set_active_packs([])
+	else:
+		ArtDB.set_pack_enabled(id, not ArtDB.active_packs.has(id))
 	ArtDB.save_settings()
 	_reload()

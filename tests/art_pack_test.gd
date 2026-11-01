@@ -49,10 +49,51 @@ func _init() -> void:
 	if ArtDB.card_art("removal", 0).get_width() == 8 or ArtDB.card_art("removal", 1).get_width() != 8:
 		fails += 1
 		print("shared art should follow the deck of whoever owns the card")
+	# Several packs at once: non-overlapping art combines, overlapping art is decided by the roll.
+	var folder2 := base + "/test-pack-2"
+	DirAccess.make_dir_recursive_absolute(folder2 + "/board")
+	DirAccess.make_dir_recursive_absolute(folder2 + "/cards")
+	var blue := Image.create(32, 18, false, Image.FORMAT_RGB8)
+	blue.fill(Color(0, 0, 1))
+	blue.save_png(folder2 + "/board/board_bg.png")
+	var green := Image.create(16, 16, false, Image.FORMAT_RGBA8)
+	green.fill(Color(0, 1, 0))
+	green.save_png(folder2 + "/cards/firespore.png")
+	FileAccess.open(folder2 + "/pack.json", FileAccess.WRITE).store_string('{"name": "Blue Test"}')
+	ArtDB.set_active_packs(["test-pack", "test-pack-2"])
+	if ArtDB.card_art("firespore").get_width() != 16 or ArtDB.card_art("leafer", 1).get_width() != 8:
+		fails += 1
+		print("art from two packs that don't overlap should both be used")
+	var seen := {}
+	for i in 40:
+		ArtDB.new_roll()
+		seen[ArtDB.board_background().get_width()] = true
+		if ArtDB.board_background().get_width() != ArtDB.board_background().get_width():
+			fails += 1
+	if not (seen.has(64) and seen.has(32)):
+		fails += 1
+		print("two packs with the same picture should both get picked sometimes: ", seen.keys())
+	var r1 := ArtDB.board_background().get_width()
+	if ArtDB.board_background().get_width() != r1:
+		fails += 1
+		print("the choice must stay the same within a game")
+	ArtDB.save_settings()
+	ArtDB.set_active_packs([])
+	ArtDB.load_settings()
+	if ArtDB.active_packs.size() != 2:
+		fails += 1
+		print("both packs should be remembered: ", ArtDB.active_packs)
+	DirAccess.remove_absolute(folder2 + "/cards/firespore.png")
+	DirAccess.remove_absolute(folder2 + "/board/board_bg.png")
+	DirAccess.remove_absolute(folder2 + "/pack.json")
+	DirAccess.remove_absolute(folder2 + "/cards")
+	DirAccess.remove_absolute(folder2 + "/board")
+	DirAccess.remove_absolute(folder2)
+	ArtDB.set_active_pack("test-pack")
 	ArtDB.save_settings()
 	ArtDB.set_active_pack("")
 	ArtDB.load_settings()
-	if ArtDB.active_pack != "test-pack":
+	if ArtDB.active_packs != ["test-pack"]:
 		fails += 1
 		print("choice not remembered")
 	DirAccess.remove_absolute(folder + "/cards/removal.png")
@@ -65,7 +106,7 @@ func _init() -> void:
 	DirAccess.remove_absolute(folder + "/board")
 	DirAccess.remove_absolute(folder)
 	ArtDB.load_settings()
-	if ArtDB.active_pack != "" or ArtDB.board_background() != default_tex:
+	if not ArtDB.active_packs.is_empty() or ArtDB.board_background() != default_tex:
 		fails += 1
 		print("a deleted pack should fall back to the default art")
 	ArtDB.save_settings()

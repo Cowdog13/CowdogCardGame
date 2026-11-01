@@ -154,6 +154,7 @@ func _connect_controller() -> void:
 
 # --- Layout ----------------------------------------------------------------------------
 func _build_ui() -> void:
+	ArtDB.new_roll()  # overlapping art packs: decide again which one wins this game
 	var tex := ArtDB.board_background()
 	if tex != null:
 		var bg := TextureRect.new()
