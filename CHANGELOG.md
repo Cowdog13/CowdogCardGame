@@ -1,6 +1,7 @@
 # Changelog
 
 ## 0.7.0
+- A pack's berry art now only appears on the berries of the decks the pack is made for (never the opponent's). The game server address is pre-filled.
 - Room codes: a small game server (Start Game Server.bat, optional free Cloudflare tunnel) lets friends connect with a 5-letter code, no port forwarding.
   The old direct-address mode stays available. See docs/MULTIPLAYER.md.
 - Build script tools/build_windows.sh; the zip now contains HOW_TO_PLAY.txt, Start Game Server.bat and a console exe for the server.

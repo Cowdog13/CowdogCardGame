@@ -75,7 +75,7 @@ static func set_active_pack(pack_id: String) -> void:
 
 
 ## Tells the art which deck each seat plays, so cards shared by several decks (Removal, Super Berry) use the pack's art
-## only for a player whose deck the pack is made for.
+## only for a player whose deck the pack is made for. Berries follow the same rule, so a pack's berry art never changes the opponent's berries.
 static func set_game_decks(p_my_seat: int, deck_0: String, deck_1: String) -> void:
 	my_seat = p_my_seat
 	seat_decks = [deck_0, deck_1]
@@ -85,8 +85,8 @@ static func set_game_decks(p_my_seat: int, deck_0: String, deck_1: String) -> vo
 static func pack_applies(card_id: String, owner_seat := -1) -> bool:
 	if active_pack == "":
 		return false
-	if active_pack_decks.is_empty() or not CardDB.is_shared(card_id):
-		return true
+	if active_pack_decks.is_empty() or not (CardDB.is_shared(card_id) or CardDB.is_berry(card_id)):
+		return true  # (berries count as shared: a pack's berries only dress the berries of the decks it is made for)
 	var seat := owner_seat if owner_seat >= 0 else my_seat
 	return active_pack_decks.has(seat_decks[seat])
 

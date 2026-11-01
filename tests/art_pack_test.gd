@@ -14,6 +14,8 @@ func _init() -> void:
 	small.fill(Color(0, 1, 0))
 	small.save_png(folder + "/cards/removal.png")  # a card shared by several decks
 	small.save_png(folder + "/cards/leafer.png")  # a Nature card
+	small.save_png(folder + "/cards/fire_berry.png")  # a berry of a deck the pack is not made for
+	small.save_png(folder + "/cards/nature_berry.png")
 	FileAccess.open(folder + "/pack.json", FileAccess.WRITE).store_string('{"name": "Red Test", "creator": "Me", "publisher": "Cowdog Game Store", "ai_generated": true, "decks": ["nature_exile"]}')
 	var packs := ArtDB.list_packs().filter(func(p): return p.id == "test-pack")
 	if packs.size() != 1 or packs[0].name != "Red Test" or packs[0].publisher != "Cowdog Game Store":
@@ -40,6 +42,9 @@ func _init() -> void:
 	if ArtDB.card_art("leafer", 1).get_width() != 8:
 		fails += 1
 		print("a Nature card always uses the pack")
+	if ArtDB.card_art("nature_berry", 0).get_width() != 8 or ArtDB.card_art("fire_berry", 1).get_width() == 8 or ArtDB.card_art("nature_berry", 1).get_width() == 8:
+		fails += 1
+		print("a pack's berries should only dress the berries of the decks it is made for")
 	ArtDB.set_game_decks(0, "scorching_fire", "nature_exile")
 	if ArtDB.card_art("removal", 0).get_width() == 8 or ArtDB.card_art("removal", 1).get_width() != 8:
 		fails += 1
@@ -52,6 +57,8 @@ func _init() -> void:
 		print("choice not remembered")
 	DirAccess.remove_absolute(folder + "/cards/removal.png")
 	DirAccess.remove_absolute(folder + "/cards/leafer.png")
+	DirAccess.remove_absolute(folder + "/cards/fire_berry.png")
+	DirAccess.remove_absolute(folder + "/cards/nature_berry.png")
 	DirAccess.remove_absolute(folder + "/cards")
 	DirAccess.remove_absolute(folder + "/board/board_bg.png")
 	DirAccess.remove_absolute(folder + "/pack.json")

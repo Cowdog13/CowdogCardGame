@@ -5,7 +5,7 @@ extends RefCounted
 
 const VERSION := "0.7.0"
 ## Game server address pre-filled for players (e.g. "wss://my-server.example"). Empty: players type it in.
-const DEFAULT_RELAY := ""
+const DEFAULT_RELAY := "stored-moral-stevens-proven.trycloudflare.com"
 const CHANNEL := "playtest"
 
 static var _fingerprint := ""
