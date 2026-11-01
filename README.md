@@ -96,6 +96,7 @@ godot --headless -s tests/net_ui_test.gd     # both screens over the network
 godot --headless -s tests/net_surrender_test.gd   # Menu -> confirm surrenders in multiplayer
 godot --headless -s tests/tutorial_test.gd        # plays the whole tutorial through the controller
 godot --headless -s tests/rulebook_test.gd
+godot --headless -s tests/ui_report.gd           # finishing a game saves a replayable report
 godot --headless -s tests/replay_test.gd         # a saved game report replays to the identical game
 godot --headless -s tests/net_rematch_test.gd   # old builds are refused online; the host can play again
 godot --headless -s tests/balance_matrix.gd -- 40   # AI vs AI win rates per deck pairing (a rough balance guide)
