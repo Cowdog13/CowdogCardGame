@@ -17,6 +17,9 @@ var _stack: Control
 var _top_card: Control
 
 
+var owner_seat := -1  # whose pile this is (for the art of cards shared by several decks)
+
+
 func setup(p_kind: String, p_clickable: bool) -> PileView:
 	kind = p_kind
 	clickable = p_clickable
@@ -62,7 +65,7 @@ func set_pile(p_count: int, top_card_id: String) -> void:
 			top = CardBack.new().setup(CARD)
 			top.position = origin
 		else:
-			top = CardView.new().setup(top_id, CardView.Mark.NONE, CARD)
+			top = CardView.new().setup(top_id, CardView.Mark.NONE, CARD, false, owner_seat)
 			top.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			top.position = origin
 			if kind == "exile":

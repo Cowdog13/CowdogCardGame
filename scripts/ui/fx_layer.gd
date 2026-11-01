@@ -12,6 +12,9 @@ func _init() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 
+var card_owner := -1  # whose cards the effect now playing shows (art shared by several decks follows the owner)
+
+
 ## A card-sized node with a face (CardView) and a card back; pivot is its centre.
 func make_card(card_id: String, face_up: bool) -> Control:
 	var wrapper := Control.new()
@@ -22,7 +25,7 @@ func make_card(card_id: String, face_up: bool) -> Control:
 	var back := CardBack.new().setup(CARD_SIZE)
 	back.name = "Back"
 	wrapper.add_child(back)
-	var face := CardView.new().setup(card_id, CardView.Mark.NONE, CARD_SIZE)
+	var face := CardView.new().setup(card_id, CardView.Mark.NONE, CARD_SIZE, false, card_owner)
 	face.name = "Face"
 	face.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	wrapper.add_child(face)

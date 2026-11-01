@@ -14,6 +14,7 @@ const BERRY_H := 36.0
 const BERRY_ICON := 32.0
 const MAX_STACK := 3
 
+var is_mine := false
 var creature: Dictionary = {}
 var slot := 0
 var top_card: CardView
@@ -28,6 +29,7 @@ static func widget_size() -> Vector2:
 func setup(p_creature: Dictionary, p_slot: int, mine: bool, turn: int, valid: bool, chosen: bool) -> BoardCreature:
 	creature = p_creature
 	slot = p_slot
+	is_mine = mine
 	custom_minimum_size = widget_size()
 	size = widget_size()
 	mouse_filter = Control.MOUSE_FILTER_STOP
@@ -115,7 +117,7 @@ func setup(p_creature: Dictionary, p_slot: int, mine: bool, turn: int, valid: bo
 		holder.mouse_filter = Control.MOUSE_FILTER_PASS
 		var sideways: bool = creature.exhausted[i]
 		holder.tooltip_text = CardDB.card_name(id) + (" (exhausted: exiled when discarded)" if sideways else "")
-		var tex := ArtDB.berry_icon(id)
+		var tex := ArtDB.berry_icon(id, ArtDB.my_seat if is_mine else 1 - ArtDB.my_seat)
 		if tex != null:
 			var tr := TextureRect.new()
 			tr.texture = tex

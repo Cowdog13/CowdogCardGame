@@ -318,6 +318,7 @@ func _refresh() -> void:
 	view = controller.get_view(ME)
 	if view.is_empty():
 		return  # a networked game before the host's first update
+	ArtDB.set_game_decks(ME, String(view.you.deck_id), String(view.opponent.deck_id))
 	var you: Dictionary = view.you
 	var opp: Dictionary = view.opponent
 	_opp_info.text = "%s  -  %d card(s) in hand" % [_opp_name(), opp.hand_count]
@@ -626,7 +627,7 @@ func _fill_pile_list(list: ItemList, rows: Array) -> void:
 			list.add_item("x%d   %s" % [r.count, CardDB.card_name(r.id)])
 
 
-func _show_pile(title: String, ids: Array) -> void:
+func _show_pile(title: String, ids: Array, owner := -1) -> void:
 	var d := AcceptDialog.new()
 	d.title = "%s (%d)" % [title, ids.size()]
 	d.min_size = Vector2(680, 640)
@@ -634,7 +635,7 @@ func _show_pile(title: String, ids: Array) -> void:
 	list.custom_minimum_size = Vector2(320, 520)
 	var rows := _pile_rows(ids)
 	_fill_pile_list(list, rows)
-	d.add_child(_list_with_preview(list, func(k: int) -> String: return rows[k].get("id", "")))
+	d.add_child(_list_with_preview(list, func(k: int) -> String: return rows[k].get("id", ""), owner))
 	d.canceled.connect(d.queue_free)
 	d.confirmed.connect(d.queue_free)
 	_popup(d)
@@ -1197,7 +1198,7 @@ func _ask_trade_amount(slot: int, ai: int, target: Dictionary) -> void:
 
 ## Puts `list` next to a big preview of the card under the mouse (or the selected one).
 ## `card_at` maps a list index to a card id.
-func _list_with_preview(list: ItemList, card_at: Callable) -> HBoxContainer:
+func _list_with_preview(list: ItemList, card_at: Callable, owner := -1) -> HBoxContainer:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 12)
 	row.add_child(list)
@@ -1214,7 +1215,7 @@ func _list_with_preview(list: ItemList, card_at: Callable) -> HBoxContainer:
 		var card_id: String = card_at.call(k)
 		if card_id == "":
 			return
-		var card := CardView.new().setup(card_id, CardView.Mark.NONE, Vector2(270, 378))
+		var card := CardView.new().setup(card_id, CardView.Mark.NONE, Vector2(270, 378), false, owner)
 		card.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		holder.add_child(card)
 	list.gui_input.connect(func(ev: InputEvent):
@@ -1234,7 +1235,7 @@ func _view_pile(seat: int, kind: String) -> void:
 	var ids: Array = side.discard if kind == "discard" else side.exile
 	var title := "%s %s" % ["Your" if seat == ME else "Opponent's", kind]
 	if kind != "discard" or seat != ME:
-		_show_pile(title, ids)
+		_show_pile(title, ids, seat)
 		return
 	var d := AcceptDialog.new()
 	d.title = "%s (%d)" % [title, ids.size()]
@@ -1281,7 +1282,9 @@ func _make_pile_row(seat: int) -> Control:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 2)
 	for kind in ["deck", "discard", "exile"]:
-		var pile := PileView.new().setup(kind, kind != "deck")
+		var pile := PileView.new()
+		pile.owner_seat = seat
+		pile.setup(kind, kind != "deck")
 		if kind != "deck":
 			pile.clicked.connect(func(): _view_pile(seat, kind))
 		row.add_child(pile)
@@ -1411,6 +1414,7 @@ func _run_fx_queue() -> void:
 
 func _play_fx(ev: Dictionary, src: Rect2, item: Dictionary) -> void:
 	var mine: bool = int(ev.player) == ME
+	_fx.card_owner = int(ev.target) if ev.fx == "plunder" else int(ev.player)  # a plunder shows the plundered player's cards
 	match ev.fx:
 		"play_creature":
 			var target := _slot_rect(ev.player, ev.slot)

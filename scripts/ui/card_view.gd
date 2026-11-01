@@ -14,6 +14,7 @@ const DESIGN := Vector2(300, 420)
 const DEFAULT_SIZE := Vector2(150, 210)
 
 var card_id := ""
+var owner_seat := -1  # whose card this is, for art shared by several decks (-1: the viewer's own)
 var display := DEFAULT_SIZE
 var ability_boxes: Array[Control] = []
 var _face: Control
@@ -21,8 +22,9 @@ var _interactive := false
 var _mark_panel: Panel
 
 
-func setup(id: String, mark: Mark = Mark.NONE, p_display := DEFAULT_SIZE, interactive_abilities := false) -> CardView:
+func setup(id: String, mark: Mark = Mark.NONE, p_display := DEFAULT_SIZE, interactive_abilities := false, p_owner_seat := -1) -> CardView:
 	card_id = id
+	owner_seat = p_owner_seat
 	display = p_display
 	_interactive = interactive_abilities
 	custom_minimum_size = display
@@ -136,7 +138,7 @@ func _build() -> void:
 	window.size = Vector2(264, art_h)
 	window.add_theme_stylebox_override("panel", UiStyle.box(pal.light, 12, pal.frame, 3))
 	_face.add_child(window)
-	var tex := ArtDB.card_art(card_id)
+	var tex := ArtDB.card_art(card_id, owner_seat)
 	if tex != null:
 		var art := TextureRect.new()
 		art.texture = tex

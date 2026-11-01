@@ -68,6 +68,18 @@ static func deck_name(deck_id: String) -> String:
 	return _decks[deck_id].name
 
 
+## Cards that appear in more than one deck (Removal, Super Berry): their art follows the deck of the player who owns them.
+static func is_shared(card_id: String) -> bool:
+	_ensure_loaded()
+	var n := 0
+	for deck_id in _decks:
+		for entry in _decks[deck_id].cards:
+			if entry[0] == card_id:
+				n += 1
+				break
+	return n > 1
+
+
 ## The Tier 1 creature a deck's player starts the game with on the board (an extra card, not part of the 50).
 static func deck_starter(deck_id: String) -> String:
 	_ensure_loaded()

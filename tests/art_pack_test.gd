@@ -6,10 +6,15 @@ func _init() -> void:
 	var base := ProjectSettings.globalize_path(ArtDB.PACKS_DIR)
 	var folder := base + "/test-pack"
 	DirAccess.make_dir_recursive_absolute(folder + "/board")
+	DirAccess.make_dir_recursive_absolute(folder + "/cards")
 	var img := Image.create(64, 36, false, Image.FORMAT_RGB8)
 	img.fill(Color(1, 0, 0))
 	img.save_png(folder + "/board/board_bg.png")
-	FileAccess.open(folder + "/pack.json", FileAccess.WRITE).store_string('{"name": "Red Test", "creator": "Me", "publisher": "Cowdog Game Store", "ai_generated": true}')
+	var small := Image.create(8, 8, false, Image.FORMAT_RGBA8)
+	small.fill(Color(0, 1, 0))
+	small.save_png(folder + "/cards/removal.png")  # a card shared by several decks
+	small.save_png(folder + "/cards/leafer.png")  # a Nature card
+	FileAccess.open(folder + "/pack.json", FileAccess.WRITE).store_string('{"name": "Red Test", "creator": "Me", "publisher": "Cowdog Game Store", "ai_generated": true, "decks": ["nature_exile"]}')
 	var packs := ArtDB.list_packs().filter(func(p): return p.id == "test-pack")
 	if packs.size() != 1 or packs[0].name != "Red Test" or packs[0].publisher != "Cowdog Game Store":
 		fails += 1
@@ -24,12 +29,30 @@ func _init() -> void:
 	if ArtDB.card_art("firespore") == null:
 		fails += 1
 		print("a card the pack doesn't contain should keep the built-in art")
+	# Shared cards (Removal) use the pack only for a player whose deck the pack is made for.
+	ArtDB.set_game_decks(0, "nature_exile", "scorching_fire")
+	if ArtDB.card_art("removal", 0).get_width() != 8 or ArtDB.card_art("removal").get_width() != 8:
+		fails += 1
+		print("your own Removal should use the pack")
+	if ArtDB.card_art("removal", 1).get_width() == 8:
+		fails += 1
+		print("the Fire opponent's Removal should keep the default art")
+	if ArtDB.card_art("leafer", 1).get_width() != 8:
+		fails += 1
+		print("a Nature card always uses the pack")
+	ArtDB.set_game_decks(0, "scorching_fire", "nature_exile")
+	if ArtDB.card_art("removal", 0).get_width() == 8 or ArtDB.card_art("removal", 1).get_width() != 8:
+		fails += 1
+		print("shared art should follow the deck of whoever owns the card")
 	ArtDB.save_settings()
 	ArtDB.set_active_pack("")
 	ArtDB.load_settings()
 	if ArtDB.active_pack != "test-pack":
 		fails += 1
 		print("choice not remembered")
+	DirAccess.remove_absolute(folder + "/cards/removal.png")
+	DirAccess.remove_absolute(folder + "/cards/leafer.png")
+	DirAccess.remove_absolute(folder + "/cards")
 	DirAccess.remove_absolute(folder + "/board/board_bg.png")
 	DirAccess.remove_absolute(folder + "/pack.json")
 	DirAccess.remove_absolute(folder + "/board")

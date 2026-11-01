@@ -71,6 +71,18 @@ with tempfile.TemporaryDirectory() as tmp:
     check((out / "test-style.zip").exists() and "test-style/pack.json" in zipfile.ZipFile(out / "test-style.zip").namelist(), "zip with the folder inside")
     meta = json.loads((pack / "pack.json").read_text())
     check(meta["publisher"] == "Cowdog Game Store" and meta["ai_generated"] is True, "pack.json")
+    check((pack / "preview.webp").exists() and Image.open(pack / "preview.webp").size == (1600, 900), "a preview picture is made")
+    check("decks" not in meta, "a pack with cards of every deck is for every deck")
+    # A pack with only Nature cards is made for the Nature deck (and says so, for shared cards like Removal).
+    part = tmp / "nature only"
+    part.mkdir()
+    for n in ["Leafer", "Removal"]:
+        Image.open(src / next(f.name for f in src.iterdir() if f.stem.lower().replace("_", " ") == n.lower())).save(part / f"{n}.png")
+    res2 = subprocess.run([sys.executable, str(ROOT / "tools" / "make_art_pack.py"), "--art-dir", str(part), "--id", "nature-only",
+                           "--name", "Nature Only", "--out", str(out)], capture_output=True, text=True)
+    assert res2.returncode == 0, res2.stderr
+    meta2 = json.loads((out / "nature-only" / "pack.json").read_text())
+    check(meta2.get("decks") == ["nature_exile"], f"decks of a Nature-only pack: {meta2.get('decks')}")
     # White background trapped between parts of the drawing goes; a white eye deep inside the figure stays.
     sys.path.insert(0, str(ROOT / "tools"))
     import make_art_pack as m

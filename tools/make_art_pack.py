@@ -162,6 +162,62 @@ def report(found: dict, unknown: list, cards: dict) -> list:
     return missing
 
 
+def load_decks() -> dict:
+    return json.loads((HERE.parent / "data" / "decks.json").read_text())
+
+
+def decks_for(found: dict, cards: dict) -> list:
+    """The decks a pack is made for: those that have a card of their own (not shared with another deck) in the pack.
+    Cards shared by several decks (Removal, Super Berry) then use the pack's art only for those decks' players."""
+    decks = load_decks()
+    owners = {}
+    for did, d in decks.items():
+        for cid, _ in d["cards"]:
+            owners.setdefault(cid, set()).add(did)
+    out = set()
+    for key in found:
+        if key[0] == "card" and len(owners.get(key[1], ())) == 1:
+            out |= owners[key[1]]
+    return sorted(out)
+
+
+def make_preview(folder: Path, cards: dict) -> None:
+    """The picture shown on the game's Art packs screen: the pack's table (or a dark one) with a row of its cards."""
+    W, H = 1600, 900
+    board = folder / "board" / "board_bg.webp"
+    if board.exists():
+        bg = Image.open(board).convert("RGB")
+        scale = max(W / bg.width, H / bg.height)
+        bg = bg.resize((round(bg.width * scale), round(bg.height * scale)), Image.LANCZOS)
+        bg = bg.crop(((bg.width - W) // 2, (bg.height - H) // 2, (bg.width - W) // 2 + W, (bg.height - H) // 2 + H)).convert("RGBA")
+    else:
+        bg = Image.new("RGBA", (W, H), (24, 31, 29, 255))
+        glow = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+        from PIL import ImageDraw, ImageFilter
+        ImageDraw.Draw(glow).ellipse((W * 0.15, H * 0.1, W * 0.85, H * 0.95), fill=(70, 95, 80, 255))
+        bg.alpha_composite(Image.blend(Image.new("RGBA", (W, H), (24, 31, 29, 255)), glow.filter(ImageFilter.GaussianBlur(160)), 0.55))
+    ids = sorted(p.stem for p in (folder / "cards").glob("*.png")) if (folder / "cards").exists() else []
+    order = sorted(ids, key=lambda i: (cards[i]["kind"] != "creature", cards[i].get("leader", False) is False, i))
+    shown = [i for i in order if cards[i]["kind"] != "berry"][:6] or order[:6]
+    shown = shown[:6]
+    if shown:
+        tile = 330 if len(shown) <= 4 else 250
+        gap = 18
+        total = len(shown) * tile + (len(shown) - 1) * gap
+        x = (W - total) // 2
+        y = (H - tile) // 2 + 40
+        from PIL import ImageDraw, ImageFilter
+        shadow = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+        for k in range(len(shown)):
+            cx = x + k * (tile + gap) + tile // 2
+            ImageDraw.Draw(shadow).ellipse((cx - tile * 0.38, y + tile - 24, cx + tile * 0.38, y + tile + 8), fill=(0, 0, 0, 150))
+        bg.alpha_composite(shadow.filter(ImageFilter.GaussianBlur(10)))
+        for k, cid in enumerate(shown):
+            art = Image.open(folder / "cards" / f"{cid}.png").convert("RGBA").resize((tile, tile), Image.LANCZOS)
+            bg.alpha_composite(art, (x + k * (tile + gap), y))
+    bg.convert("RGB").save(folder / "preview.webp", quality=88)
+
+
 def build(args, found: dict, cards: dict, folder: Path) -> None:
     (folder).mkdir(parents=True)
     if any(k[0] != "board" for k in found):
@@ -204,6 +260,7 @@ def main() -> None:
     ap.add_argument("--name")
     ap.add_argument("--creator", default="")
     ap.add_argument("--description", default="A new look for the game.")
+    ap.add_argument("--decks", help="decks this pack is for, comma separated (default: worked out from the cards in the pack)")
     ap.add_argument("--publisher", default="Cowdog Game Store", help="credit line shown under the pack in the game")
     ap.add_argument("--ai", action="store_true", help="record in pack.json that the art is AI-generated (the itch.io page must say so too)")
     ap.add_argument("--out", default="build/art_packs")
@@ -234,7 +291,11 @@ def main() -> None:
     if folder.exists():
         shutil.rmtree(folder)
     build(args, found, cards, folder)
+    make_preview(folder, cards)
+    decks = [d.strip() for d in args.decks.split(",")] if args.decks else decks_for(found, cards)
     meta = {"name": args.name, "creator": args.creator, "description": args.description, "publisher": args.publisher, "ai_generated": args.ai}
+    if decks:
+        meta["decks"] = decks
     (folder / "pack.json").write_text(json.dumps(meta, indent=1))
     zip_path = out / f"{args.id}.zip"
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as z:

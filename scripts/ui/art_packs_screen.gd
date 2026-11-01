@@ -114,12 +114,14 @@ func _show_pack(i: int) -> void:
 func _preview_of(pack: Dictionary) -> Texture2D:
 	if pack.id == "":
 		return load("res://assets/board/board_bg.webp")
-	for ext in ArtDB.IMAGE_EXTENSIONS:
-		var path := "%s/%s/board/board_bg.%s" % [ArtDB.PACKS_DIR, pack.id, ext]
-		if FileAccess.file_exists(path):
-			var img := Image.load_from_file(path)
-			if img != null and not img.is_empty():
-				return ImageTexture.create_from_image(img)
+	# preview.* is the picture made for the pack (made by tools/make_art_pack.py); otherwise its table background
+	for name in ["preview", "board/board_bg"]:
+		for ext in ArtDB.IMAGE_EXTENSIONS:
+			var path := "%s/%s/%s.%s" % [ArtDB.PACKS_DIR, pack.id, name, ext]
+			if FileAccess.file_exists(path):
+				var img := Image.load_from_file(path)
+				if img != null and not img.is_empty():
+					return ImageTexture.create_from_image(img)
 	return null
 
 
