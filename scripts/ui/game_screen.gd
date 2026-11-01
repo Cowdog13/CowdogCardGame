@@ -26,6 +26,7 @@ var tutorial_mode := false  # the tutorial runs this game: the Menu button just 
 
 var _opp_info: Label
 var _last_event: Label
+var _announced_turn := -1
 var _clock_label: Label  # multiplayer turn clock
 var _turn_label: Label
 var _opp_board: HBoxContainer
@@ -73,6 +74,41 @@ func start(deck_ids: Array, agents: Array, ai_delay: float, effects := true) -> 
 ## Shows a game that is run elsewhere: the host's own controller, or a RemoteController that mirrors
 ## the host's game. `my_seat` is the seat shown at the bottom. Rematch needs a local game, so it is
 ## offered only when `allow_rematch` is set.
+## A big "YOUR TURN" that fades after a moment, shown once each time the turn passes to you.
+func _announce_turn(view: Dictionary) -> void:
+	if view.phase != "main" or view.active != ME:
+		return
+	if _announced_turn == int(view.turn):
+		return
+	var first := _announced_turn == -1
+	_announced_turn = int(view.turn)
+	if tutorial_mode or (first and int(view.turn) > 1):
+		return
+	var panel := PanelContainer.new()
+	panel.add_theme_stylebox_override("panel", UiStyle.box(Color(0.05, 0.08, 0.12, 0.88), 24, Color(0.95, 0.8, 0.35), 4, 28))
+	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var label := Label.new()
+	label.text = "YOUR TURN"
+	label.add_theme_font_size_override("font_size", 84)
+	label.add_theme_color_override("font_color", Color(1, 0.93, 0.6))
+	label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+	label.add_theme_constant_override("outline_size", 10)
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.add_child(label)
+	add_child(panel)
+	panel.reset_size()
+	panel.position = (size - panel.size) / 2.0
+	panel.pivot_offset = panel.size / 2.0
+	panel.scale = Vector2(0.6, 0.6)
+	panel.modulate.a = 0.0
+	var tw := create_tween()
+	tw.tween_property(panel, "modulate:a", 1.0, 0.18)
+	tw.parallel().tween_property(panel, "scale", Vector2(1, 1), 0.25).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_interval(0.9)
+	tw.tween_property(panel, "modulate:a", 0.0, 0.35)
+	tw.tween_callback(panel.queue_free)
+
+
 func _process(_delta: float) -> void:
 	if _clock_label == null or controller == null:
 		return
@@ -364,6 +400,7 @@ func _refresh() -> void:
 		"over": _turn_label.text = "Game over"
 		_: _turn_label.text = "Turn %d - %s%s" % [view.turn, "YOUR TURN" if acting else "%s's turn" % _opp_name(), _turn_flags(you)]
 	_update_banner()
+	_announce_turn(view)
 	if not view.pending.is_empty() and view.pending.player == ME and _pending.is_empty() and not _fx_busy():
 		if not view.pending.berries.is_empty():
 			var id: String = view.pending.berries.back()

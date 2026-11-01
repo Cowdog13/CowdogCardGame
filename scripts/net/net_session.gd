@@ -33,7 +33,7 @@ var is_host := false
 var my_seat := 0
 var controller: Node  # GameController on the host, RemoteController on clients
 var started := false
-var timer := TurnTimer.new()  # host: the turn clock (40 s per turn, +2 s per action); tests shorten it
+var timer := TurnTimer.new()  # host: the turn clock (60 s per turn, +4 s per action); tests shorten it
 var _clock_sent := 0.0
 
 var _players: Array = []  # host: [{"peer": int, "name": String, "deck": String}] in seat order

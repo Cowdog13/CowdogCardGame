@@ -1,7 +1,8 @@
 # Changelog
 
 ## 0.6.2
-- Multiplayer turn clock: 40 seconds per turn, +2 seconds for every action you complete. When it runs out your turn ends automatically
+- A big "YOUR TURN" banner flashes when the turn passes to you.
+- Multiplayer turn clock: 60 seconds per turn, +4 seconds for every action you complete. When it runs out your turn ends automatically
   (open choices are resolved for you); if you took no action at all that turn you forfeit and your opponent wins. Single player has no clock.
 
 ## 0.6.1

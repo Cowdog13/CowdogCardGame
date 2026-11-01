@@ -1,5 +1,5 @@
 extends SceneTree
-## Multiplayer turn clock: +2 s per action, auto end of turn on timeout, forfeit when idle.
+## Multiplayer turn clock: +4 s per action, auto end of turn on timeout, forfeit when idle.
 ##   godot --headless -s tests/turn_timer_test.gd
 const PORT := 24985
 
@@ -23,21 +23,21 @@ func _init() -> void:
 		fails += 1
 		print("no clock during the mulligan")
 	t.sync({"phase": "main", "turn": 1, "active": 0})
-	if t.seat != 0 or t.remaining != 40.0:
+	if t.seat != 0 or t.remaining != 60.0:
 		fails += 1
-		print("a turn should start with 40 s")
+		print("a turn should start with 60 s")
 	t.tick(10.0)
 	t.on_action(0, {"type": "attach_berry"})
 	t.on_action(1, {"type": "attach_berry"})
 	t.on_action(0, {"type": "end_turn"})
-	if absf(t.remaining - 32.0) > 0.01 or t.actions != 1:
+	if absf(t.remaining - 54.0) > 0.01 or t.actions != 1:
 		fails += 1
-		print("one action adds 2 s (and only the active player's): ", t.remaining, " ", t.actions)
+		print("one action adds 4 s (and only the active player's): ", t.remaining, " ", t.actions)
 	t.sync({"phase": "main", "turn": 2, "active": 1})
-	if t.seat != 1 or t.remaining != 40.0 or t.actions != 0:
+	if t.seat != 1 or t.remaining != 60.0 or t.actions != 0:
 		fails += 1
 		print("a new turn resets the clock")
-	if not t.tick(41.0):
+	if not t.tick(61.0):
 		fails += 1
 		print("should expire")
 

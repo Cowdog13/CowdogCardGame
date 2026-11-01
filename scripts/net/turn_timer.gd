@@ -4,8 +4,8 @@ extends RefCounted
 ## active player completes adds `bonus`. When it runs out the turn ends by itself, unless the
 ## player did nothing at all that turn, which forfeits the game. No clock during the mulligan.
 
-var base := 40.0
-var bonus := 2.0
+var base := 60.0
+var bonus := 4.0
 var seat := -1  # whose clock is running (-1: none)
 var remaining := 0.0
 var actions := 0  # actions the active player has completed this turn
