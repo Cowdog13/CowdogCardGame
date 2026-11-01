@@ -68,9 +68,36 @@ def has_real_alpha(img: Image.Image) -> bool:
     return lo < 200 and sum(1 for v in alpha.getdata() if v < 128) > img.width * img.height * 0.02
 
 
+def remove_background_pockets(img: Image.Image) -> Image.Image:
+    """White background trapped inside the drawing (between a leaf and a body, under an arm) is not connected to the
+    picture's edge, so remove_white_background keeps it. Remove pure-white regions that are big enough and close to the
+    outside; white eyes and other white details deeper inside the figure are kept."""
+    import numpy as np
+    from scipy import ndimage as ndi
+    a = np.array(img.convert("RGBA"))
+    solid = a[..., 3] > 200
+    lab_e, _ = ndi.label(~solid)
+    border = np.unique(np.concatenate([lab_e[0], lab_e[-1], lab_e[:, 0], lab_e[:, -1]]))
+    exterior = np.isin(lab_e, border[border != 0])
+    dist = ndi.distance_transform_edt(~exterior)
+    white = solid & (a[..., :3].min(axis=2) >= 250)
+    lab, n = ndi.label(white)
+    scale = img.width / 2048.0
+    min_area = 1700 * scale * scale
+    reach = 100 * scale
+    for i in range(1, n + 1):
+        region = lab == i
+        if region.sum() >= min_area and dist[region].min() < reach:
+            a[region, 3] = 0
+    return Image.fromarray(a, "RGBA")
+
+
 def clean_art(path: Path, pa) -> Image.Image:
     img = Image.open(path)
-    img = img.convert("RGBA") if has_real_alpha(img.convert("RGBA")) else pa.remove_white_background(img.convert("RGB"))
+    if has_real_alpha(img.convert("RGBA")):
+        img = img.convert("RGBA")
+    else:
+        img = remove_background_pockets(pa.remove_white_background(img.convert("RGB")))
     return pa.crop_to_content(img).resize((CARD_SIZE, CARD_SIZE), Image.LANCZOS)
 
 
@@ -217,7 +244,7 @@ def main() -> None:
     n = sum(1 for f in folder.rglob("*") if f.is_file() and f.name != "pack.json")
     print(f"\n{folder}  ->  {zip_path}  ({n} images)")
     if missing:
-        print(f"Note: {len(missing)} cards are missing, so those keep the default art and will not match the style.")
+        print(f"Note: {len(missing)} cards are not in this pack and keep the default art (fine for a single-deck pack).")
 
 
 if __name__ == "__main__":

@@ -71,5 +71,17 @@ with tempfile.TemporaryDirectory() as tmp:
     check((out / "test-style.zip").exists() and "test-style/pack.json" in zipfile.ZipFile(out / "test-style.zip").namelist(), "zip with the folder inside")
     meta = json.loads((pack / "pack.json").read_text())
     check(meta["publisher"] == "Cowdog Game Store" and meta["ai_generated"] is True, "pack.json")
+    # White background trapped between parts of the drawing goes; a white eye deep inside the figure stays.
+    sys.path.insert(0, str(ROOT / "tools"))
+    import make_art_pack as m
+    from PIL import ImageDraw
+    img = Image.new("RGB", (2048, 2048), (255, 255, 255))
+    d = ImageDraw.Draw(img)
+    d.rectangle((300, 300, 1700, 1700), fill=(40, 90, 40))  # the figure
+    d.rectangle((360, 1100, 700, 1500), fill=(255, 255, 255))  # a pocket of background near the figure's edge
+    d.ellipse((900, 800, 1100, 1000), fill=(255, 255, 255))  # an eye, far from the outside
+    cleaned = m.remove_background_pockets(m.lazy_art().remove_white_background(img))
+    check(cleaned.getpixel((550, 1300))[3] == 0, "a pocket near the outside is removed")
+    check(cleaned.getpixel((1000, 900))[3] == 255, "a white eye deep inside is kept")
     print("make_art_pack_test failures=%d" % fails)
     sys.exit(1 if fails else 0)
