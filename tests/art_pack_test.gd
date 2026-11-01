@@ -73,6 +73,25 @@ func _init() -> void:
 	if not (seen.has(64) and seen.has(32)):
 		fails += 1
 		print("two packs with the same picture should both get picked sometimes: ", seen.keys())
+	# "Whole pack" mode: one pack wins every overlap in a game; non-overlapping art still combines.
+	ArtDB.conflict_by_pack = true
+	var wins := {}
+	for i in 40:
+		ArtDB.new_roll()
+		wins[ArtDB.board_background().get_width()] = true
+		if ArtDB.card_art("firespore").get_width() != 16:
+			fails += 1
+			print("art only one pack has must still be used in whole-pack mode")
+	if not (wins.has(64) and wins.has(32)):
+		fails += 1
+		print("whole-pack mode should still pick either pack sometimes: ", wins.keys())
+	ArtDB.save_settings()
+	ArtDB.conflict_by_pack = false
+	ArtDB.load_settings()
+	if not ArtDB.conflict_by_pack:
+		fails += 1
+		print("the conflict mode should be remembered")
+	ArtDB.conflict_by_pack = false
 	var r1 := ArtDB.board_background().get_width()
 	if ArtDB.board_background().get_width() != r1:
 		fails += 1

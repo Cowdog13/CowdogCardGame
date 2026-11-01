@@ -5,7 +5,7 @@ screen has an "Open art packs folder" button). The player picks one under **Art 
 remembered. Anything a pack doesn't contain keeps the built-in art.
 
 **Several packs can be switched on at once** (click a pack, then "Use this pack" / "Stop using this pack"). Each picture comes from a pack that has it, so e.g. a table-background pack and a card-art pack combine.
-If two switched-on packs have the same picture, one of them is picked at random for each picture when a game starts (and stays the same for that game).
+If two switched-on packs have the same picture, one of them is picked at random when a game starts (and stays the same for that game). The Art packs screen lets you choose how: **picture by picture** (each overlapping picture is decided separately, so art can be mixed) or **one whole pack** (one pack is picked and wins every overlap; art only another pack has is still used).
 
 ```
 art_packs/

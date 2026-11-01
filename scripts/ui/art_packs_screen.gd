@@ -12,6 +12,7 @@ var _info: Label
 var _apply: Button
 var _selected := 0
 var _note: Label
+var _mode: OptionButton
 
 
 func _ready() -> void:
@@ -78,8 +79,22 @@ func _ready() -> void:
 	_apply.custom_minimum_size = Vector2(0, 44)
 	_apply.pressed.connect(_use_selected)
 	right.add_child(_apply)
+	var mode_row := HBoxContainer.new()
+	mode_row.add_theme_constant_override("separation", 10)
+	right.add_child(mode_row)
+	var mode_label := Label.new()
+	mode_label.text = "If two packs have the same picture:"
+	mode_row.add_child(mode_label)
+	_mode = OptionButton.new()
+	_mode.add_item("pick randomly, picture by picture")
+	_mode.add_item("pick one whole pack at random")
+	_mode.select(1 if ArtDB.conflict_by_pack else 0)
+	_mode.item_selected.connect(func(i):
+		ArtDB.conflict_by_pack = i == 1
+		ArtDB.save_settings())
+	mode_row.add_child(_mode)
 	_note = Label.new()
-	_note.text = "You can switch on several packs at once. Each picture comes from a pack that has it; if two packs have the same picture, one of them is picked at random at the start of each game."
+	_note.text = "You can switch on several packs at once. Each picture comes from a pack that has it. When packs overlap, the choice is made at the start of each game: either separately for every picture, or by picking one pack that wins all the overlaps."
 	_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_note.add_theme_color_override("font_color", Color(0.8, 0.85, 0.8))
 	right.add_child(_note)

@@ -10,6 +10,7 @@ const IMAGE_EXTENSIONS := ["webp", "png", "jpg", "jpeg"]
 static var _cache := {}
 static var active_packs: Array = []  # folder names inside user://art_packs that are switched on (several can be used at once); empty = built-in art only
 static var _pack_decks := {}  # pack id -> decks the pack is made for (pack.json "decks"); empty = every deck
+static var conflict_by_pack := false  # overlapping art: false = decided picture by picture, true = one pack wins every conflict (decided per game)
 static var roll := 0  # decides which pack wins when several have the same picture; re-rolled at the start of every game
 static var seat_decks := ["", ""]  # the deck each seat plays, set by the table screen
 static var my_seat := 0
@@ -52,7 +53,17 @@ static func _pack_tex(rel_no_ext: String, card_id := "", owner_seat := -1) -> Te
 			candidates.append(id)
 	if candidates.is_empty():
 		return null
-	var chosen: String = candidates[0] if candidates.size() == 1 else candidates[absi(hash("%d:%s" % [roll, rel_no_ext])) % candidates.size()]
+	var chosen: String = candidates[0]
+	if candidates.size() > 1:
+		if conflict_by_pack:  # every pack gets a random rank for this game; the best-ranked pack that has the picture wins
+			var best := -1
+			for id in candidates:
+				var rank := absi(hash("%d:%s" % [roll, id]))
+				if best < 0 or rank < best:
+					best = rank
+					chosen = id
+		else:
+			chosen = candidates[absi(hash("%d:%s" % [roll, rel_no_ext])) % candidates.size()]
 	var key := "pack:%s:%s" % [chosen, rel_no_ext]
 	if _cache.has(key):
 		return _cache[key]
@@ -140,6 +151,7 @@ static func save_settings() -> void:
 	var cfg := ConfigFile.new()
 	cfg.load(SETTINGS_PATH)
 	cfg.set_value("art", "packs", active_packs)
+	cfg.set_value("art", "conflict_by_pack", conflict_by_pack)
 	cfg.save(SETTINGS_PATH)
 
 
@@ -148,6 +160,7 @@ static func load_settings() -> void:
 	var cfg := ConfigFile.new()
 	if cfg.load(SETTINGS_PATH) != OK:
 		return
+	conflict_by_pack = bool(cfg.get_value("art", "conflict_by_pack", false))
 	var wanted: Array = []
 	if cfg.has_section_key("art", "packs"):
 		wanted = Array(cfg.get_value("art", "packs", []))
