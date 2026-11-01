@@ -259,6 +259,9 @@ static func _ability_can_resolve(ab: Dictionary, creature: Dictionary, me: Dicti
 			"recycle_exile":
 				if int(me.exile_count) == 0:
 					return false
+			"rearrange_berries":
+				if not me.board.any(func(c): return c != null and not c.berries.is_empty()):
+					return false
 			"remove_stun":
 				var stunned_enemy := false
 				for slot in opp.board.size():
@@ -295,6 +298,8 @@ static func effect_value(effect: Dictionary, creature: Dictionary) -> float:
 		"plunder":
 			if effect.has("per_attached_berry"):
 				return maxf(0.0, float(int(effect.per_attached_berry) * creature.berries.size() - int(effect.get("minus", 0))))
+			if effect.has("per_max_berries"):
+				return float(creature.berries.size() + 2)
 			if effect.has("per_berry_per_creature"):
 				return float(creature.berries.size() * 2)
 			if effect.has("per_exile") or effect.has("per_hand"):

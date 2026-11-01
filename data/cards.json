@@ -268,17 +268,21 @@
   "element": "water",
   "abilities": [
    {
-    "name": "Berry Trade",
+    "name": "Rearrange",
     "cost": {
      "element": "super",
-     "amount": 1
+     "amount": 2
     },
     "effects": [
      {
-      "type": "berry_trade"
+      "type": "rearrange_berries"
+     },
+     {
+      "type": "plunder",
+      "per_max_berries": 1
      }
     ],
-    "text": "Discard any number of attached berries to discard an equal amount of your choice of attached berries from an enemy"
+    "text": "Rearrange all berries on your creatures, then Plunder X, X = the most berries on one of your creatures"
    },
    {
     "name": "Plunder 3",
@@ -986,6 +990,19 @@
      }
     ],
     "text": "Remove a stun from an enemy creature: Plunder X, X = berries on this creature x your creatures"
+   },
+   {
+    "name": "Berry Trade",
+    "cost": {
+     "element": "super",
+     "amount": 1
+    },
+    "effects": [
+     {
+      "type": "berry_trade"
+     }
+    ],
+    "text": "Discard any number of attached berries to discard an equal amount of your choice of attached berries from an enemy"
    }
   ]
  },

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.6.1
+- Berry Trade moved from Water Ruler to Water Essence (1 Super Berry). Water Ruler gets Rearrange (2 Super Berries): move all
+  berries between your creatures, then Plunder X = the most berries on one of your creatures.
+
 ## 0.6.0 (first playtest build)
 - Four decks with leaders: Scorching Fire, Crashing Wave, Nature Exile, Light. Starting leaders are dormant until turn 5 and can't be targeted.
 - Swap: once per turn, give N cards from hand for a creature in the discard (N grows by one each time).

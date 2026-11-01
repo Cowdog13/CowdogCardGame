@@ -528,8 +528,22 @@ func _check_effect(e: Dictionary, player: int, params: Dictionary, reserved: Arr
 			if not params.has("target"):
 				return "Choose a target creature"
 			return _target_error(player, params.target)
+		"rearrange_berries":
+			var board_total := 0
+			for c in pl.board:
+				if c != null:
+					board_total += c.berries.size()
+			var assign: Array = params.get("assign", [])
+			if board_total == 0:
+				return "None of your creatures has a berry"
+			if assign.size() != board_total:
+				return "Say where each of the %d berries goes" % board_total
+			for dest in assign:
+				var di := int(dest)
+				if di < 0 or di >= pl.board.size() or pl.board[di] == null:
+					return "Berries can only go on your creatures"
 		"berry_trade":
-			if not params.has("target") or not params.has("source_slot"):
+			if not params.has("target"):
 				return "Choose an enemy creature"
 			var why := _target_error(player, params.target)
 			if why != "":
@@ -538,7 +552,7 @@ func _check_effect(e: Dictionary, player: int, params: Dictionary, reserved: Arr
 				return "Choose an enemy creature"
 			var own: Array = params.get("own", [])
 			var theirs: Array = params.get("theirs", [])
-			var mine: Dictionary = _P(player).board[int(params.source_slot)]
+			var mine: Dictionary = _P(player).board[int(params._slot)]
 			var enemy: Dictionary = _P(int(params.target.player)).board[int(params.target.slot)]
 			if own.size() != theirs.size() or own.is_empty():
 				return "Trade the same (non-zero) number of berries on each side"
@@ -570,6 +584,12 @@ func _apply_effect(e: Dictionary, player: int, slot: int, params: Dictionary) ->
 				n = _P(player).exile.size()
 			elif e.has("per_hand"):
 				n = int(e.per_hand) * _P(player).hand.size()
+			elif e.has("per_max_berries"):
+				var most := 0
+				for c in _P(player).board:
+					if c != null:
+						most = maxi(most, c.berries.size())
+				n = int(e.per_max_berries) * most
 			elif e.has("per_berry_per_creature"):
 				var mine: Dictionary = _P(player).board[slot]
 				n = mini(int(e.per_berry_per_creature) * mine.berries.size() * (Rules.BOARD_SLOTS - _P(player).board.count(null)), int(e.get("max", 999)))
@@ -593,7 +613,7 @@ func _apply_effect(e: Dictionary, player: int, slot: int, params: Dictionary) ->
 		"destroy":
 			_destroy_creature(int(params.target.player), int(params.target.slot))
 		"berry_trade":
-			var mine: Dictionary = _P(player).board[int(params.source_slot)]
+			var mine: Dictionary = _P(player).board[int(params._slot)]
 			var tp := int(params.target.player)
 			var enemy: Dictionary = _P(tp).board[int(params.target.slot)]
 			_release_berries(player, mine, params.own)
@@ -615,6 +635,20 @@ func _apply_effect(e: Dictionary, player: int, slot: int, params: Dictionary) ->
 					break
 			if drawn > 0:
 				_say("%s draws %d card(s)." % [_pname(target), drawn], target)
+		"rearrange_berries":
+			var pl := _P(player)
+			var pool: Array = []  # every berry on the board in a fixed order: slot by slot, in attachment order
+			for c in pl.board:
+				if c != null:
+					for i in c.berries.size():
+						pool.append({"id": c.berries[i], "exhausted": c.exhausted[i]})
+					c.berries = []
+					c.exhausted = []
+			for k in pool.size():
+				var dest: Dictionary = pl.board[int(params.assign[k])]
+				dest.berries.append(pool[k].id)
+				dest.exhausted.append(pool[k].exhausted)
+			_say("%s rearranges all the berries on their creatures." % _pname(player), player)
 		"remove_stun":
 			var ref: Dictionary = params.target
 			var c: Dictionary = _P(int(ref.player)).board[int(ref.slot)]

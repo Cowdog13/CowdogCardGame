@@ -1047,6 +1047,8 @@ func _start_ability(slot: int, ai: int) -> void:
 	var ab: Dictionary = Rules.top_card(creature).abilities[ai]
 	var effect: Dictionary = ab.effects[0]
 	match effect.type:
+		"rearrange_berries":
+			_ask_rearrange(slot, ai)
 		"remove_stun":
 			_begin_targeting("Remove the stun from which of your opponent's creatures?",
 				func(p, s): return p != ME and _any_creature(p, s) and Rules.is_stunned(view.opponent.board[s], view.turn), 1,
@@ -1071,6 +1073,83 @@ func _start_ability(slot: int, ai: int) -> void:
 			_ask_cast_from_discard(slot, ai)
 		_:
 			_submit({"type": "use_ability", "slot": slot, "ability": ai, "params": {}})
+
+
+## Water Ruler: choose where every berry on your creatures goes. Each berry has a drop-down for its new creature.
+func _ask_rearrange(slot: int, ai: int) -> void:
+	var board: Array = view.you.board
+	var berries: Array = []  # {"id", "exhausted", "slot"} in the same order the engine numbers them
+	for s in board.size():
+		if board[s] != null:
+			for i in board[s].berries.size():
+				berries.append({"id": board[s].berries[i], "exhausted": board[s].exhausted[i], "slot": s})
+	if berries.is_empty():
+		return _toast("None of your creatures has a berry.")
+	var d := ConfirmationDialog.new()
+	d.title = "Rearrange berries"
+	var outer := VBoxContainer.new()
+	var hint := Label.new()
+	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	hint.custom_minimum_size = Vector2(560, 0)
+	hint.text = "Choose a creature for every berry. Then you Plunder X, where X is the most berries on one of your creatures."
+	outer.add_child(hint)
+	var quick := HBoxContainer.new()
+	outer.add_child(quick)
+	var scroll := ScrollContainer.new()
+	scroll.custom_minimum_size = Vector2(560, 300)
+	var rows := VBoxContainer.new()
+	scroll.add_child(rows)
+	outer.add_child(scroll)
+	var summary := Label.new()
+	outer.add_child(summary)
+	var choosers: Array = []
+	var slots: Array = []  # option index -> board slot
+	for s in board.size():
+		if board[s] != null:
+			slots.append(s)
+	for b in berries:
+		var row := HBoxContainer.new()
+		var l := Label.new()
+		l.text = "%s%s" % [CardDB.card_name(b.id), " (exhausted)" if b.exhausted else ""]
+		l.custom_minimum_size = Vector2(240, 0)
+		row.add_child(l)
+		var pick := OptionButton.new()
+		for s in slots:
+			pick.add_item("%d: %s" % [s + 1, Rules.creature_name(board[s])])
+		pick.select(slots.find(b.slot))
+		row.add_child(pick)
+		rows.add_child(row)
+		choosers.append(pick)
+	var update := func():
+		var counts := {}
+		for pick in choosers:
+			var s: int = slots[pick.selected]
+			counts[s] = int(counts.get(s, 0)) + 1
+		var most := 0
+		var parts: Array = []
+		for s in slots:
+			var n := int(counts.get(s, 0))
+			most = maxi(most, n)
+			parts.append("%d: %d" % [s + 1, n])
+		summary.text = "Berries per creature - %s.   Plunder X = %d" % ["   ".join(parts), most]
+	for s in slots:
+		var all_on := Button.new()
+		all_on.text = "All on %d" % (s + 1)
+		all_on.pressed.connect(func():
+			for pick in choosers:
+				pick.select(slots.find(s))
+			update.call())
+		quick.add_child(all_on)
+	for pick in choosers:
+		pick.item_selected.connect(func(_i): update.call())
+	d.add_child(outer)
+	d.confirmed.connect(func():
+		var assign: Array = choosers.map(func(p): return slots[p.selected])
+		d.queue_free()
+		_submit({"type": "use_ability", "slot": slot, "ability": ai, "params": {"assign": assign}}))
+	d.canceled.connect(d.queue_free)
+	_popup(d)
+	update.call()
 
 
 ## Leafren / Moosh: which attached berry of this creature gets exiled. Asks only when there is a real choice.

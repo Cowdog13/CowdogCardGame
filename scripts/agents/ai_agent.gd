@@ -271,6 +271,21 @@ func _evaluate_ability(view: Dictionary, slot: int, c: Dictionary, ab: Dictionar
 	if draws > 0 and me.deck_count <= draws + 4:
 		return {}  # drawing from an empty deck loses the game
 	match effect.type:
+		"rearrange_berries":
+			# Water Ruler: put every berry on this creature and plunder that many (berries elsewhere stop helping their creatures).
+			var total := 0
+			for c2 in me.board:
+				if c2 != null:
+					total += c2.berries.size()
+			if total < 5:
+				return {}
+			var assign: Array = []
+			for i in total:
+				assign.append(slot)
+			var gain := float(total) - 0.4 * float(total - c.berries.size())
+			if total > opp.deck_count:
+				gain += 1000.0
+			return {"value": gain, "params": {"assign": assign}}
 		"double_next_plunder":
 			# Fireking's Twin Flame: worth it first, when another creature can plunder with the other ability slot.
 			if me.abilities_used != 0 or me.plunder_doubled:

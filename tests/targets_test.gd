@@ -43,7 +43,10 @@ func _init() -> void:
 					them.deck.append("disable")
 				var my_before: int = me.deck.size()
 				var their_before: int = them.deck.size()
-				var res := e.submit(user, {"type": "use_ability", "slot": 0, "ability": ai, "params": {}})
+				var params := {}
+				if kinds.has("rearrange_berries"):  # Water Ruler: every berry stays on the one creature
+					params = {"assign": berries.map(func(_b): return 0)}
+				var res := e.submit(user, {"type": "use_ability", "slot": 0, "ability": ai, "params": params})
 				if not res.ok:
 					print("FAIL %s ability %d: %s" % [card_id, ai, res.error])
 					fails += 1

@@ -96,6 +96,7 @@ godot --headless -s tests/net_ui_test.gd     # both screens over the network
 godot --headless -s tests/net_surrender_test.gd   # Menu -> confirm surrenders in multiplayer
 godot --headless -s tests/tutorial_test.gd        # plays the whole tutorial through the controller
 godot --headless -s tests/rulebook_test.gd
+godot --headless -s tests/water_test.gd           # Water Ruler Rearrange and Water Essence Berry Trade
 godot --headless -s tests/ui_report.gd           # finishing a game saves a replayable report
 godot --headless -s tests/replay_test.gd         # a saved game report replays to the identical game
 godot --headless -s tests/net_rematch_test.gd   # old builds are refused online; the host can play again
@@ -149,7 +150,8 @@ Constants live in `scripts/core/rules.gd`.
   Firewolf has nothing to recycle from that pillage. With Firewolf's Active effect you then choose as many cards from your discard to recycle as
   went to the discard in that pillage - berries attached to creatures don't count (e.g. Pillage 4 revealing 2 berries recycles 2; Active effects don't stack, so
   several Firewolves still recycle just that many; capped by the discard size; they go to the bottom in the order chosen).
-- **Berry Trade** (Water Ruler) discards berries from the Ruler itself and from one enemy creature.
+- **Berry Trade** (Water Essence) discards berries from the Essence itself and from one enemy creature.
+- **Rearrange** (Water Ruler) moves every berry between your creatures, then Plunders X = the most berries on one creature.
 - **Not yet implemented**: casting spells in response to abilities/plays (spells are playable on your own turn only), Free-Form deck building, deck size/Super Berry validation.
 
 ## Known gaps in the AI

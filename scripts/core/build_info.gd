@@ -3,7 +3,7 @@ extends RefCounted
 ## Which build of the game this is. Players who connect to each other must have the same one: the version is bumped by
 ## hand for every build that goes to testers, and a fingerprint of the card and deck data catches a forgotten bump.
 
-const VERSION := "0.6.0"
+const VERSION := "0.6.1"
 const CHANNEL := "playtest"
 
 static var _fingerprint := ""
