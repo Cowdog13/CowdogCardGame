@@ -1,7 +1,7 @@
 # Changelog
 
 ## 0.6.1
-- Berry Trade moved from Water Ruler to Water Essence (1 Super Berry). Water Ruler gets Rearrange (2 Super Berries): move all
+- Tidal Surge is removed from the game. Berry Trade moved from Water Ruler to Water Essence (1 Super Berry), which now has only that ability. Water Ruler gets Rearrange (2 Super Berries): move all
   berries between your creatures, then Plunder X = the most berries on one of your creatures.
 
 ## 0.6.0 (first playtest build)

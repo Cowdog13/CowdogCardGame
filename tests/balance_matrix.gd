@@ -20,10 +20,6 @@ func _play(d0: String, d1: String, seed_val: int) -> Dictionary:
 func _init() -> void:
 	var args := OS.get_cmdline_user_args()
 	var n := int(args[0]) if args.size() > 0 else 40
-	if args.size() > 1 and args[1].begins_with("cap"):  # experiment: cap Tidal Surge's plunder, e.g. "cap6"
-		CardDB.card("water_essence").abilities[0].effects[1]["max"] = int(args[1].substr(3))
-	if args.size() > 1 and args[1] == "no-essence":  # experiment: what if Water Essence could not use Tidal Surge?
-		CardDB.card("water_essence").abilities[0].cost = {"element": "super", "amount": 99}
 	var decks := CardDB.deck_ids()
 	var wins := {}  # "a|b" -> wins of a against b
 	var games := {}

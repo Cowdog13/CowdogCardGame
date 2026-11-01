@@ -32,7 +32,7 @@ func _game() -> GameEngine:
 func _init() -> void:
 	var data := CardDB.card("water_ruler")
 	check(data.abilities.size() == 2 and data.abilities[0].name == "Rearrange" and not JSON.stringify(data).contains("berry_trade"), "the Ruler no longer has Berry Trade")
-	check(JSON.stringify(CardDB.card("water_essence")).contains("berry_trade"), "Water Essence has Berry Trade")
+	check(JSON.stringify(CardDB.card("water_essence")).contains("berry_trade") and CardDB.card("water_essence").abilities.size() == 1 and not JSON.stringify(CardDB.card("water_essence")).contains("remove_stun"), "Water Essence has Berry Trade and nothing else")
 
 	# Rearrange: every berry gets a new creature; exhausted berries stay exhausted; then Plunder X = the most on one creature.
 	var e := _game()
@@ -56,7 +56,7 @@ func _init() -> void:
 	opp.board[0] = _creature("sun_god", ["super_berry", "super_berry"])
 	opp.board[1] = _creature("lightling", ["light_berry", "super_berry"])
 	var trade := func(target_slot: int):
-		return e.submit(0, {"type": "use_ability", "slot": 0, "ability": 1, "params": {"target": {"player": 1, "slot": target_slot}, "own": [1], "theirs": [1]}})
+		return e.submit(0, {"type": "use_ability", "slot": 0, "ability": 0, "params": {"target": {"player": 1, "slot": target_slot}, "own": [1], "theirs": [1]}})
 	check(not trade.call(0).ok, "an enemy leader can't be targeted")
 	check(trade.call(1).ok and pl.board[0].berries == ["super_berry"] and opp.board[1].berries == ["light_berry"], "one berry each way: %s / %s" % [pl.board[0].berries, opp.board[1].berries])
 	print("water_test failures=%d" % fails)

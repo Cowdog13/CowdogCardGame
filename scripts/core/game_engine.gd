@@ -454,15 +454,6 @@ func _check_effect(e: Dictionary, player: int, params: Dictionary, reserved: Arr
 		"draw":
 			if e.get("target", "") == "player" and int(params.get("player", -1)) not in [0, 1]:
 				return "Choose which player draws"
-		"remove_stun":
-			var ref: Dictionary = params.get("target", {})
-			var why := _target_error(player, ref)
-			if why != "":
-				return why
-			if int(ref.player) == player:
-				return "Choose a stunned creature of your opponent"
-			if not Rules.is_stunned(_P(int(ref.player)).board[int(ref.slot)], state.turn):
-				return "Choose a creature that is stunned"
 		"recycle_exile":
 			if pl.exile.is_empty():
 				return "Your exile pile is empty"
@@ -590,9 +581,6 @@ func _apply_effect(e: Dictionary, player: int, slot: int, params: Dictionary) ->
 					if c != null:
 						most = maxi(most, c.berries.size())
 				n = int(e.per_max_berries) * most
-			elif e.has("per_berry_per_creature"):
-				var mine: Dictionary = _P(player).board[slot]
-				n = mini(int(e.per_berry_per_creature) * mine.berries.size() * (Rules.BOARD_SLOTS - _P(player).board.count(null)), int(e.get("max", 999)))
 			if params.get("_double", false):
 				n *= 2
 			_plunder(player, opp, n)
@@ -649,11 +637,6 @@ func _apply_effect(e: Dictionary, player: int, slot: int, params: Dictionary) ->
 				dest.berries.append(pool[k].id)
 				dest.exhausted.append(pool[k].exhausted)
 			_say("%s rearranges all the berries on their creatures." % _pname(player), player)
-		"remove_stun":
-			var ref: Dictionary = params.target
-			var c: Dictionary = _P(int(ref.player)).board[int(ref.slot)]
-			c.stun_until = -1
-			_say("%s removes the stun from %s." % [_pname(player), Rules.creature_name(c)], player)
 		"recycle_exile":
 			var pl := _P(player)
 			var n := mini(int(e.per_attached_berry) * pl.board[slot].berries.size(), pl.exile.size())

@@ -1049,10 +1049,6 @@ func _start_ability(slot: int, ai: int) -> void:
 	match effect.type:
 		"rearrange_berries":
 			_ask_rearrange(slot, ai)
-		"remove_stun":
-			_begin_targeting("Remove the stun from which of your opponent's creatures?",
-				func(p, s): return p != ME and _any_creature(p, s) and Rules.is_stunned(view.opponent.board[s], view.turn), 1,
-				func(t): _submit({"type": "use_ability", "slot": slot, "ability": ai, "params": {"target": t[0]}}))
 		"discard_to_top":
 			_pick_grouped("Put which card from your discard pile on top of your deck?", view.you.discard, "Put on top",
 				func(id): _submit({"type": "use_ability", "slot": slot, "ability": ai, "params": {"card": id}}))

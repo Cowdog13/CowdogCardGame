@@ -975,23 +975,6 @@
   "leader": true,
   "abilities": [
    {
-    "name": "Tidal Surge",
-    "cost": {
-     "element": "super",
-     "amount": 2
-    },
-    "effects": [
-     {
-      "type": "remove_stun"
-     },
-     {
-      "type": "plunder",
-      "per_berry_per_creature": 1
-     }
-    ],
-    "text": "Remove a stun from an enemy creature: Plunder X, X = berries on this creature x your creatures"
-   },
-   {
     "name": "Berry Trade",
     "cost": {
      "element": "super",
