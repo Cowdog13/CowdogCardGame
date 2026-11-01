@@ -45,6 +45,11 @@ func _init() -> void:
 	if ArtDB.card_art("nature_berry", 0).get_width() != 8 or ArtDB.card_art("fire_berry", 1).get_width() == 8 or ArtDB.card_art("nature_berry", 1).get_width() == 8:
 		fails += 1
 		print("a pack's berries should only dress the berries of the decks it is made for")
+	ArtDB.bot_seats = [1]
+	if ArtDB.card_art("leafer", 1).get_width() == 8 or ArtDB.card_art("leafer", 0).get_width() != 8:
+		fails += 1
+		print("a computer opponent must use the default art; the human keeps the pack")
+	ArtDB.bot_seats = []
 	ArtDB.set_game_decks(0, "scorching_fire", "nature_exile")
 	if ArtDB.card_art("removal", 0).get_width() == 8 or ArtDB.card_art("removal", 1).get_width() != 8:
 		fails += 1

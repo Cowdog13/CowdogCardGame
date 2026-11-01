@@ -1,6 +1,8 @@
 # Changelog
 
 ## 0.7.0
+- Art packs: packs without a preview picture or table background now show a grid of their cards on the Art packs screen. The computer opponent always uses the default art.
+- Removed the Computer speed slider and the Visual effects checkbox (effects are always on).
 - Art pack conflicts can be resolved picture by picture or by picking one whole pack (option on the Art packs screen).
 - Several art packs can be switched on at once (e.g. a table background plus a card-art pack). If two packs have the same picture, one is picked at random at the start of each game.
 - A pack's berry art now only appears on the berries of the decks the pack is made for (never the opponent's). The game server address is pre-filled.

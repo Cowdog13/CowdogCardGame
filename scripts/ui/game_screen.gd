@@ -383,6 +383,12 @@ func _refresh() -> void:
 	if view.is_empty():
 		return  # a networked game before the host's first update
 	ArtDB.set_game_decks(ME, String(view.you.deck_id), String(view.opponent.deck_id))
+	ArtDB.bot_seats = []
+	var agents = controller.get("agents")
+	if agents is Array:
+		for i in agents.size():
+			if agents[i] != null and agents[i].is_automatic:
+				ArtDB.bot_seats.append(i)
 	var you: Dictionary = view.you
 	var opp: Dictionary = view.opponent
 	_opp_info.text = "%s  -  %d card(s) in hand" % [_opp_name(), opp.hand_count]

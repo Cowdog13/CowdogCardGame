@@ -14,6 +14,7 @@ static var conflict_by_pack := false  # overlapping art: false = decided picture
 static var roll := 0  # decides which pack wins when several have the same picture; re-rolled at the start of every game
 static var seat_decks := ["", ""]  # the deck each seat plays, set by the table screen
 static var my_seat := 0
+static var bot_seats: Array = []  # seats played by the computer: they always use the default art
 
 
 static func _tex(path: String) -> Texture2D:
@@ -140,6 +141,8 @@ static func set_game_decks(p_my_seat: int, deck_0: String, deck_1: String) -> vo
 
 ## Does this pack's art apply to this card? `owner_seat` is whose card it is (-1: the viewer's own).
 static func _pack_applies(pack_id: String, card_id: String, owner_seat := -1) -> bool:
+	if bot_seats.has(owner_seat if owner_seat >= 0 else my_seat):
+		return false
 	var decks: Array = _pack_decks.get(pack_id, [])
 	if decks.is_empty() or not (CardDB.is_shared(card_id) or CardDB.is_berry(card_id)):
 		return true

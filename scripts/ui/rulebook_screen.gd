@@ -161,7 +161,7 @@ Exiled cards never come back, but they are counted by Spore Spreader. An ability
 
 [b]Menu.[/b] Leave the game. In a multiplayer game this means [b]surrender[/b], and the opponent wins.
 
-[b]Effects.[/b] Card flights, plundered cards laid out in the middle, stun bolts and so on can be switched off on the main menu."""],
+[b]Effects.[/b] Card flights, plundered cards laid out in the middle, stun bolts and so on show what just happened."""],
 ]
 
 var _list: ItemList

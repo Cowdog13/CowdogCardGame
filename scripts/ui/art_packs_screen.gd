@@ -151,7 +151,36 @@ func _preview_of(pack: Dictionary) -> Texture2D:
 				var img := Image.load_from_file(path)
 				if img != null and not img.is_empty():
 					return ImageTexture.create_from_image(img)
-	return null
+	return _collage_of(pack)
+
+
+## A pack with no preview picture and no table background: a grid of its first cards.
+func _collage_of(pack: Dictionary) -> Texture2D:
+	var dir := "%s/%s/cards" % [ArtDB.PACKS_DIR, pack.id]
+	var files: Array = []
+	for f in DirAccess.get_files_at(dir):
+		if f.get_extension().to_lower() in ArtDB.IMAGE_EXTENSIONS:
+			files.append(f)
+	files.sort()
+	if files.is_empty():
+		return null
+	const COLS := 4
+	const ROWS := 2
+	const CELL := 240
+	var out := Image.create(COLS * CELL, ROWS * CELL, false, Image.FORMAT_RGBA8)
+	out.fill(Color(0.07, 0.1, 0.09))
+	var step := maxf(1.0, float(files.size()) / (COLS * ROWS))
+	for n in mini(files.size(), COLS * ROWS):
+		var img := Image.load_from_file("%s/%s" % [dir, files[int(n * step)]])
+		if img == null or img.is_empty():
+			continue
+		img.convert(Image.FORMAT_RGBA8)
+		var scale := minf(float(CELL - 12) / img.get_width(), float(CELL - 12) / img.get_height())
+		img.resize(maxi(1, int(img.get_width() * scale)), maxi(1, int(img.get_height() * scale)), Image.INTERPOLATE_LANCZOS)
+		var x := (n % COLS) * CELL + (CELL - img.get_width()) / 2
+		var y := (n / COLS) * CELL + (CELL - img.get_height()) / 2
+		out.blend_rect(img, Rect2i(0, 0, img.get_width(), img.get_height()), Vector2i(x, y))
+	return ImageTexture.create_from_image(out)
 
 
 func _use_selected() -> void:

@@ -27,11 +27,6 @@ func _ready() -> void:
 	full.button_pressed = Settings.fullscreen()
 	full.toggled.connect(func(on): Settings.set_fullscreen(on))
 	box.add_child(full)
-	var fx := CheckBox.new()
-	fx.text = "Visual effects (card animations)"
-	fx.button_pressed = bool(Settings.get_value("game", "effects", true))
-	fx.toggled.connect(func(on): Settings.set_value("game", "effects", on))
-	box.add_child(fx)
 	var about := Label.new()
 	about.text = "Reporting a problem or a balance issue: after a game (or from the Log button during one) the game saves a small\nreport file with everything needed to replay that game. Send it to whoever runs the test."
 	about.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART

@@ -10,8 +10,7 @@ signal settings_requested
 
 var _you: OptionButton
 var _opp: OptionButton
-var _speed: HSlider
-var _effects: CheckBox
+const COMPUTER_DELAY := 0.7  # seconds the computer waits between actions
 
 
 func _ready() -> void:
@@ -51,28 +50,13 @@ func _ready() -> void:
 	box.add_child(sub)
 	_you = _deck_picker(box, "Your deck", _deck_index(Settings.get_value("game", "deck_you", ""), 0))
 	_opp = _deck_picker(box, "Computer's deck", _deck_index(Settings.get_value("game", "deck_computer", ""), 1))
-	var speed_label := Label.new()
-	speed_label.text = "Computer speed (seconds per action)"
-	box.add_child(speed_label)
-	_speed = HSlider.new()
-	_speed.min_value = 0.0
-	_speed.max_value = 2.0
-	_speed.step = 0.1
-	_speed.value = float(Settings.get_value("game", "computer_speed", 0.7))
-	box.add_child(_speed)
-	_effects = CheckBox.new()
-	_effects.text = "Visual effects (card animations)"
-	_effects.button_pressed = bool(Settings.get_value("game", "effects", true))
-	box.add_child(_effects)
 	var start := Button.new()
 	start.text = "Start Game"
 	start.custom_minimum_size = Vector2(0, 48)
 	start.pressed.connect(func():
 		Settings.set_value("game", "deck_you", CardDB.deck_ids()[_you.selected])
 		Settings.set_value("game", "deck_computer", CardDB.deck_ids()[_opp.selected])
-		Settings.set_value("game", "computer_speed", _speed.value)
-		Settings.set_value("game", "effects", _effects.button_pressed)
-		start_requested.emit(CardDB.deck_ids()[_you.selected], CardDB.deck_ids()[_opp.selected], _speed.value, _effects.button_pressed))
+		start_requested.emit(CardDB.deck_ids()[_you.selected], CardDB.deck_ids()[_opp.selected], COMPUTER_DELAY, true))
 	box.add_child(start)
 	var tut := Button.new()
 	tut.text = "Tutorial (learn to play)"
