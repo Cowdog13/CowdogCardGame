@@ -293,6 +293,8 @@ def main() -> None:
     build(args, found, cards, folder)
     make_preview(folder, cards)
     decks = [d.strip() for d in args.decks.split(",")] if args.decks else decks_for(found, cards)
+    if len(decks) == len(load_decks()):
+        decks = []  # a pack for every deck needs no list
     meta = {"name": args.name, "creator": args.creator, "description": args.description, "publisher": args.publisher, "ai_generated": args.ai}
     if decks:
         meta["decks"] = decks
